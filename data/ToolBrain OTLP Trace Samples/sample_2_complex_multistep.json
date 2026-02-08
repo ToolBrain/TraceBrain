@@ -1,0 +1,81 @@
+{
+  "trace_id": "b2c3d4e5f6a7b8c9b2c3d4e5f6a7b8c9",
+  "attributes": {
+    "system_prompt": "You are a financial analyst. Use tools to gather data and provide a summary.",
+    "toolbrain.episode.id": "ep-b2c3d4e5"
+  },
+  "spans": [
+    {
+      "span_id": "2001a2b3c4d5e6f7",
+      "parent_id": null,
+      "name": "LLM Inference (Tool Call)",
+      "attributes": {
+        "toolbrain.span.type": "llm_inference",
+        "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the P/E ratio of Apple and what was their last quarter revenue?\"}]",
+        "toolbrain.llm.completion": "Thought: I need to answer two questions. I will start with the P/E ratio.\n{\"tool_call\": {\"name\": \"get_stock_pe_ratio\", \"arguments\": {\"ticker\": \"AAPL\"}}}",
+        "toolbrain.llm.thought": "I need to answer two questions. I will start with the P/E ratio.",
+        "toolbrain.llm.tool_code": "get_stock_pe_ratio({'ticker': 'AAPL'})",
+        "toolbrain.usage": {
+          "prompt_tokens": 76,
+          "completion_tokens": 38,
+          "total_tokens": 114
+        }
+      }
+    },
+    {
+      "span_id": "2002b3c4d5e6f7a8",
+      "parent_id": "2001a2b3c4d5e6f7",
+      "name": "Tool Execution: get_stock_pe_ratio",
+      "attributes": {
+        "toolbrain.span.type": "tool_execution",
+        "toolbrain.tool.name": "get_stock_pe_ratio",
+        "toolbrain.tool.input": "{'ticker': 'AAPL'}",
+        "toolbrain.tool.output": "29.5"
+      }
+    },
+    {
+      "span_id": "2003c4d5e6f7a8b9",
+      "parent_id": "2002b3c4d5e6f7a8",
+      "name": "LLM Inference (Tool Call)",
+      "attributes": {
+        "toolbrain.span.type": "llm_inference",
+        "toolbrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_stock_pe_ratio\", \"arguments\": {\"ticker\": \"AAPL\"}, \"id\": \"call_def456\"}]}, {\"role\": \"tool\", \"content\": \"29.5\", \"tool_call_id\": \"call_def456\"}]",
+        "toolbrain.llm.completion": "Thought: I have the P/E ratio. Now I need to find the last quarter's revenue.\n{\"tool_call\": {\"name\": \"get_quarterly_revenue\", \"arguments\": {\"ticker\": \"AAPL\", \"quarter\": \"Q3 2025\"}}}",
+        "toolbrain.llm.thought": "I have the P/E ratio. Now I need to find the last quarter's revenue.",
+        "toolbrain.llm.tool_code": "get_quarterly_revenue({'ticker': 'AAPL', 'quarter': 'Q3 2025'})",
+        "toolbrain.usage": {
+          "prompt_tokens": 102,
+          "completion_tokens": 45,
+          "total_tokens": 147
+        }
+      }
+    },
+    {
+      "span_id": "2004d5e6f7a8b9c0",
+      "parent_id": "2003c4d5e6f7a8b9",
+      "name": "Tool Execution: get_quarterly_revenue",
+      "attributes": {
+        "toolbrain.span.type": "tool_execution",
+        "toolbrain.tool.name": "get_quarterly_revenue",
+        "toolbrain.tool.input": "{'ticker': 'AAPL', 'quarter': 'Q3 2025'}",
+        "toolbrain.tool.output": "89.5 billion USD"
+      }
+    },
+    {
+      "span_id": "2005e6f7a8b9c0d1",
+      "parent_id": "2004d5e6f7a8b9c0",
+      "name": "LLM Inference (Final Answer)",
+      "attributes": {
+        "toolbrain.span.type": "llm_inference",
+        "toolbrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_quarterly_revenue\", \"arguments\": {\"ticker\": \"AAPL\", \"quarter\": \"Q3 2025\"}, \"id\": \"call_ghi789\"}]}, {\"role\": \"tool\", \"content\": \"89.5 billion USD\", \"tool_call_id\": \"call_ghi789\"}]",
+        "toolbrain.llm.completion": "Apple (AAPL) has a P/E ratio of 29.5 and their last quarter revenue was $89.5 billion.",
+        "toolbrain.llm.final_answer": "Apple (AAPL) has a P/E ratio of 29.5 and their last quarter revenue was $89.5 billion.",
+        "toolbrain.usage": {
+          "prompt_tokens": 111,
+          "completion_tokens": 21,
+          "total_tokens": 132
+        }
+      }
+    }
+  ]
+}

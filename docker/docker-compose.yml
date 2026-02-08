@@ -1,0 +1,79 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: toolbrain-postgres
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-toolbrain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toolbrain_2026_secure}
+      POSTGRES_DB: ${POSTGRES_DB:-tracestore}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    # For local development only. Do not expose DB in production.
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - toolbrain-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U toolbrain -d tracestore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ToolBrain Tracing API
+  tracing-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: toolbrain-tracing-api
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      # Database Configuration
+      DATABASE_URL: postgresql://${POSTGRES_USER:-toolbrain}:${POSTGRES_PASSWORD:-toolbrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
+      
+      # Server Configuration
+      HOST: 0.0.0.0
+      PORT: 8000
+      LOG_LEVEL: info
+      
+      # Optional: Gemini AI (uncomment and add your key)
+      # GEMINI_API_KEY: your_gemini_api_key_here
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - toolbrain-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      # Mount for development (optional - remove in production)
+      # - ../src:/app/src
+      - api_logs:/app/logs
+
+# Named volumes for data persistence
+volumes:
+  postgres_data:
+    driver: local
+    name: toolbrain_postgres_data
+  api_logs:
+    driver: local
+    name: toolbrain_api_logs
+
+# Networks
+networks:
+  toolbrain-network:
+    driver: bridge
+    name: toolbrain-network

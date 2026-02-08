@@ -1,0 +1,72 @@
+{
+  "trace_id": "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+  "attributes": {
+    "system_prompt": "You are an assistant that answers comparison questions by gathering data for each item.",
+    "toolbrain.episode.id": "ep-7a8b9c0d"
+  },
+  "spans": [
+    {
+      "span_id": "7001a2b3c4d5e6f7",
+      "parent_id": null,
+      "name": "LLM Inference (Parallel Tool Call)",
+      "start_time": "2025-11-23T14:00:01.000Z",
+      "end_time": "2025-11-23T14:00:03.000Z",
+      "attributes": {
+        "toolbrain.span.type": "llm_inference",
+        "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Compare the populations of Paris and Berlin.\"}]",
+        "toolbrain.llm.completion": "Thought: To compare the populations, I need to get the data for both cities. I can do this in parallel.\n{\"tool_calls\": [{\"name\": \"get_population\", \"arguments\": {\"city\": \"Paris\"}}, {\"name\": \"get_population\", \"arguments\": {\"city\": \"Berlin\"}}]}",
+        "toolbrain.llm.thought": "To compare the populations, I need to get the data for both cities. I can do this in parallel.",
+        "toolbrain.llm.tool_code": "get_population({'city': 'Paris'})\nget_population({'city': 'Berlin'})",
+        "toolbrain.usage": {
+          "prompt_tokens": 69,
+          "completion_tokens": 60,
+          "total_tokens": 129
+        }
+      }
+    },
+    {
+      "span_id": "7002b3c4d5e6f7a8",
+      "parent_id": "7001a2b3c4d5e6f7",
+      "name": "Tool Execution: get_population (Paris)",
+      "start_time": "2025-11-23T14:00:03.100Z",
+      "end_time": "2025-11-23T14:00:03.500Z",
+      "attributes": {
+        "toolbrain.span.type": "tool_execution",
+        "toolbrain.tool.name": "get_population",
+        "toolbrain.tool.input": "{'city': 'Paris'}",
+        "toolbrain.tool.output": "2.1 million"
+      }
+    },
+    {
+      "span_id": "7003c4d5e6f7a8b9",
+      "parent_id": "7001a2b3c4d5e6f7",
+      "name": "Tool Execution: get_population (Berlin)",
+      "start_time": "2025-11-23T14:00:03.105Z",
+      "end_time": "2025-11-23T14:00:03.600Z",
+      "attributes": {
+        "toolbrain.span.type": "tool_execution",
+        "toolbrain.tool.name": "get_population",
+        "toolbrain.tool.input": "{'city': 'Berlin'}",
+        "toolbrain.tool.output": "3.6 million"
+      }
+    },
+    {
+      "span_id": "7004d5e6f7a8b9c0",
+      "parent_id": "7003c4d5e6f7a8b9",
+      "name": "LLM Inference (Final Answer)",
+      "start_time": "2025-11-23T14:00:03.700Z",
+      "end_time": "2025-11-23T14:00:04.500Z",
+      "attributes": {
+        "toolbrain.span.type": "llm_inference",
+        "toolbrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_population\", \"arguments\": {\"city\": \"Paris\"}, \"id\": \"call_par\"}, {\"name\": \"get_population\", \"arguments\": {\"city\": \"Berlin\"}, \"id\": \"call_ber\"}]}, {\"role\": \"tool\", \"content\": \"2.1 million\", \"tool_call_id\": \"call_par\"}, {\"role\": \"tool\", \"content\": \"3.6 million\", \"tool_call_id\": \"call_ber\"}]",
+        "toolbrain.llm.completion": "Based on the data, Berlin has a larger population (3.6 million) compared to Paris (2.1 million).",
+        "toolbrain.llm.final_answer": "Based on the data, Berlin has a larger population (3.6 million) compared to Paris (2.1 million).",
+        "toolbrain.usage": {
+          "prompt_tokens": 139,
+          "completion_tokens": 24,
+          "total_tokens": 163
+        }
+      }
+    }
+  ]
+}

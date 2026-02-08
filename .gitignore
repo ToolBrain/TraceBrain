@@ -1,0 +1,328 @@
+# ============================================================================
+# ToolBrain Tracing - Git Ignore Configuration
+# ============================================================================
+
+# ============================================================================
+# Python
+# ============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+src/toolbrain_tracing.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# ============================================================================
+# Databases
+# ============================================================================
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+toolbrain_traces.db
+
+# PostgreSQL
+*.pgdata
+
+# Database backups
+*.sql
+*.dump
+
+# ============================================================================
+# Docker
+# ============================================================================
+# Docker volumes
+docker/volumes/
+docker/data/
+
+# Docker environment files
+docker/.env
+docker/.env.local
+
+# Docker build cache (keep .dockerignore)
+# docker/.dockerignore
+
+# ============================================================================
+# IDEs & Editors
+# ============================================================================
+# Visual Studio Code
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Jupyter
+.jupyter/
+
+# ============================================================================
+# Operating System
+# ============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================================================
+# Application Specific
+# ============================================================================
+# ToolBrain Tracing data
+data/traces/
+data/exports/
+data/backups/
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Configuration overrides (keep defaults, ignore local)
+config.local.yaml
+config.override.yaml
+settings.local.py
+
+# API keys and secrets
+.env.local
+.env.*.local
+secrets.yaml
+credentials.json
+
+# Frontend build artifacts (will be generated)
+web/node_modules/
+web/dist/
+web/build/
+web/.next/
+web/out/
+
+# Static files (generated from frontend build)
+# src/toolbrain_tracing/static/*
+# Uncomment above if you don't want to track built frontend
+
+# ============================================================================
+# Testing & CI/CD
+# ============================================================================
+# Test outputs
+test-results/
+test-reports/
+.pytest_cache/
+
+# CI/CD artifacts
+.github/workflows/test-results/
+.gitlab-ci-cache/
+
+# ============================================================================
+# Miscellaneous
+# ============================================================================
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# System files
+.Spotlight-V100
+.Trashes
+
+# Project specific
+TODO.md.private
+NOTES.md.private
+scratch/
+
+# ============================================================================
+# Keep These Files (Exceptions)
+# ============================================================================
+# Keep example/sample files
+!data/ToolBrain OTLP Trace Samples/*.json
+!src/examples/*.py
+
+# Keep Docker infrastructure files
+!docker/Dockerfile
+!docker/docker-compose.yml
+!docker/.dockerignore
+!docker/README.md
+
+# Keep configuration templates
+!config.example.yaml
+!.env.example

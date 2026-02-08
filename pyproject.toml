@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "toolbrain-tracing"
+version = "2.0.0"
+description = "Observability platform for Agentic AI - Collect, store, and visualize execution traces"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+keywords = ["ai", "agents", "tracing", "observability", "opentelemetry", "langchain"]
+authors = [
+    {name = "ToolBrain Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "sqlalchemy>=2.0.0",
+    "psycopg2-binary>=2.9.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "typer>=0.9.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+ai = [
+    "google-generativeai>=0.3.0",
+    "python-dotenv>=1.0.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+toolbrain-trace = "toolbrain_tracing.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/toolbrain/toolbrain-tracing"
+Documentation = "https://github.com/toolbrain/toolbrain-tracing#readme"
+Repository = "https://github.com/toolbrain/toolbrain-tracing"
+Issues = "https://github.com/toolbrain/toolbrain-tracing/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["toolbrain_tracing*"]
+
+[tool.setuptools.package-data]
+toolbrain_tracing = [
+    "static/**/*",
+    "../docker/docker-compose.yml",  # Include compose file in package
+    "../docker/Dockerfile",
+    "../docker/.dockerignore"
+]
+
+# Note: Docker files are in docker/ directory at project root
+# Also included in package-data for deployment convenience
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false

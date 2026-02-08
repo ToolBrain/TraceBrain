@@ -1,0 +1,120 @@
+# Docker Configuration for ToolBrain Tracing
+
+This directory contains all Docker-related files for running ToolBrain Tracing in containers.
+
+## 📁 Files
+
+- **`Dockerfile`** - Production-optimized multi-stage Docker image
+- **`docker-compose.yml`** - Orchestrates PostgreSQL + API services
+- **`.dockerignore`** - Optimizes build context
+
+## 🚀 Quick Start
+
+### Using CLI (Recommended)
+
+```bash
+# From project root
+toolbrain-trace up          # Start all services
+toolbrain-trace status      # Check status
+toolbrain-trace down        # Stop all services
+```
+
+### Using Docker Compose Directly
+
+```bash
+# From project root
+docker compose -f docker/docker-compose.yml up -d --build
+docker compose -f docker/docker-compose.yml ps
+docker compose -f docker/docker-compose.yml logs -f
+docker compose -f docker/docker-compose.yml down
+```
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────┐
+│   tracing-api       │
+│   (FastAPI)         │
+│   Port: 8000        │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│   postgres          │
+│   (PostgreSQL 15)   │
+│   Port: 5432        │
+└─────────────────────┘
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file at the project root (recommended) or edit `docker-compose.yml`:
+
+```env
+# Database
+POSTGRES_USER=toolbrain
+POSTGRES_PASSWORD=toolbrain_2026_secure
+POSTGRES_DB=tracestore
+
+# API
+DATABASE_URL=postgresql://toolbrain:toolbrain_2026_secure@postgres:5432/tracestore
+HOST=0.0.0.0
+PORT=8000
+LOG_LEVEL=info
+
+# Optional: Gemini AI
+GEMINI_API_KEY=your_key_here
+```
+
+## 📊 Services
+
+### postgres
+- **Image**: `postgres:15-alpine`
+- **Port**: `5432`
+- **Volume**: `toolbrain_postgres_data` (persistent)
+- **Health Check**: Automatic readiness probe
+
+Note: The database port is not exposed by default in production. Uncomment the
+`ports` section in docker-compose.yml for local development only.
+
+### tracing-api
+- **Build**: Multi-stage optimized image
+- **Port**: `8000`
+- **Depends on**: postgres (healthy)
+- **Health Check**: `/healthz` endpoint
+
+## 🔍 Troubleshooting
+
+### Check logs
+```bash
+docker compose -f docker/docker-compose.yml logs tracing-api
+docker compose -f docker/docker-compose.yml logs postgres
+```
+
+### Rebuild images
+```bash
+docker compose -f docker/docker-compose.yml up --build
+```
+
+### Reset everything (⚠️ deletes data)
+```bash
+docker compose -f docker/docker-compose.yml down -v
+```
+
+## 🏭 Production Considerations
+
+1. **Change default passwords** in `docker-compose.yml`
+2. **Use secrets** instead of environment variables
+3. **Add resource limits** (CPU, memory)
+4. **Configure logging driver** (e.g., json-file with rotation)
+5. **Use reverse proxy** (nginx, Traefik) for HTTPS
+6. **Enable monitoring** (Prometheus, Grafana)
+7. **Disable DB port exposure** in production
+
+## 📚 Learn More
+
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
+- [PostgreSQL Docker Hub](https://hub.docker.com/_/postgres)
+- [FastAPI Deployment](https://fastapi.tiangolo.com/deployment/)
