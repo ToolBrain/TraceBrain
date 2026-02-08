@@ -132,6 +132,9 @@ docker compose -f docker/docker-compose.yml build --no-cache
 - `GET /api/v1/traces/{trace_id}` - Get trace details
 - `POST /api/v1/traces/{trace_id}/feedback` - Add feedback to a trace
 
+**Episodes**
+- `GET /api/v1/episodes/{episode_id}` - Get all traces in an episode
+
 **Analytics**
 - `GET /api/v1/stats` - Get overall statistics
 - `GET /api/v1/analytics/tool_usage` - Get tool usage analytics
@@ -139,6 +142,9 @@ docker compose -f docker/docker-compose.yml build --no-cache
 **Natural Language Queries**
 - `POST /api/v1/natural_language_query` - Query traces with natural language
     - Requires LLM configuration via env vars (for example: `LLM_PROVIDER`, `LLM_API_KEY`)
+
+**AI Evaluation**
+- `POST /api/v1/ai_evaluate/{trace_id}` - Evaluate a trace with a judge model
 
 **Example API Usage:**
 
