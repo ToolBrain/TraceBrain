@@ -8,6 +8,7 @@
 - **🔄 Framework-Agnostic**: Works with any AI agent framework - includes smolagents integration example, with docs for building custom converters
 - **💾 Dual Backend Support**: SQLite for development, PostgreSQL for production
 - **🤖 AI-Powered Analytics**: Ask questions about your traces in natural language via LibrarianAgent (multi-provider LLM support)
+- **🖥️ Admin UI + Frontend Placeholder**: Streamlit-based admin UI today, with a `web/` directory reserved for a future React frontend
 - **🐳 Docker-Ready**: Full Docker Compose setup for one-command deployment
 - **🔌 REST API**: Clean FastAPI endpoints at `/api/v1` for easy integration
 
