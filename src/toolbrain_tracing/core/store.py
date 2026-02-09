@@ -11,13 +11,14 @@ from typing import Dict, Any, Optional, List, Iterator
 import logging
 import re
 
-from sqlalchemy import create_engine, func, cast
+import sqlparse
+from sqlalchemy import create_engine, func, cast, text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, ProgrammingError, TimeoutError
 from sqlalchemy.orm import sessionmaker, Session, selectinload
 
 from toolbrain_tracing.config import settings
-from toolbrain_tracing.db.base import Base, Trace, Span
+from toolbrain_tracing.db.base import Base, Trace, Span, ChatSession, ChatMessage
 
 logger = logging.getLogger(__name__)
 
@@ -225,6 +226,83 @@ class BaseStorageBackend:
                 .order_by(Trace.created_at.desc())
                 .all()
             )
+        finally:
+            session.close()
+
+    def execute_read_only_sql(self, query: str, row_limit: int = 100) -> Dict[str, Any]:
+        """Execute a read-only SQL query with defense-in-depth controls."""
+        try:
+            parsed = sqlparse.parse(query)
+            if not parsed or parsed[0].get_type() != "SELECT":
+                raise ValueError("Only SELECT statements are permitted.")
+        except Exception as e:
+            return {"error": f"SQL Parsing Error: {str(e)}"}
+
+        try:
+            with self.get_session() as session:
+                if self.engine.dialect.name == "postgresql":
+                    session.execute(text("SET LOCAL statement_timeout = 5000;"))
+                    session.execute(text("SET LOCAL TRANSACTION READ ONLY;"))
+
+                result = session.execute(text(query))
+                column_names = list(result.keys())
+                rows = [
+                    dict(zip(column_names, row))
+                    for row in result.fetchmany(row_limit)
+                ]
+                return {"rows": rows, "count": len(rows)}
+
+        except TimeoutError:
+            return {
+                "error": "SQL Execution Error: The query took too long to execute and was timed out. Please write a more efficient query."
+            }
+        except ProgrammingError as e:
+            return {"error": f"SQL Execution Error: {str(e)}"}
+        except Exception as e:
+            logger.error("Unexpected error in execute_read_only_sql: %s", e, exc_info=True)
+            return {"error": "An unexpected internal error occurred."}
+
+    def get_chat_history(self, session_id: str) -> List[Dict[str, Any]]:
+        """Return all messages for a session ordered by created_at."""
+        session = self.get_session()
+        try:
+            messages = (
+                session.query(ChatMessage)
+                .filter(ChatMessage.session_id == session_id)
+                .order_by(ChatMessage.created_at.asc())
+                .all()
+            )
+            return [
+                {
+                    "role": message.role,
+                    "content": message.content,
+                    "created_at": message.created_at,
+                }
+                for message in messages
+            ]
+        finally:
+            session.close()
+
+    def save_chat_message(self, session_id: str, role: str, content: str) -> None:
+        """Save a new chat message, creating the session if needed."""
+        session = self.get_session()
+        try:
+            chat_session = session.query(ChatSession).filter(ChatSession.id == session_id).first()
+            if not chat_session:
+                chat_session = ChatSession(id=session_id)
+                session.add(chat_session)
+
+            message = ChatMessage(
+                session_id=session_id,
+                role=role,
+                content=content,
+            )
+            session.add(message)
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to save chat message")
+            raise
         finally:
             session.close()
 

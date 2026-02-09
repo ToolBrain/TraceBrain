@@ -16,11 +16,13 @@ Features:
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import logging
+import uuid
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_serializer
 
 from ...core.store import TraceStore
+from ...evaluators.judge_agent import AIJudge
 from ...core.librarian import LibrarianAgent, LIBRARIAN_AVAILABLE
 from ...config import settings
 
@@ -171,13 +173,35 @@ class FeedbackResponse(BaseModel):
 class NaturalLanguageQuery(BaseModel):
     """Request model for natural language queries."""
     query: str = Field(..., description="Natural language question about traces")
+    session_id: Optional[str] = Field(None, description="Conversation session ID")
+
+
+class Suggestion(BaseModel):
+    label: str
+    value: str
 
 
 class NaturalLanguageResponse(BaseModel):
     """Response model for natural language queries."""
-    query: str = Field(..., description="The original query")
     answer: str = Field(..., description="The AI's answer")
+    session_id: str = Field(..., description="Conversation session ID")
+    suggestions: Optional[List[Suggestion]] = Field(default_factory=list)
     sources: Optional[List[str]] = Field(None, description="Trace IDs referenced in the answer")
+
+
+class ChatMessageOut(BaseModel):
+    role: str
+    content: str
+    created_at: datetime
+
+    @field_serializer("created_at")
+    def serialize_created_at(self, dt: datetime, _info) -> str:
+        return dt.isoformat()
+
+
+class ChatHistoryOut(BaseModel):
+    session_id: str
+    messages: List[ChatMessageOut]
 
 
 class TraceSummaryOut(BaseModel):
@@ -204,9 +228,8 @@ class AIEvaluationIn(BaseModel):
 
 
 class AIEvaluationOut(BaseModel):
-    summary: str
-    score: Optional[float] = None
-    confidence: Optional[float] = None
+    rating: int = Field(..., ge=0, le=5, description="Rating from 0-5")
+    feedback: str = Field(..., description="AI judge feedback")
 
 
 # Request models for trace ingestion
@@ -522,6 +545,21 @@ def get_tool_usage(
 # AI-Powered Endpoints
 # ============================================================================
 
+@router.get("/librarian_sessions/{session_id}", response_model=ChatHistoryOut, tags=["AI"])
+def get_librarian_session(session_id: str):
+    """Fetch the stored chat history for a Librarian session."""
+    try:
+        messages = store.get_chat_history(session_id)
+        if not messages:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        return ChatHistoryOut(session_id=session_id, messages=messages)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load session: {str(e)}")
+
+
 @router.post("/natural_language_query", response_model=NaturalLanguageResponse, tags=["AI"])
 def natural_language_query(query: NaturalLanguageQuery):
     """
@@ -538,11 +576,14 @@ def natural_language_query(query: NaturalLanguageQuery):
     - Get tool usage statistics
     - Get database statistics
     """
+    session_id = query.session_id or str(uuid.uuid4())
+
     if not LIBRARIAN_AVAILABLE:
         return NaturalLanguageResponse(
-            query=query.query,
             answer="Librarian is not available. Please check LLM provider configuration and API keys.",
-            sources=None
+            session_id=session_id,
+            suggestions=[],
+            sources=None,
         )
     
     try:
@@ -550,21 +591,39 @@ def natural_language_query(query: NaturalLanguageQuery):
         agent = get_librarian_agent()
         
         # Query the agent
-        result = agent.query(query.query)
+        result = agent.query(query.query, session_id=session_id)
         
+        sources = result.get("sources")
+        normalized_sources: Optional[List[str]] = None
+        if sources is None:
+            normalized_sources = None
+        elif isinstance(sources, list):
+            normalized_sources = []
+            for item in sources:
+                if isinstance(item, str):
+                    normalized_sources.append(item)
+                elif isinstance(item, dict):
+                    value = item.get("id") or item.get("trace_id")
+                    if value:
+                        normalized_sources.append(str(value))
+        else:
+            normalized_sources = [str(sources)]
+
         return NaturalLanguageResponse(
-            query=query.query,
-            answer=result["answer"],
-            sources=result["sources"]
+            answer=result.get("answer", ""),
+            session_id=session_id,
+            suggestions=result.get("suggestions", []),
+            sources=normalized_sources,
         )
         
     except Exception as e:
         logger.exception("Librarian query error")
 
         return NaturalLanguageResponse(
-            query=query.query,
             answer=f"Sorry, I encountered an error processing your query: {str(e)}\n\nPlease try rephrasing your question or check the server logs.",
-            sources=None
+            session_id=session_id,
+            suggestions=[],
+            sources=None,
         )
 
 
@@ -575,22 +634,15 @@ def evaluate_trace_with_ai(trace_id: str, payload: AIEvaluationIn):
     
     This endpoint is designed as a hook for more complex AI evaluation logic.
     """
-    trace = store.get_trace(trace_id)
-    if not trace:
-        raise HTTPException(status_code=404, detail="Trace not found")
-
     try:
-        result = {
-            "summary": (
-                "AI evaluation for trace "
-                f"{trace_id} using model {payload.judge_model_id} is complete. "
-                "The agent's performance was adequate."
-            ),
-            "score": 0.75,
-            "confidence": 0.9
-        }
-
+        judge = AIJudge(store)
+        result = judge.evaluate(trace_id, payload.judge_model_id)
         return AIEvaluationOut(**result)
 
+    except ValueError as e:
+        message = str(e)
+        if "Trace not found" in message:
+            raise HTTPException(status_code=404, detail=message)
+        raise HTTPException(status_code=400, detail=message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI evaluation failed: {e}")

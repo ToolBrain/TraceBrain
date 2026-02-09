@@ -157,3 +157,49 @@ class Span(Base):
     
     def __repr__(self):
         return f"<Span(span_id='{self.span_id}', name='{self.name}', trace_id='{self.trace_id}')>"
+
+
+class ChatSession(Base):
+    """Represents a chat session for conversational memory."""
+
+    __tablename__ = "chat_sessions"
+
+    id = Column(String, primary_key=True, comment="Chat session ID (UUID)")
+    created_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+        comment="Timestamp when session was created",
+    )
+
+    messages = relationship(
+        "ChatMessage",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+
+
+class ChatMessage(Base):
+    """Represents a single message in a chat session."""
+
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="Message ID")
+    session_id = Column(
+        String,
+        ForeignKey("chat_sessions.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+        comment="Parent chat session ID",
+    )
+    role = Column(String, nullable=False, comment="Message role: user|assistant|tool")
+    content = Column(Text, nullable=False, comment="Message content")
+    created_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+        comment="Timestamp when message was created",
+    )
+
+    session = relationship("ChatSession", back_populates="messages")

@@ -149,12 +149,12 @@ def submit_feedback(trace_id: str, feedback_data: Dict) -> bool:
         return False
 
 
-def query_ai_librarian(query: str) -> Optional[Dict]:
+def query_ai_librarian(query: str, session_id: Optional[str]) -> Optional[Dict]:
     """Send a natural language query to the AI Librarian."""
     try:
         response = requests.post(
             f"{API_BASE_URL}/natural_language_query",
-            json={"query": query},
+            json={"query": query, "session_id": session_id},
             timeout=30
         )
         response.raise_for_status()
@@ -162,6 +162,50 @@ def query_ai_librarian(query: str) -> Optional[Dict]:
     except Exception as e:
         st.error(f"Failed to query AI Librarian: {e}")
         return None
+
+
+def fetch_librarian_history(session_id: str) -> Optional[Dict]:
+    """Fetch persisted chat history for a Librarian session."""
+    try:
+        response = requests.get(
+            f"{API_BASE_URL}/librarian_sessions/{session_id}",
+            timeout=10
+        )
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        st.error(f"Failed to load chat history: {e}")
+        return None
+
+
+def build_welcome_messages() -> List[Dict[str, str]]:
+    return [
+        {
+            "role": "assistant",
+            "content": "👋 Hello! I'm the ToolBrain AI Librarian. I'm powered by AI and can help you explore and analyze traces using real-time database queries.\n\n"
+                       "**What I can do:**\n\n"
+                       "• Show recent traces: *\"Show me the 5 most recent traces\"*\n"
+                       "• Get trace details: *\"Get details for trace a1b2c3d4e5f6a7b8a1b2c3d4e5f6a7b8\"*\n"
+                       "• Search by keyword: *\"Find all traces related to geography\"*\n"
+                       "• Database statistics: *\"How many traces are in the database?\"*\n"
+                       "• Tool usage analytics: *\"What tools are being used most?\"*\n\n"
+                       "**Try asking me anything about the traces!** 🔍"
+        }
+    ]
+
+
+def normalize_history_messages(history: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    messages: List[Dict[str, str]] = []
+    for item in history:
+        role = item.get("role", "assistant")
+        content = item.get("content", "")
+        if role not in {"user", "assistant"}:
+            role = "assistant"
+            content = f"Tool log:\n```\n{content}\n```"
+        messages.append({"role": role, "content": content})
+    return messages
 
 
 # Tab 1: Trace Dashboard
@@ -553,43 +597,83 @@ def render_ai_librarian():
     
     # Initialize chat history
     if "messages" not in st.session_state:
-        st.session_state.messages = [
-            {
-                "role": "assistant",
-                "content": "👋 Hello! I'm the ToolBrain AI Librarian. I'm powered by AI and can help you explore and analyze traces using real-time database queries.\n\n"
-                          "**What I can do:**\n\n"
-                          "• Show recent traces: *\"Show me the 5 most recent traces\"*\n"
-                          "• Get trace details: *\"Get details for trace a1b2c3d4e5f6a7b8a1b2c3d4e5f6a7b8\"*\n"
-                          "• Search by keyword: *\"Find all traces related to geography\"*\n"
-                          "• Database statistics: *\"How many traces are in the database?\"*\n"
-                          "• Tool usage analytics: *\"What tools are being used most?\"*\n\n"
-                          "**Try asking me anything about the traces!** 🔍"
-            }
-        ]
+        st.session_state.messages = build_welcome_messages()
+
+    if "librarian_session_id" not in st.session_state:
+        st.session_state.librarian_session_id = None
+
+    if "pending_prompt" not in st.session_state:
+        st.session_state.pending_prompt = None
+
+    with st.container():
+        col1, col2, col3 = st.columns([4, 1, 1])
+        session_input = col1.text_input(
+            "Session ID",
+            value=st.session_state.librarian_session_id or "",
+            placeholder="Paste a session id to restore history",
+        )
+        load_button = col2.button("Load Chat", use_container_width=True)
+        new_button = col3.button("New Chat", use_container_width=True)
+
+    if load_button:
+        if session_input:
+            history_payload = fetch_librarian_history(session_input)
+            if history_payload and history_payload.get("messages"):
+                st.session_state.messages = normalize_history_messages(history_payload["messages"])
+                st.session_state.librarian_session_id = session_input
+                st.session_state.pending_prompt = None
+                st.success("✅ Restored chat history from the database.")
+            else:
+                st.warning("No history found for that session ID.")
+        else:
+            st.warning("Please enter a session ID to restore.")
+
+    if new_button:
+        st.session_state.messages = build_welcome_messages()
+        st.session_state.librarian_session_id = None
+        st.session_state.pending_prompt = None
+        st.success("✅ Started a new chat.")
     
     # Display chat history
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
     
-    # Chat input
-    if prompt := st.chat_input("Ask me about the traces..."):
+    prompt = st.session_state.pending_prompt or st.chat_input("Ask me about the traces...")
+    if prompt:
+        st.session_state.pending_prompt = None
+
         # Add user message to history
         st.session_state.messages.append({"role": "user", "content": prompt})
-        
+
         # Display user message
         with st.chat_message("user"):
             st.markdown(prompt)
-        
+
         # Query the AI Librarian
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                response = query_ai_librarian(prompt)
-                
+                response = query_ai_librarian(prompt, st.session_state.librarian_session_id)
+
                 if response:
                     answer = response.get("answer", "I couldn't process that query.")
                     st.markdown(answer)
-                    
+
+                    if response.get("session_id"):
+                        st.session_state.librarian_session_id = response["session_id"]
+
+                    suggestions = response.get("suggestions") or []
+                    if suggestions:
+                        st.markdown("**Suggestions**")
+                        cols = st.columns(min(3, len(suggestions)))
+                        for idx, suggestion in enumerate(suggestions):
+                            label = suggestion.get("label") or "Suggestion"
+                            value = suggestion.get("value")
+                            col = cols[idx % len(cols)]
+                            with col:
+                                if st.button(label, key=f"suggestion-{idx}") and value:
+                                    st.session_state.pending_prompt = value
+
                     # Display sources if available
                     if response.get("sources"):
                         with st.expander("📚 Sources"):
@@ -598,7 +682,7 @@ def render_ai_librarian():
                 else:
                     answer = "❌ Sorry, I encountered an error processing your query. Please try again."
                     st.markdown(answer)
-                
+
                 # Add assistant response to history
                 st.session_state.messages.append({"role": "assistant", "content": answer})
 
