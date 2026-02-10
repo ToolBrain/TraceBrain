@@ -136,6 +136,9 @@ class BaseStorageBackend:
             except ValueError:
                 status = TraceStatus.running
 
+        if self._has_active_help_request(spans_data) and status != TraceStatus.failed:
+            status = TraceStatus.needs_review
+
         priority = priority_value if isinstance(priority_value, int) else 3
         if priority < 1 or priority > 5:
             priority = 3
@@ -192,6 +195,20 @@ class BaseStorageBackend:
             end_time=end_time,
             attributes=span_data.get("attributes") or {}
         )
+
+    @staticmethod
+    def _has_active_help_request(spans_data: List[Dict[str, Any]]) -> bool:
+        for span in spans_data:
+            attrs = (span or {}).get("attributes") or {}
+            if attrs.get("toolbrain.span.type") == "tool_execution":
+                tool_name = attrs.get("toolbrain.tool.name")
+                if tool_name == "request_human_intervention":
+                    return True
+
+            tool_code = attrs.get("toolbrain.llm.tool_code")
+            if isinstance(tool_code, str) and "request_human_intervention" in tool_code:
+                return True
+        return False
 
     @staticmethod
     def _extract_first_query(spans_data: List[Dict[str, Any]]) -> Optional[str]:
