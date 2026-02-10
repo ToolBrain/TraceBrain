@@ -7,7 +7,8 @@
 - **📊 Track & Visualize Agent Behavior**: Capture and explore agent workflows in a standardized OTLP (OpenTelemetry Protocol) format
 - **🔄 Framework-Agnostic**: Works with any AI agent framework - includes smolagents integration example, with docs for building custom converters
 - **💾 Dual Backend Support**: SQLite for development, PostgreSQL for production
-- **🤖 AI-Powered Analytics**: Ask questions about your traces in natural language via LibrarianAgent (multi-provider LLM support)
+- **🤖 AI-Powered Analytics**: Ask questions about your traces in natural language via LibrarianAgent (multi-provider LLM support, SQL safety, session memory)
+- **🧪 AI Evaluation**: Run an automated judge to rate traces with model feedback
 - **🖥️ Admin UI + Frontend Placeholder**: Streamlit-based admin UI today, with a `web/` directory reserved for a future React frontend
 - **🐳 Docker-Ready**: Full Docker Compose setup for one-command deployment
 - **🔌 REST API**: Clean FastAPI endpoints at `/api/v1` for easy integration
@@ -142,6 +143,8 @@ docker compose -f docker/docker-compose.yml build --no-cache
 **Natural Language Queries**
 - `POST /api/v1/natural_language_query` - Query traces with natural language
     - Requires LLM configuration via env vars (for example: `LLM_PROVIDER`, `LLM_API_KEY`)
+    - Supports `session_id` for chat memory and returns `suggestions`
+- `GET /api/v1/librarian_sessions/{session_id}` - Load stored chat history
 
 **AI Evaluation**
 - `POST /api/v1/ai_evaluate/{trace_id}` - Evaluate a trace with a judge model
@@ -188,6 +191,8 @@ The admin UI provides:
 - **Trace Details**: Expandable span tree visualization
 - **Feedback Form**: Rate and tag traces
 - **Analytics Dashboard**: Stats, tool usage charts
+- **AI Librarian**: Session-aware chat with suggestions and history restore
+- **AI Evaluation**: Run judge model rating and review history per trace
 
 Dependencies for the UI:
 

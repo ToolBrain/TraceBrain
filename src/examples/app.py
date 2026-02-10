@@ -149,6 +149,21 @@ def submit_feedback(trace_id: str, feedback_data: Dict) -> bool:
         return False
 
 
+def request_ai_evaluation(trace_id: str, judge_model_id: str) -> Optional[Dict]:
+    """Request an AI evaluation for a trace."""
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/ai_evaluate/{trace_id}",
+            json={"judge_model_id": judge_model_id},
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        st.error(f"Failed to run AI evaluation: {e}")
+        return None
+
+
 def query_ai_librarian(query: str, session_id: Optional[str]) -> Optional[Dict]:
     """Send a natural language query to the AI Librarian."""
     try:
@@ -418,6 +433,80 @@ def render_trace_explorer():
             for idx, feedback in enumerate(feedbacks, 1):
                 with st.expander(f"Feedback #{idx}"):
                     st.json(feedback)
+
+        st.divider()
+
+        # AI Evaluation
+        st.subheader("🤖 AI Evaluation")
+        st.markdown("*Request an AI judge rating and feedback for this trace.*")
+
+        if "ai_eval_history" not in st.session_state:
+            st.session_state.ai_eval_history = {}
+
+        eval_col1, eval_col2 = st.columns([3, 1])
+        with eval_col1:
+            judge_model_id = st.text_input(
+                "Judge Model ID",
+                placeholder="e.g., gpt-4o-mini, gemini-1.5-flash",
+                help="Model identifier to use for the AI judge"
+            )
+        with eval_col2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            run_eval = st.button("Run Evaluation", type="primary", use_container_width=True)
+
+        if run_eval:
+            if not judge_model_id.strip():
+                st.warning("Please enter a judge model id.")
+            else:
+                with st.spinner("Evaluating trace..."):
+                    result = request_ai_evaluation(trace_id, judge_model_id.strip())
+                    if result:
+                        rating = result.get("rating")
+                        feedback = result.get("feedback")
+                        st.metric("AI Rating", rating if rating is not None else "N/A")
+                        st.text_area(
+                            "AI Feedback",
+                            value=feedback or "No feedback returned.",
+                            height=120,
+                            disabled=True
+                        )
+
+                        history = st.session_state.ai_eval_history.get(trace_id, [])
+                        history.append(
+                            {
+                                "timestamp": datetime.utcnow().isoformat(),
+                                "judge_model_id": judge_model_id.strip(),
+                                "rating": rating,
+                                "feedback": feedback,
+                            }
+                        )
+                        st.session_state.ai_eval_history[trace_id] = history
+
+        history = st.session_state.ai_eval_history.get(trace_id, [])
+        if history:
+            hist_col1, hist_col2 = st.columns([3, 1])
+            with hist_col1:
+                st.subheader("🧾 AI Evaluation History")
+            with hist_col2:
+                st.markdown("<br>", unsafe_allow_html=True)
+                clear_history = st.button("Clear History", use_container_width=True)
+            if clear_history:
+                st.session_state.ai_eval_history[trace_id] = []
+                history = []
+                st.info("AI evaluation history cleared.")
+
+        if history:
+            for idx, entry in enumerate(reversed(history), 1):
+                title = f"Run #{idx} - {entry.get('judge_model_id', 'unknown')}"
+                with st.expander(title):
+                    st.text(f"Timestamp: {entry.get('timestamp', 'N/A')}")
+                    st.text(f"Rating: {entry.get('rating', 'N/A')}")
+                    st.text_area(
+                        "Feedback",
+                        value=entry.get("feedback") or "No feedback returned.",
+                        height=120,
+                        disabled=True,
+                    )
         
         st.divider()
         
