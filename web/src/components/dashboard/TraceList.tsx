@@ -185,9 +185,14 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                     >
                       <Typography variant="body2">Trace</Typography>
                       <Typography variant="caption" color="text.secondary">
-                        <Layers fontSize="inherit" /> {trace.spans.length}
+                        <Layers
+                          fontSize="inherit"
+                          sx={{ color: "text.secondary" }}
+                        />
+                        {trace.spans.length}
                         {"\t"}
-                        <Flag fontSize="inherit" /> {traceGetPriority(trace)}
+                        <Flag fontSize="inherit" sx={{ color: "error.main" }} />
+                        {traceGetPriority(trace)}
                       </Typography>
                     </TableCell>
                     <TableCell
