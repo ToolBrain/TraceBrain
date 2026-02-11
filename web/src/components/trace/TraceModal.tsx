@@ -11,7 +11,7 @@ import {
   Alert,
 } from "@mui/material";
 import { Close, ErrorOutline } from "@mui/icons-material";
-import FeedbackForm, { type RatingMetrics } from "./FeedbackForm";
+import FeedbackForm from "./FeedbackForm";
 import { submitTraceFeedback, evaluateTrace } from "../utils/api";
 import { customScrollbar } from "../../styles/customScrollBar";
 import { useSettings } from "../../contexts/SettingsContext";
@@ -24,12 +24,7 @@ interface TraceModalProps {
 }
 
 const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
-  const [ratings, setRatings] = useState<RatingMetrics>({
-    accuracy: null,
-    completeness: null,
-    relevance: null,
-    safety: null,
-  });
+  const [rating, setRating] = useState<number | null>(null);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<boolean>(false);
@@ -43,8 +38,8 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
         try {
           const data = await evaluateTrace(id, settings.llm.model);
 
-          setRatings(data.ratings);
-          setFeedback(data.comments);
+          setRating(data.rating);
+          setFeedback(data.feedback);
         } catch (error) {
           console.error("Failed to fetch evaluation:", error);
           setError(true);
@@ -62,8 +57,8 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
     setLoading(true);
     evaluateTrace(id, settings.llm.model)
       .then((data) => {
-        setRatings(data.ratings);
-        setFeedback(data.comments);
+        setRating(data.rating);
+        setFeedback(data.feedback);
       })
       .catch((error) => {
         console.error("Failed to fetch evaluation:", error);
@@ -75,11 +70,8 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
   };
 
   const handleSubmitFeedback = async () => {
-    const allRatingsProvided = Object.values(ratings).every(
-      (value) => value !== null,
-    );
-    if (!allRatingsProvided) return;
-    submitTraceFeedback(id, ratings, feedback);
+    if (rating === null) return;
+    submitTraceFeedback(id, rating, feedback);
     onClose();
   };
 
@@ -93,9 +85,9 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
             </Typography>
 
             <FeedbackForm
-              ratings={ratings}
+              rating={rating}
               feedback={feedback}
-              onRatingsChange={setRatings}
+              onRatingChange={setRating}
               onFeedbackChange={setFeedback}
             />
           </Box>
@@ -170,9 +162,9 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
             </Typography>
 
             <FeedbackForm
-              ratings={ratings}
+              rating={rating}
               feedback={feedback}
-              onRatingsChange={setRatings}
+              onRatingChange={setRating}
               onFeedbackChange={setFeedback}
             />
           </Box>
@@ -185,10 +177,6 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
       return null;
     }
 
-    const allRatingsProvided = Object.values(ratings).every(
-      (value) => value !== null,
-    );
-
     switch (type) {
       case "feedback":
         return (
@@ -197,7 +185,7 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
             <Button
               variant="contained"
               onClick={handleSubmitFeedback}
-              disabled={!allRatingsProvided}
+              disabled={rating === null}
             >
               Submit
             </Button>
@@ -210,7 +198,7 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
             <Button
               variant="contained"
               onClick={handleSubmitFeedback}
-              disabled={!allRatingsProvided}
+              disabled={rating === null}
             >
               Submit
             </Button>

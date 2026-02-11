@@ -1,43 +1,19 @@
 import React from "react";
 import { Box, TextField, Typography, Rating } from "@mui/material";
 
-export interface RatingMetrics {
-  accuracy: number | null;
-  completeness: number | null;
-  relevance: number | null;
-  safety: number | null;
-}
-
 interface FeedbackFormProps {
-  ratings: RatingMetrics;
+  rating: number | null;
   feedback: string;
-  onRatingsChange: (ratings: RatingMetrics) => void;
+  onRatingChange: (rating: number | null) => void;
   onFeedbackChange: (value: string) => void;
 }
 
 const FeedbackForm: React.FC<FeedbackFormProps> = ({
-  ratings,
+  rating,
   feedback,
-  onRatingsChange,
+  onRatingChange,
   onFeedbackChange,
 }) => {
-  const handleRatingChange = (
-    metric: keyof RatingMetrics,
-    value: number | null,
-  ) => {
-    onRatingsChange({
-      ...ratings,
-      [metric]: value,
-    });
-  };
-
-  const metrics: Array<{ key: keyof RatingMetrics; label: string }> = [
-    { key: "accuracy", label: "Accuracy" },
-    { key: "completeness", label: "Completeness" },
-    { key: "relevance", label: "Relevance" },
-    { key: "safety", label: "Safety" },
-  ];
-
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <Box>
@@ -51,44 +27,25 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
             textTransform: "uppercase",
           }}
         >
-          Ratings
+          Rating
         </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {metrics.map(({ key, label }) => (
-            <Box
-              key={key}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              <Box sx={{ width: "30%" }}>
-                <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-                  {label}
-                </Typography>
-              </Box>
-
-              <Box
-                sx={{
-                  width: "70%",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                }}
-              >
-                <Rating
-                  value={ratings[key]}
-                  onChange={(_, newValue) => handleRatingChange(key, newValue)}
-                  precision={1}
-                  max={5}
-                  size="large"
-                />
-                <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
-                  {ratings[key] !== null ? `${ratings[key]}/5` : ""}
-                </Typography>
-              </Box>
-            </Box>
-          ))}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+          }}
+        >
+          <Rating
+            value={rating}
+            onChange={(_, newValue) => onRatingChange(newValue)}
+            precision={1}
+            max={5}
+            size="large"
+          />
+          <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
+            {rating !== null ? `${rating}/5` : ""}
+          </Typography>
         </Box>
       </Box>
 

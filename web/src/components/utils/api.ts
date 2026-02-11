@@ -1,5 +1,4 @@
 import type { Trace } from "../../types/trace";
-import type { RatingMetrics } from "../trace/FeedbackForm";
 
 export const fetchTraces = async (
   skip?: number,
@@ -49,7 +48,7 @@ export const fetchEpisodeTraces = async (id: string): Promise<Trace[]> => {
 
 export const submitTraceFeedback = async (
   id: string,
-  rating: RatingMetrics,
+  rating: number,
   comment: string,
   tags?: string[],
   metadata?: Record<string, any>,
