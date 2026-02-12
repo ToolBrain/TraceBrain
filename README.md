@@ -22,18 +22,7 @@ In a world where AI agents are increasingly autonomous, ToolBrain provides the n
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────┐      ┌──────────────────┐      ┌─────────────┐
-│  Your AI Agent  │─────▶│  TraceStore API  │─────▶│  PostgreSQL │
-│   (smolagents,  │      │    (FastAPI)     │      │   / SQLite  │
-│    or custom)   │      └──────────────────┘      └─────────────┘
-└─────────────────┘              │
-                                 ▼
-                       ┌──────────────────┐
-                       │  Admin Panel UI  │
-                       │                  │
-                       └──────────────────┘
-```
+![AIOC System Architecture](images/system_architecture.jpg)
 
 - **Your AI Agent:** Any agent framework. Uses the TraceClient SDK to send data.
 - **TraceStore API:** The central FastAPI server. Ingests, stores, and serves trace data.
