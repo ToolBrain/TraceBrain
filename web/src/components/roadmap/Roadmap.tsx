@@ -13,8 +13,12 @@ import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { ArrowDownward, ArrowUpward, Refresh } from "@mui/icons-material";
 import CurriculumList from "./CurriculumList";
-import { generateCurriculum, fetchCurriculumTasks } from "../utils/api";
-import { handleExportJSON, handleExportJSONL } from "../utils/utils";
+import {
+  generateCurriculum,
+  fetchCurriculumTasks,
+  fetchExportCurriculum,
+} from "../utils/api";
+import { exportJSON, exportJSONL } from "../utils/utils";
 
 interface CurriculumTask {
   id: number;
@@ -78,6 +82,18 @@ const Roadmap: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Handle export to JSON
+  const handleExportJSON = async () => {
+    const data = await fetchExportCurriculum("json");
+    exportJSON(data);
+  };
+
+  // Handle export to JSONL
+  const handleExportJSONL = async () => {
+    const jsonlContent = await fetchExportCurriculum("jsonl");
+    exportJSONL(jsonlContent);
   };
 
   // Sort tasks based on sortBy and sortOrder

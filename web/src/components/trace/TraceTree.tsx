@@ -8,7 +8,6 @@ import {
   Schedule,
   ThumbUpOutlined,
   AutoAwesome,
-  FileDownload,
 } from "@mui/icons-material";
 import type { Span, Trace } from "../../types/trace";
 import TraceModal from "./TraceModal";

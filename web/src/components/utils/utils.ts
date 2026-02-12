@@ -1,9 +1,6 @@
-import { fetchExportCurriculum } from "./api";
-
-// Handle export to JSON
-export const handleExportJSON = async () => {
+// Export to JSON
+export const exportJSON = async (data: any) => {
   try {
-    const data = await fetchExportCurriculum("json");
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
     });
@@ -20,11 +17,10 @@ export const handleExportJSON = async () => {
   }
 };
 
-// Handle export to JSONL
-export const handleExportJSONL = async () => {
+// Export to JSONL
+export const exportJSONL = async (data: any) => {
   try {
-    const jsonlContent = await fetchExportCurriculum("jsonl");
-    const blob = new Blob([jsonlContent], {
+    const blob = new Blob([data], {
       type: "application/jsonl",
     });
     const url = URL.createObjectURL(blob);
