@@ -1,5 +1,5 @@
 """
-ToolBrain Tracing - Observability Platform for Agentic AI
+TraceBrain Tracing - Observability Platform for Agentic AI
 
 This package provides a complete observability solution for AI agents,
 allowing users to collect, store, and visualize execution traces.
@@ -7,22 +7,22 @@ allowing users to collect, store, and visualize execution traces.
 Philosophy: "Pip install and run"
 - Single package containing both backend (FastAPI) and frontend (React)
 - Support for SQLite (development) and PostgreSQL (production)
-- Custom ToolBrain Standard OTLP Trace Schema
+- Custom TraceBrain Standard OTLP Trace Schema
 - Robust SDK client with automatic retries and fail-safe design
 
 Quick Start:
     # Install
-    pip install toolbrain-tracing
+    pip install tracebrain-tracing
     
     # Start infrastructure with Docker (recommended)
-    toolbrain-trace up
+    tracebrain-trace up
     
     # Or use Python server directly for development
-    toolbrain-trace init-db
-    toolbrain-trace start
+    tracebrain-trace init-db
+    tracebrain-trace start
     
     # Use the SDK client in your code
-    from toolbrain_tracing import TraceClient
+    from tracebrain import TraceClient
     
     client = TraceClient()
     success = client.log_trace({
@@ -33,20 +33,20 @@ Quick Start:
 
 Usage:
     # Import the FastAPI app
-    from toolbrain_tracing import app
+    from tracebrain import app
     
     # Import configuration
-    from toolbrain_tracing import settings
+    from tracebrain import settings
     
     # Import SDK client (recommended)
-    from toolbrain_tracing import TraceClient
+    from tracebrain import TraceClient
     
     # Import TraceStore for programmatic access
-    from toolbrain_tracing.core.store import TraceStore
+    from tracebrain.core.store import TraceStore
 """
 
-__version__ = "2.0.0"
-__author__ = "ToolBrain Team"
+__version__ = "1.0.0"
+__author__ = "TraceBrain Team"
 
 # Expose main components for easy import
 from .main import app

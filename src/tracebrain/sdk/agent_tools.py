@@ -1,5 +1,5 @@
 """
-Agent tool wrappers for ToolBrain TraceStore.
+Agent tool wrappers for TraceBrain TraceStore.
 """
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
 """
-ToolBrain 2.0 - Trace Management Platform WebUI
+TraceBrain - Trace Management Platform WebUI
 
 A Streamlit-based web application for visualizing and interacting with
 agent execution traces stored in the TraceStore.
@@ -33,7 +33,7 @@ from typing import Dict, List, Any, Optional
 
 st.set_page_config(
     layout="wide",
-    page_title="ToolBrain Trace Explorer",
+    page_title="TraceBrain Trace Explorer",
     page_icon="🧠",
     initial_sidebar_state="expanded"
 )
@@ -276,7 +276,7 @@ def build_welcome_messages() -> List[Dict[str, str]]:
     return [
         {
             "role": "assistant",
-            "content": "👋 Hello! I'm the ToolBrain AI Librarian. I'm powered by AI and can help you explore and analyze traces using real-time database queries.\n\n"
+            "content": "👋 Hello! I'm the TraceBrain AI Librarian. I'm powered by AI and can help you explore and analyze traces using real-time database queries.\n\n"
                        "**What I can do:**\n\n"
                        "• Show recent traces: *\"Show me the 5 most recent traces\"*\n"
                        "• Get trace details: *\"Get details for trace a1b2c3d4e5f6a7b8a1b2c3d4e5f6a7b8\"*\n"
@@ -368,7 +368,7 @@ def render_dashboard():
         for trace in traces:
             # Extract system_prompt from nested attributes
             system_prompt = trace.get("attributes", {}).get("system_prompt", "")
-            episode_id = trace.get("attributes", {}).get("toolbrain.episode.id", "")
+            episode_id = trace.get("attributes", {}).get("tracebrain.episode.id", "")
             # Check if feedbacks list is not empty
             has_feedback = bool(trace.get("feedbacks"))
             
@@ -489,7 +489,7 @@ def render_trace_explorer():
             st.metric("Has Feedback", has_feedback)
 
         with col4:
-            episode_id = trace.get("attributes", {}).get("toolbrain.episode.id", "-")
+            episode_id = trace.get("attributes", {}).get("tracebrain.episode.id", "-")
             st.metric("Episode ID", episode_id)
         
         # System prompt
@@ -626,7 +626,7 @@ def render_trace_explorer():
                     span_id = span["span_id"]
                     name = span["name"]
                     attrs = span.get("attributes", {})
-                    span_type = attrs.get("toolbrain.span.type", "unknown")
+                    span_type = attrs.get("tracebrain.span.type", "unknown")
                     
                     # Create expander with indentation
                     indent = "　" * level  # Japanese space for visual indentation
@@ -648,9 +648,9 @@ def render_trace_explorer():
                         
                         # Display key attributes based on type
                         if span_type == "llm_inference":
-                            thought = attrs.get("toolbrain.llm.thought")
-                            tool_code = attrs.get("toolbrain.llm.tool_code")
-                            final_answer = attrs.get("toolbrain.llm.final_answer")
+                            thought = attrs.get("tracebrain.llm.thought")
+                            tool_code = attrs.get("tracebrain.llm.tool_code")
+                            final_answer = attrs.get("tracebrain.llm.final_answer")
                             
                             if thought:
                                 st.markdown("**💭 Thought:**")
@@ -665,9 +665,9 @@ def render_trace_explorer():
                                 st.success(final_answer)
                         
                         elif span_type == "tool_execution":
-                            tool_name = attrs.get("toolbrain.tool.name", "unknown")
-                            tool_input = attrs.get("toolbrain.tool.input", "N/A")
-                            tool_output = attrs.get("toolbrain.tool.output", "N/A")
+                            tool_name = attrs.get("tracebrain.tool.name", "unknown")
+                            tool_input = attrs.get("tracebrain.tool.input", "N/A")
+                            tool_output = attrs.get("tracebrain.tool.output", "N/A")
                             
                             st.markdown(f"**🔧 Tool:** `{tool_name}`")
                             
@@ -922,7 +922,7 @@ def render_curriculum():
 
     if st.session_state.curriculum_export_data:
         extension = "jsonl" if st.session_state.curriculum_export_format == "jsonl" else "json"
-        filename = f"toolbrain_curriculum_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.{extension}"
+        filename = f"tracebrain_curriculum_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.{extension}"
         mime = "application/x-jsonlines" if extension == "jsonl" else "application/json"
         st.download_button(
             label="Download Curriculum Export",
@@ -977,7 +977,7 @@ def render_curriculum():
 
     if st.session_state.trace_export_data:
         extension = "jsonl" if st.session_state.trace_export_format == "jsonl" else "json"
-        filename = f"toolbrain_traces_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.{extension}"
+        filename = f"tracebrain_traces_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.{extension}"
         mime = "application/x-jsonlines" if extension == "jsonl" else "application/json"
         st.download_button(
             label="Download Trace Export",
@@ -994,7 +994,7 @@ def main():
     """Main application entry point."""
     
     # Header
-    st.markdown('<h1 class="main-header">🧠 ToolBrain 2.0 - Trace Management Platform</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">🧠 TraceBrain - Trace Management Platform</h1>', unsafe_allow_html=True)
     
     # Check API health
     if not check_api_health():
@@ -1002,11 +1002,11 @@ def main():
         st.info(
             "Please start the API server first:\n\n"
             "```bash\n"
-            "toolbrain-trace start\n"
+            "tracebrain-trace start\n"
             "```\n\n"
             "Or run via Docker:\n\n"
             "```bash\n"
-            "toolbrain-trace up\n"
+            "tracebrain-trace up\n"
             "```"
         )
         st.stop()
@@ -1018,7 +1018,7 @@ def main():
     tab1, tab2, tab3, tab4 = st.tabs([
         "📊 Trace Dashboard",
         "🔍 Trace Explorer",
-        "🤖 AI Librarian (PoC)",
+        "🤖 AI Librarian",
         "🧭 Curriculum"
     ])
     
@@ -1038,7 +1038,7 @@ def main():
     st.divider()
     st.markdown(
         "<div style='text-align: center; color: gray; padding: 1rem;'>"
-        "ToolBrain 2.0 - Open Source Framework for Training AI Agents | "
+        "TraceBrain - Open Source Framework for Training AI Agents | "
         f"<a href='{DOCS_URL}' target='_blank'>API Docs</a>"
         "</div>",
         unsafe_allow_html=True

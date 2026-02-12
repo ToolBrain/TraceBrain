@@ -12,8 +12,8 @@ import re
 from sqlalchemy import func, cast, Integer
 from sqlalchemy.dialects.postgresql import JSONB
 
-from toolbrain_tracing.core.llm_providers import select_provider, ProviderError
-from toolbrain_tracing.db.base import Trace, CurriculumTask, TraceStatus
+from tracebrain.core.llm_providers import select_provider, ProviderError
+from tracebrain.db.base import Trace, CurriculumTask, TraceStatus
 
 logger = logging.getLogger(__name__)
 

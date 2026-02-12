@@ -1,28 +1,28 @@
 """
-ToolBrain Tracing Command-Line Interface
+TraceBrain Tracing Command-Line Interface
 
-This module provides a CLI for managing the ToolBrain Tracing service.
+This module provides a CLI for managing the TraceBrain Tracing service.
 It allows users to start the API server, manage the database, perform
 administrative tasks, and orchestrate Docker infrastructure.
 
 Usage:
     # Docker orchestration (recommended for production)
-    toolbrain-trace up              # Start infrastructure with Docker
+    tracebrain-trace up              # Start infrastructure with Docker
     # If code changes are not picked up by Docker, rebuild without cache:
     #   docker compose -f docker/docker-compose.yml build --no-cache
-    #   toolbrain-trace up
-    toolbrain-trace down            # Stop infrastructure
-    toolbrain-trace status          # Check container status
+    #   tracebrain-trace up
+    tracebrain-trace down            # Stop infrastructure
+    tracebrain-trace status          # Check container status
     
     # Development mode (local Python server)
-    toolbrain-trace start           # Start Python server directly
-    toolbrain-trace start --host 0.0.0.0 --port 3000
+    tracebrain-trace start           # Start Python server directly
+    tracebrain-trace start --host 0.0.0.0 --port 3000
     
     # Database management
-    toolbrain-trace init-db         # Initialize database tables
+    tracebrain-trace init-db         # Initialize database tables
     
     # System information
-    toolbrain-trace info            # Show current configuration
+    tracebrain-trace info            # Show current configuration
 """
 
 import sys
@@ -37,8 +37,8 @@ from .config import settings
 
 # Create Typer app
 app = typer.Typer(
-    name="toolbrain-trace",
-    help="ToolBrain Tracing - Observability platform for Agentic AI",
+    name="tracebrain-trace",
+    help="TraceBrain Tracing - Observability platform for Agentic AI",
     add_completion=False
 )
 
@@ -163,19 +163,19 @@ def up(
     )
 ):
     """
-    Start the ToolBrain Tracing infrastructure using Docker Compose.
+    Start the TraceBrain Tracing infrastructure using Docker Compose.
     
     This command locates the docker-compose.yml file and starts all services
     (PostgreSQL database, FastAPI backend, etc.) in containers.
     
     Examples:
-        toolbrain-trace up                 # Start in background
-        toolbrain-trace up --build         # Rebuild and start
-        toolbrain-trace up --no-detach     # Start in foreground (see logs)
-        toolbrain-trace up --no-wait       # Don't wait for health check
+        tracebrain-trace up                 # Start in background
+        tracebrain-trace up --build         # Rebuild and start
+        tracebrain-trace up --no-detach     # Start in foreground (see logs)
+        tracebrain-trace up --no-wait       # Don't wait for health check
     """
     typer.echo("=" * 70)
-    typer.echo("ToolBrain Tracing - Starting Infrastructure")
+    typer.echo("TraceBrain Tracing - Starting Infrastructure")
     typer.echo("=" * 70)
     
     # Check if Docker is installed
@@ -232,12 +232,12 @@ def up(
             if detach and wait:
                 if wait_for_health_check():
                     typer.echo("")
-                    typer.echo("ToolBrain Tracing is ready")
+                    typer.echo("TraceBrain Tracing is ready")
                     typer.echo("")
                     typer.echo("Next steps:")
                     typer.echo("  -> API docs:  http://localhost:8000/docs")
                     typer.echo("  -> Frontend:  http://localhost:8000/")
-                    typer.echo("  -> Check status: toolbrain-trace status")
+                    typer.echo("  -> Check status: tracebrain-trace status")
                     typer.echo(f"  -> View logs: docker compose -f {compose_file} logs -f")
                     typer.echo("")
                 else:
@@ -263,17 +263,17 @@ def down(
     )
 ):
     """
-    Stop and remove the ToolBrain Tracing infrastructure.
+    Stop and remove the TraceBrain Tracing infrastructure.
     
     This command stops all Docker containers and removes them.
     By default, data volumes are preserved.
     
     Examples:
-        toolbrain-trace down           # Stop and remove containers
-        toolbrain-trace down --volumes # WARNING: Also delete data volumes
+        tracebrain-trace down           # Stop and remove containers
+        tracebrain-trace down --volumes # WARNING: Also delete data volumes
     """
     typer.echo("=" * 70)
-    typer.echo("ToolBrain Tracing - Stopping Infrastructure")
+    typer.echo("TraceBrain Tracing - Stopping Infrastructure")
     typer.echo("=" * 70)
     
     # Check if Docker is installed
@@ -334,16 +334,16 @@ def down(
 @app.command()
 def status():
     """
-    Check the status of ToolBrain Tracing Docker containers.
+    Check the status of TraceBrain Tracing Docker containers.
     
     This command shows which containers are running, their status,
     and port mappings.
     
     Example:
-        toolbrain-trace status
+        tracebrain-trace status
     """
     typer.echo("=" * 70)
-    typer.echo("ToolBrain Tracing - Container Status")
+    typer.echo("TraceBrain Tracing - Container Status")
     typer.echo("=" * 70)
     typer.echo("")
     
@@ -402,15 +402,15 @@ def start(
     )
 ):
     """
-    Start the ToolBrain Tracing API server.
+    Start the TraceBrain Tracing API server.
     
     This command starts the FastAPI server with uvicorn. The server will
     serve both the REST API and the React frontend (if built).
     
     Examples:
-        toolbrain-trace start
-        toolbrain-trace start --host 0.0.0.0 --port 8080
-        toolbrain-trace start --reload --log-level debug
+        tracebrain-trace start
+        tracebrain-trace start --host 0.0.0.0 --port 8080
+        tracebrain-trace start --reload --log-level debug
     """
     # Use provided values or fall back to settings
     server_host = host or settings.HOST
@@ -418,7 +418,7 @@ def start(
     server_log_level = (log_level or settings.LOG_LEVEL).lower()
     
     typer.echo("=" * 70)
-    typer.echo("ToolBrain Tracing - Starting API Server")
+    typer.echo("TraceBrain Tracing - Starting API Server")
     typer.echo("=" * 70)
     typer.echo(f"Host:           {server_host}")
     typer.echo(f"Port:           {server_port}")
@@ -434,7 +434,7 @@ def start(
     
     try:
         uvicorn.run(
-            "toolbrain_tracing.main:app",
+            "tracebrain.main:app",
             host=server_host,
             port=server_port,
             reload=reload,
@@ -463,13 +463,13 @@ def init_db(
     only creates tables that don't exist.
     
     Examples:
-        toolbrain-trace init-db
-        toolbrain-trace init-db --drop  # WARNING: Deletes all data!
+        tracebrain-trace init-db
+        tracebrain-trace init-db --drop  # WARNING: Deletes all data!
     """
     from .db.session import create_tables, drop_tables
     
     typer.echo("=" * 70)
-    typer.echo("ToolBrain Tracing - Database Initialization")
+    typer.echo("TraceBrain Tracing - Database Initialization")
     typer.echo("=" * 70)
     typer.echo(f"Database:       {settings.DATABASE_URL}")
     typer.echo(f"Backend Type:   {settings.get_backend_type()}")
@@ -493,7 +493,7 @@ def init_db(
         create_tables()
         typer.echo("Database tables created successfully")
         typer.echo("")
-        typer.echo("You can now start the server with: toolbrain-trace start")
+        typer.echo("You can now start the server with: tracebrain-trace start")
     except Exception as e:
         typer.echo(f"Error creating tables: {e}", err=True)
         sys.exit(1)
@@ -505,13 +505,13 @@ def generate_curriculum():
     Generate curriculum tasks from failed traces.
 
     Example:
-        toolbrain-trace generate-curriculum
+        tracebrain-trace generate-curriculum
     """
     from .core.curator import CurriculumCurator
     from .core.store import TraceStore
 
     typer.echo("=" * 70)
-    typer.echo("ToolBrain Tracing - Curriculum Generation")
+    typer.echo("TraceBrain Tracing - Curriculum Generation")
     typer.echo("=" * 70)
     typer.echo(f"Database:       {settings.DATABASE_URL}")
     typer.echo(f"Backend Type:   {settings.get_backend_type()}")
@@ -540,13 +540,13 @@ def info():
     database connection, server settings, and available features.
     
     Example:
-        toolbrain-trace info
+        tracebrain-trace info
     """
     import platform
     from pathlib import Path
     
     typer.echo("=" * 70)
-    typer.echo("ToolBrain Tracing - System Information")
+    typer.echo("TraceBrain Tracing - System Information")
     typer.echo("=" * 70)
     typer.echo("")
     
@@ -580,8 +580,8 @@ def info():
     typer.echo("")
     
     typer.echo("[Quick Start]")
-    typer.echo("  1. Initialize database:  toolbrain-trace init-db")
-    typer.echo("  2. Start server:         toolbrain-trace start")
+    typer.echo("  1. Initialize database:  tracebrain-trace init-db")
+    typer.echo("  2. Start server:         tracebrain-trace start")
     typer.echo("  3. Open browser:         http://localhost:8000/docs")
     typer.echo("")
 
@@ -589,19 +589,19 @@ def info():
 @app.command()
 def version():
     """
-    Display the ToolBrain Tracing version.
+    Display the TraceBrain Tracing version.
     
     Example:
-        toolbrain-trace version
+        tracebrain-trace version
     """
-    typer.echo("ToolBrain Tracing v2.0.0")
+    typer.echo("TraceBrain Tracing v1.0.0")
 
 
 def main():
     """
     Main entry point for the CLI.
     
-    This function is called when the user runs the 'toolbrain-trace' command.
+    This function is called when the user runs the 'tracebrain-trace' command.
     It's registered as a console script entry point in setup.py/pyproject.toml.
     """
     app()

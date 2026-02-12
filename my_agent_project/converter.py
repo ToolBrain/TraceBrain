@@ -1,4 +1,4 @@
-"""Smolagent to ToolBrain OTLP converter."""
+"""Smolagent to TraceBrain OTLP converter."""
 
 import json
 import re
@@ -7,12 +7,12 @@ from typing import Dict
 
 from smolagents import CodeAgent
 
-from toolbrain_tracing.core.schema import ToolBrainAttributes, SpanType, get_iso_time_now
+from tracebrain.core.schema import TraceBrainAttributes, SpanType, get_iso_time_now
 
 
 def convert_smolagent_to_otlp(agent: CodeAgent, query: str) -> Dict:
     """
-    Convert a smolagent's memory into a ToolBrain OTLP trace.
+    Convert a smolagent's memory into a TraceBrain OTLP trace.
     """
     print("\n--- Converting smolagent memory to OTLP Trace ---")
 
@@ -110,12 +110,12 @@ def convert_smolagent_to_otlp(agent: CodeAgent, query: str) -> Dict:
             "start_time": get_iso_time_now(),
             "end_time": get_iso_time_now(),
             "attributes": {
-                ToolBrainAttributes.SPAN_TYPE: SpanType.LLM_INFERENCE,
-                ToolBrainAttributes.LLM_NEW_CONTENT: json.dumps(new_content),
-                ToolBrainAttributes.LLM_COMPLETION: step.model_output,
-                ToolBrainAttributes.LLM_THOUGHT: thought,
-                ToolBrainAttributes.LLM_TOOL_CODE: tool_code,
-                ToolBrainAttributes.LLM_FINAL_ANSWER: final_answer,
+                TraceBrainAttributes.SPAN_TYPE: SpanType.LLM_INFERENCE,
+                TraceBrainAttributes.LLM_NEW_CONTENT: json.dumps(new_content),
+                TraceBrainAttributes.LLM_COMPLETION: step.model_output,
+                TraceBrainAttributes.LLM_THOUGHT: thought,
+                TraceBrainAttributes.LLM_TOOL_CODE: tool_code,
+                TraceBrainAttributes.LLM_FINAL_ANSWER: final_answer,
             },
         }
         spans.append(llm_span)
@@ -131,10 +131,10 @@ def convert_smolagent_to_otlp(agent: CodeAgent, query: str) -> Dict:
                 "start_time": get_iso_time_now(),
                 "end_time": get_iso_time_now(),
                 "attributes": {
-                    ToolBrainAttributes.SPAN_TYPE: SpanType.TOOL_EXECUTION,
-                    ToolBrainAttributes.TOOL_NAME: tool_name,
-                    ToolBrainAttributes.TOOL_INPUT: tool_code,
-                    ToolBrainAttributes.TOOL_OUTPUT: step.observations,
+                    TraceBrainAttributes.SPAN_TYPE: SpanType.TOOL_EXECUTION,
+                    TraceBrainAttributes.TOOL_NAME: tool_name,
+                    TraceBrainAttributes.TOOL_INPUT: tool_code,
+                    TraceBrainAttributes.TOOL_OUTPUT: step.observations,
                 },
             }
             spans.append(tool_span)
@@ -143,8 +143,8 @@ def convert_smolagent_to_otlp(agent: CodeAgent, query: str) -> Dict:
     otlp_trace = {
         "trace_id": trace_id,
         "attributes": {
-            ToolBrainAttributes.SYSTEM_PROMPT: agent.initialize_system_prompt(),
-            ToolBrainAttributes.EPISODE_ID: episode_id,
+            TraceBrainAttributes.SYSTEM_PROMPT: agent.initialize_system_prompt(),
+            TraceBrainAttributes.EPISODE_ID: episode_id,
         },
         "spans": spans,
     }

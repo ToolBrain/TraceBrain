@@ -1,5 +1,5 @@
 # ============================================================================
-# ToolBrain Tracing - Git Ignore Configuration
+# TraceBrain Tracing - Git Ignore Configuration
 # ============================================================================
 
 # ============================================================================
@@ -29,7 +29,7 @@ var/
 wheels/
 share/python-wheels/
 *.egg-info/
-src/toolbrain_tracing.egg-info/
+src/tracebrain.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
@@ -150,7 +150,7 @@ cython_debug/
 *.db
 *.sqlite
 *.sqlite3
-toolbrain_traces.db
+tracebrain_traces.db
 
 # PostgreSQL
 *.pgdata
@@ -238,7 +238,7 @@ $RECYCLE.BIN/
 # ============================================================================
 # Application Specific
 # ============================================================================
-# ToolBrain Tracing data
+# TraceBrain Tracing data
 data/traces/
 data/exports/
 data/backups/
@@ -272,7 +272,7 @@ web/.next/
 web/out/
 
 # Static files (generated from frontend build)
-# src/toolbrain_tracing/static/*
+# src/tracebrain/static/*
 # Uncomment above if you don't want to track built frontend
 
 # ============================================================================
@@ -314,7 +314,7 @@ scratch/
 # Keep These Files (Exceptions)
 # ============================================================================
 # Keep example/sample files
-!data/ToolBrain OTLP Trace Samples/*.json
+!data/TraceBrain OTLP Trace Samples/*.json
 !src/examples/*.py
 
 # Keep Docker infrastructure files

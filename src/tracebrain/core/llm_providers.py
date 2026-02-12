@@ -8,7 +8,7 @@ import json
 
 import requests
 
-from toolbrain_tracing.config import settings
+from tracebrain.config import settings
 
 logger = logging.getLogger(__name__)
 

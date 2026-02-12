@@ -2,7 +2,7 @@
   "trace_id": "a1b2c3d4e5f6a7b8a1b2c3d4e5f6a7b8",
   "attributes": {
     "system_prompt": "You are a helpful assistant. You must use tools to answer questions about geography.",
-    "toolbrain.episode.id": "ep-a1b2c3d4"
+    "tracebrain.episode.id": "ep-a1b2c3d4"
   },
   "spans": [
     {
@@ -12,13 +12,13 @@
       "start_time": "2025-11-20T10:00:01.000Z",
       "end_time": "2025-11-20T10:00:02.500Z",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the capital of France?\"}]",
-        "toolbrain.llm.completion": "Thought: The user is asking for a capital city. I should use the get_capital_city tool.\n{\"tool_call\": {\"name\": \"get_capital_city\", \"arguments\": {\"country\": \"France\"}}}",
-        "toolbrain.llm.thought": "The user is asking for a capital city. I should use the get_capital_city tool.",
-        "toolbrain.llm.tool_code": "get_capital_city({'country': 'France'})",
-        "toolbrain.llm.final_answer": null,
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the capital of France?\"}]",
+        "tracebrain.llm.completion": "Thought: The user is asking for a capital city. I should use the get_capital_city tool.\n{\"tool_call\": {\"name\": \"get_capital_city\", \"arguments\": {\"country\": \"France\"}}}",
+        "tracebrain.llm.thought": "The user is asking for a capital city. I should use the get_capital_city tool.",
+        "tracebrain.llm.tool_code": "get_capital_city({'country': 'France'})",
+        "tracebrain.llm.final_answer": null,
+        "tracebrain.usage": {
           "prompt_tokens": 65,
           "completion_tokens": 41,
           "total_tokens": 106
@@ -32,10 +32,10 @@
       "start_time": "2025-11-20T10:00:02.505Z",
       "end_time": "2025-11-20T10:00:02.605Z",
       "attributes": {
-        "toolbrain.span.type": "tool_execution",
-        "toolbrain.tool.name": "get_capital_city",
-        "toolbrain.tool.input": "{'country': 'France'}",
-        "toolbrain.tool.output": "Paris"
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.name": "get_capital_city",
+        "tracebrain.tool.input": "{'country': 'France'}",
+        "tracebrain.tool.output": "Paris"
       }
     },
     {
@@ -45,13 +45,13 @@
       "start_time": "2025-11-20T10:00:02.700Z",
       "end_time": "2025-11-20T10:00:03.500Z",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_capital_city\", \"arguments\": {\"country\": \"France\"}, \"id\": \"call_abc123\"}]}, {\"role\": \"tool\", \"content\": \"Paris\", \"tool_call_id\": \"call_abc123\"}]",
-        "toolbrain.llm.completion": "The capital of France is Paris.",
-        "toolbrain.llm.thought": null,
-        "toolbrain.llm.tool_code": null,
-        "toolbrain.llm.final_answer": "The capital of France is Paris.",
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_capital_city\", \"arguments\": {\"country\": \"France\"}, \"id\": \"call_abc123\"}]}, {\"role\": \"tool\", \"content\": \"Paris\", \"tool_call_id\": \"call_abc123\"}]",
+        "tracebrain.llm.completion": "The capital of France is Paris.",
+        "tracebrain.llm.thought": null,
+        "tracebrain.llm.tool_code": null,
+        "tracebrain.llm.final_answer": "The capital of France is Paris.",
+        "tracebrain.usage": {
           "prompt_tokens": 103,
           "completion_tokens": 7,
           "total_tokens": 110

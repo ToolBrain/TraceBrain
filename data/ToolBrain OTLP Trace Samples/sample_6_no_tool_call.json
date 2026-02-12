@@ -2,7 +2,7 @@
   "trace_id": "f6a7b8c9d0e1f2a3f6a7b8c9d0e1f2a3",
   "attributes": {
     "system_prompt": "You are a helpful assistant with access to many tools.",
-    "toolbrain.episode.id": "ep-f6a7b8c9"
+    "tracebrain.episode.id": "ep-f6a7b8c9"
   },
   "spans": [
     {
@@ -12,13 +12,13 @@
       "start_time": "2025-11-22T12:00:01.000Z",
       "end_time": "2025-11-22T12:00:01.800Z",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Hello, how are you today?\"}]",
-        "toolbrain.llm.completion": "Thought: The user is asking a simple greeting. No tools are required. I will respond directly.\nI am doing well, thank you for asking! How can I help you today?",
-        "toolbrain.llm.thought": "The user is asking a simple greeting. No tools are required. I will respond directly.",
-        "toolbrain.llm.tool_code": null,
-        "toolbrain.llm.final_answer": "I am doing well, thank you for asking! How can I help you today?",
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Hello, how are you today?\"}]",
+        "tracebrain.llm.completion": "Thought: The user is asking a simple greeting. No tools are required. I will respond directly.\nI am doing well, thank you for asking! How can I help you today?",
+        "tracebrain.llm.thought": "The user is asking a simple greeting. No tools are required. I will respond directly.",
+        "tracebrain.llm.tool_code": null,
+        "tracebrain.llm.final_answer": "I am doing well, thank you for asking! How can I help you today?",
+        "tracebrain.usage": {
           "prompt_tokens": 64,
           "completion_tokens": 39,
           "total_tokens": 103

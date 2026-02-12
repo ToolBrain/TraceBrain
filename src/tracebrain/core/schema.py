@@ -1,12 +1,12 @@
 """
-ToolBrain Standard OTLP Trace Schema
+TraceBrain Standard OTLP Trace Schema
 -----------------------------------------
 This module defines the semantic conventions and data structures for 
-ToolBrain's tracing system. It implements the "Delta-based" architecture
+TraceBrain's tracing system. It implements the "Delta-based" architecture
 where prompts are stored incrementally to save space.
 
 Usage:
-    Use the constants in ToolBrainAttributes to ensure consistency across
+    Use the constants in TraceBrainAttributes to ensure consistency across
     parsers, adapters, and the TraceStore.
 """
 
@@ -14,35 +14,35 @@ from enum import Enum
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 
-class ToolBrainAttributes(str, Enum):
+class TraceBrainAttributes(str, Enum):
     """
-    Standard Attribute Keys for ToolBrain OTLP Spans.
+    Standard Attribute Keys for TraceBrain OTLP Spans.
     Use these constants instead of raw strings to avoid typos.
     """
     # --- Span Identity ---
-    SPAN_TYPE = "toolbrain.span.type"
+    SPAN_TYPE = "tracebrain.span.type"
     
     # --- Trace Level Attributes (Top level) ---
     SYSTEM_PROMPT = "system_prompt"
-    EPISODE_ID = "toolbrain.episode.id"
+    EPISODE_ID = "tracebrain.episode.id"
 
     # --- LLM Inference Attributes ---
     # Stores only new messages in this turn (JSON string)
-    LLM_NEW_CONTENT = "toolbrain.llm.new_content"
+    LLM_NEW_CONTENT = "tracebrain.llm.new_content"
     # Raw completion from the model
-    LLM_COMPLETION = "toolbrain.llm.completion"
+    LLM_COMPLETION = "tracebrain.llm.completion"
     # Parsed semantic fields
-    LLM_THOUGHT = "toolbrain.llm.thought"
-    LLM_TOOL_CODE = "toolbrain.llm.tool_code"
-    LLM_FINAL_ANSWER = "toolbrain.llm.final_answer"
+    LLM_THOUGHT = "tracebrain.llm.thought"
+    LLM_TOOL_CODE = "tracebrain.llm.tool_code"
+    LLM_FINAL_ANSWER = "tracebrain.llm.final_answer"
 
     # --- Tool Execution Attributes ---
-    TOOL_NAME = "toolbrain.tool.name"
-    TOOL_INPUT = "toolbrain.tool.input"
-    TOOL_OUTPUT = "toolbrain.tool.output"
+    TOOL_NAME = "tracebrain.tool.name"
+    TOOL_INPUT = "tracebrain.tool.input"
+    TOOL_OUTPUT = "tracebrain.tool.output"
 
 class SpanType(str, Enum):
-    """Allowed values for toolbrain.span.type"""
+    """Allowed values for tracebrain.span.type"""
     LLM_INFERENCE = "llm_inference"
     TOOL_EXECUTION = "tool_execution"
 
@@ -58,7 +58,7 @@ class Span(BaseModel):
     start_time: str = Field(..., description="ISO 8601 UTC timestamp")
     end_time: str = Field(..., description="ISO 8601 UTC timestamp")
     
-    # Attributes hold the semantic data (toolbrain.* fields)
+    # Attributes hold the semantic data (tracebrain.* fields)
     attributes: Dict[str, Any] = Field(default_factory=dict)
 
     class Config:
@@ -70,9 +70,9 @@ class Span(BaseModel):
                 "start_time": "2025-10-27T10:30:01.123456789Z",
                 "end_time": "2025-10-27T10:30:02.234567890Z",
                 "attributes": {
-                    "toolbrain.span.type": "llm_inference",
-                    "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"...\"}]",
-                    "toolbrain.llm.completion": "..."
+                    "tracebrain.span.type": "llm_inference",
+                    "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"...\"}]",
+                    "tracebrain.llm.completion": "..."
                 }
             }
         }
@@ -94,7 +94,7 @@ class Trace(BaseModel):
                 "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
                 "attributes": {
                     "system_prompt": "You are a helpful assistant.",
-                    "toolbrain.episode.id": "ep-123"
+                    "tracebrain.episode.id": "ep-123"
                 },
                 "spans": []
             }

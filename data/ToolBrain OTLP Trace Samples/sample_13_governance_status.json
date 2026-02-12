@@ -2,9 +2,9 @@
   "trace_id": "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7",
   "attributes": {
     "system_prompt": "You are a helpful assistant. If uncertain, request human help.",
-    "toolbrain.episode.id": "ep-b2c3d4e5",
-    "toolbrain.trace.status": "needs_review",
-    "toolbrain.trace.priority": 5
+    "tracebrain.episode.id": "ep-b2c3d4e5",
+    "tracebrain.trace.status": "needs_review",
+    "tracebrain.trace.priority": 5
   },
   "spans": [
     {
@@ -14,12 +14,12 @@
       "start_time": "2025-11-20T11:00:01.000Z",
       "end_time": "2025-11-20T11:00:02.200Z",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"I need a legal opinion about contracts in Japan.\"}]",
-        "toolbrain.llm.completion": "Thought: This is a legal request. I should escalate.\n{\"tool_call\": {\"name\": \"request_human_intervention\", \"arguments\": {\"reason\": \"Legal advice request\"}}}",
-        "toolbrain.llm.thought": "This is a legal request. I should escalate.",
-        "toolbrain.llm.tool_code": "request_human_intervention({'reason': 'Legal advice request'})",
-        "toolbrain.llm.final_answer": null
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"I need a legal opinion about contracts in Japan.\"}]",
+        "tracebrain.llm.completion": "Thought: This is a legal request. I should escalate.\n{\"tool_call\": {\"name\": \"request_human_intervention\", \"arguments\": {\"reason\": \"Legal advice request\"}}}",
+        "tracebrain.llm.thought": "This is a legal request. I should escalate.",
+        "tracebrain.llm.tool_code": "request_human_intervention({'reason': 'Legal advice request'})",
+        "tracebrain.llm.final_answer": null
       }
     },
     {
@@ -29,10 +29,10 @@
       "start_time": "2025-11-20T11:00:02.300Z",
       "end_time": "2025-11-20T11:00:02.350Z",
       "attributes": {
-        "toolbrain.span.type": "tool_execution",
-        "toolbrain.tool.name": "request_human_intervention",
-        "toolbrain.tool.input": "{'reason': 'Legal advice request'}",
-        "toolbrain.tool.output": "Escalated to human reviewer"
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.name": "request_human_intervention",
+        "tracebrain.tool.input": "{'reason': 'Legal advice request'}",
+        "tracebrain.tool.output": "Escalated to human reviewer"
       }
     }
   ]

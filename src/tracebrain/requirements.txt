@@ -1,5 +1,5 @@
-# ToolBrain Tracing Module Requirements
-# Install with: pip install -r toolbrain_tracing/requirements.txt
+# TraceBrain Tracing Module Requirements
+# Install with: pip install -r tracebrain/requirements.txt
 
 # Core database ORM
 sqlalchemy>=2.0.0

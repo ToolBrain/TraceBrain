@@ -2,7 +2,7 @@
   "trace_id": "e5f6a7b8c9d0e1f2e5f6a7b8c9d0e1f2",
   "attributes": {
     "system_prompt": "You are a helpful assistant. First, find the current price of a stock, then calculate a value based on that price.",
-    "toolbrain.episode.id": "ep-e5f6a7b8"
+    "tracebrain.episode.id": "ep-e5f6a7b8"
   },
   "spans": [
     {
@@ -10,12 +10,12 @@
       "parent_id": null,
       "name": "LLM Inference (Tool Call)",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"If I have 10 shares of NVDA stock, what is their total value?\"}]",
-        "toolbrain.llm.completion": "Thought: First, I need to find the current stock price of NVDA. I will use the `get_stock_price` tool.\n{\"tool_call\": {\"name\": \"get_stock_price\", \"arguments\": {\"ticker\": \"NVDA\"}}}",
-        "toolbrain.llm.thought": "First, I need to find the current stock price of NVDA. I will use the `get_stock_price` tool.",
-        "toolbrain.llm.tool_code": "get_stock_price({'ticker': 'NVDA'})",
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"If I have 10 shares of NVDA stock, what is their total value?\"}]",
+        "tracebrain.llm.completion": "Thought: First, I need to find the current stock price of NVDA. I will use the `get_stock_price` tool.\n{\"tool_call\": {\"name\": \"get_stock_price\", \"arguments\": {\"ticker\": \"NVDA\"}}}",
+        "tracebrain.llm.thought": "First, I need to find the current stock price of NVDA. I will use the `get_stock_price` tool.",
+        "tracebrain.llm.tool_code": "get_stock_price({'ticker': 'NVDA'})",
+        "tracebrain.usage": {
           "prompt_tokens": 73,
           "completion_tokens": 44,
           "total_tokens": 117
@@ -27,10 +27,10 @@
       "parent_id": "5001a2b3c4d5e6f7",
       "name": "Tool Execution: get_stock_price",
       "attributes": {
-        "toolbrain.span.type": "tool_execution",
-        "toolbrain.tool.name": "get_stock_price",
-        "toolbrain.tool.input": "{'ticker': 'NVDA'}",
-        "toolbrain.tool.output": "125.50"
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.name": "get_stock_price",
+        "tracebrain.tool.input": "{'ticker': 'NVDA'}",
+        "tracebrain.tool.output": "125.50"
       }
     },
     {
@@ -38,12 +38,12 @@
       "parent_id": "5002b3c4d5e6f7a8",
       "name": "LLM Inference (Tool Call)",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_stock_price\", \"arguments\": {\"ticker\": \"NVDA\"}, \"id\": \"call_price1\"}]}, {\"role\": \"tool\", \"content\": \"125.50\", \"tool_call_id\": \"call_price1\"}]",
-        "toolbrain.llm.completion": "Thought: I have the price per share ($125.50). Now I need to calculate the total value for 10 shares. I will use the `multiply` tool.\n{\"tool_call\": {\"name\": \"multiply\", \"arguments\": {\"a\": 125.50, \"b\": 10}}}",
-        "toolbrain.llm.thought": "I have the price per share ($125.50). Now I need to calculate the total value for 10 shares. I will use the `multiply` tool.",
-        "toolbrain.llm.tool_code": "multiply({'a': 125.50, 'b': 10})",
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_stock_price\", \"arguments\": {\"ticker\": \"NVDA\"}, \"id\": \"call_price1\"}]}, {\"role\": \"tool\", \"content\": \"125.50\", \"tool_call_id\": \"call_price1\"}]",
+        "tracebrain.llm.completion": "Thought: I have the price per share ($125.50). Now I need to calculate the total value for 10 shares. I will use the `multiply` tool.\n{\"tool_call\": {\"name\": \"multiply\", \"arguments\": {\"a\": 125.50, \"b\": 10}}}",
+        "tracebrain.llm.thought": "I have the price per share ($125.50). Now I need to calculate the total value for 10 shares. I will use the `multiply` tool.",
+        "tracebrain.llm.tool_code": "multiply({'a': 125.50, 'b': 10})",
+        "tracebrain.usage": {
           "prompt_tokens": 102,
           "completion_tokens": 51,
           "total_tokens": 153
@@ -55,10 +55,10 @@
       "parent_id": "5003c4d5e6f7a8b9",
       "name": "Tool Execution: multiply",
       "attributes": {
-        "toolbrain.span.type": "tool_execution",
-        "toolbrain.tool.name": "multiply",
-        "toolbrain.tool.input": "{'a': 125.50, 'b': 10}",
-        "toolbrain.tool.output": "1255.0"
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.name": "multiply",
+        "tracebrain.tool.input": "{'a': 125.50, 'b': 10}",
+        "tracebrain.tool.output": "1255.0"
       }
     },
     {
@@ -66,11 +66,11 @@
       "parent_id": "5004d5e6f7a8b9c0",
       "name": "LLM Inference (Final Answer)",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"multiply\", \"arguments\": {\"a\": 125.50, \"b\": 10}, \"id\": \"call_calc2\"}]}, {\"role\": \"tool\", \"content\": \"1255.0\", \"tool_call_id\": \"call_calc2\"}]",
-        "toolbrain.llm.completion": "The total value of 10 shares of NVDA is $1255.0.",
-        "toolbrain.llm.final_answer": "The total value of 10 shares of NVDA is $1255.0.",
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"multiply\", \"arguments\": {\"a\": 125.50, \"b\": 10}, \"id\": \"call_calc2\"}]}, {\"role\": \"tool\", \"content\": \"1255.0\", \"tool_call_id\": \"call_calc2\"}]",
+        "tracebrain.llm.completion": "The total value of 10 shares of NVDA is $1255.0.",
+        "tracebrain.llm.final_answer": "The total value of 10 shares of NVDA is $1255.0.",
+        "tracebrain.usage": {
           "prompt_tokens": 101,
           "completion_tokens": 12,
           "total_tokens": 113

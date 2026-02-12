@@ -1,11 +1,11 @@
 """
-ToolBrain Tracing Configuration Module
+TraceBrain Tracing Configuration Module
 
 This module provides centralized configuration management using pydantic-settings.
 It handles environment variables, defaults, and configuration validation.
 
 Usage:
-    from toolbrain_tracing.config import settings
+    from tracebrain.config import settings
     
     print(settings.DATABASE_URL)
     app.run(host=settings.HOST, port=settings.PORT)
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     
     Attributes:
         DATABASE_URL: SQLAlchemy database connection string.
-            - SQLite (default): "sqlite:///./toolbrain_traces.db"
+            - SQLite (default): "sqlite:///./tracebrain_traces.db"
             - PostgreSQL: "postgresql://user:password@host/database"
         HOST: Server host address (default: "127.0.0.1")
         PORT: Server port number (default: 8000)
@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     
     # Database Configuration
     DATABASE_URL: str = Field(
-        default="sqlite:///./toolbrain_traces.db",
+        default="sqlite:///./tracebrain_traces.db",
         description="Database connection URL (SQLite or PostgreSQL)"
     )
     

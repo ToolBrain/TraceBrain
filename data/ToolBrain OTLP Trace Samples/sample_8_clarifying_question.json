@@ -2,7 +2,7 @@
   "trace_id": "8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e",
   "attributes": {
     "system_prompt": "You are a flight booking assistant. You must have all necessary information before calling a tool.",
-    "toolbrain.episode.id": "ep-8b9c0d1e"
+    "tracebrain.episode.id": "ep-8b9c0d1e"
   },
   "spans": [
     {
@@ -12,13 +12,13 @@
       "start_time": "2025-11-24T09:15:01.000Z",
       "end_time": "2025-11-24T09:15:02.200Z",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Book a flight to New York for me.\"}]",
-        "toolbrain.llm.completion": "Thought: The user's request is missing crucial information. I don't know the departure city or the travel date. I must ask for this information before I can use the `book_flight` tool.\nI can certainly help with that! To book your flight to New York, could you please tell me your departure city and the desired travel date?",
-        "toolbrain.llm.thought": "The user's request is missing crucial information. I don't know the departure city or the travel date. I must ask for this information before I can use the `book_flight` tool.",
-        "toolbrain.llm.tool_code": null,
-        "toolbrain.llm.final_answer": "I can certainly help with that! To book your flight to New York, could you please tell me your departure city and the desired travel date?",
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Book a flight to New York for me.\"}]",
+        "tracebrain.llm.completion": "Thought: The user's request is missing crucial information. I don't know the departure city or the travel date. I must ask for this information before I can use the `book_flight` tool.\nI can certainly help with that! To book your flight to New York, could you please tell me your departure city and the desired travel date?",
+        "tracebrain.llm.thought": "The user's request is missing crucial information. I don't know the departure city or the travel date. I must ask for this information before I can use the `book_flight` tool.",
+        "tracebrain.llm.tool_code": null,
+        "tracebrain.llm.final_answer": "I can certainly help with that! To book your flight to New York, could you please tell me your departure city and the desired travel date?",
+        "tracebrain.usage": {
           "prompt_tokens": 66,
           "completion_tokens": 80,
           "total_tokens": 146

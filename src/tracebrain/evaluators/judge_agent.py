@@ -7,7 +7,7 @@ import logging
 import re
 from typing import Optional
 
-from toolbrain_tracing.core.llm_providers import ProviderError, select_provider
+from tracebrain.core.llm_providers import ProviderError, select_provider
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +27,10 @@ class AIJudge:
 
         for span in trace.spans or []:
             attrs = span.attributes or {}
-            span_type = attrs.get("toolbrain.span.type", "unknown")
-            thought = attrs.get("toolbrain.llm.thought")
-            action = attrs.get("toolbrain.llm.tool_code")
-            observation = attrs.get("toolbrain.tool.output")
+            span_type = attrs.get("tracebrain.span.type", "unknown")
+            thought = attrs.get("tracebrain.llm.thought")
+            action = attrs.get("tracebrain.llm.tool_code")
+            observation = attrs.get("tracebrain.tool.output")
 
             if isinstance(observation, (dict, list)):
                 observation = json.dumps(observation)

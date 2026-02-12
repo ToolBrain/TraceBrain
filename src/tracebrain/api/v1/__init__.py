@@ -1,5 +1,5 @@
 """
-ToolBrain Tracing API v1
+TraceBrain Tracing API v1
 
 This module exports the API v1 router for use in the main application.
 """

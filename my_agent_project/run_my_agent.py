@@ -3,8 +3,8 @@
 # --- User's own imports ---
 from smolagents import CodeAgent, tool, TransformersModel
 
-# --- ToolBrain Tracing import ---
-from toolbrain_tracing import TraceClient
+# --- TraceBrain Tracing import ---
+from tracebrain import TraceClient
 
 from converter import convert_smolagent_to_otlp
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     
     # 2. Check if the server is running
     if not client.health_check():
-        print("\n❌ ToolBrain Tracing server is not running. Please run 'toolbrain-trace up' first.")
+        print("\n❌ TraceBrain Tracing server is not running. Please run 'tracebrain-trace up' first.")
     else:
         # 3. Run the agent as usual
         query = "What is the stock price of NVDA?"

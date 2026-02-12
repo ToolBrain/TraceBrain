@@ -1,5 +1,5 @@
 """
-Embedding service providers for ToolBrain.
+Embedding service providers for TraceBrain.
 
 Provides a model-agnostic interface with a local-first default.
 """
@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from typing import List
 import logging
 
-from toolbrain_tracing.config import settings
+from tracebrain.config import settings
 
 logger = logging.getLogger(__name__)
 

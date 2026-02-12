@@ -2,9 +2,9 @@
   "trace_id": "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8",
   "attributes": {
     "system_prompt": "You are a helpful assistant. Use tools when needed.",
-    "toolbrain.episode.id": "ep-c3d4e5f6",
-    "toolbrain.trace.status": "failed",
-    "toolbrain.trace.priority": 2
+    "tracebrain.episode.id": "ep-c3d4e5f6",
+    "tracebrain.trace.status": "failed",
+    "tracebrain.trace.priority": 2
   },
   "spans": [
     {
@@ -14,12 +14,12 @@
       "start_time": "2025-11-21T09:10:01.000Z",
       "end_time": "2025-11-21T09:10:02.100Z",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Calculate 3/0\"}]",
-        "toolbrain.llm.completion": "Thought: I should use the calculator tool.\n{\"tool_call\": {\"name\": \"calculator\", \"arguments\": {\"expression\": \"3/0\"}}}",
-        "toolbrain.llm.thought": "I should use the calculator tool.",
-        "toolbrain.llm.tool_code": "calculator({'expression': '3/0'})",
-        "toolbrain.llm.final_answer": null
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Calculate 3/0\"}]",
+        "tracebrain.llm.completion": "Thought: I should use the calculator tool.\n{\"tool_call\": {\"name\": \"calculator\", \"arguments\": {\"expression\": \"3/0\"}}}",
+        "tracebrain.llm.thought": "I should use the calculator tool.",
+        "tracebrain.llm.tool_code": "calculator({'expression': '3/0'})",
+        "tracebrain.llm.final_answer": null
       }
     },
     {
@@ -29,10 +29,10 @@
       "start_time": "2025-11-21T09:10:02.200Z",
       "end_time": "2025-11-21T09:10:02.230Z",
       "attributes": {
-        "toolbrain.span.type": "tool_execution",
-        "toolbrain.tool.name": "calculator",
-        "toolbrain.tool.input": "{'expression': '3/0'}",
-        "toolbrain.tool.output": "Division by zero",
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.name": "calculator",
+        "tracebrain.tool.input": "{'expression': '3/0'}",
+        "tracebrain.tool.output": "Division by zero",
         "otel.status_code": "ERROR",
         "otel.status_description": "Division by zero"
       }

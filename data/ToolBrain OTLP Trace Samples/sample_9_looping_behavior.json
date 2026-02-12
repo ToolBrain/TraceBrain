@@ -2,7 +2,7 @@
   "trace_id": "9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f",
   "attributes": {
     "system_prompt": "You are an order management assistant. Check the status of all requested orders.",
-    "toolbrain.episode.id": "ep-9c0d1e2f"
+    "tracebrain.episode.id": "ep-9c0d1e2f"
   },
   "spans": [
     {
@@ -10,12 +10,12 @@
       "parent_id": null,
       "name": "LLM Inference (Tool Call 1)",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Check the status of my orders: ORD-001, ORD-002, ORD-003.\"}]",
-        "toolbrain.llm.completion": "Thought: I need to check the status for three orders. I will start with the first one, ORD-001.\n{\"tool_call\": {\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-001\"}}}",
-        "toolbrain.llm.thought": "I need to check the status for three orders. I will start with the first one, ORD-001.",
-        "toolbrain.llm.tool_code": "check_order_status({'order_id': 'ORD-001'})",
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Check the status of my orders: ORD-001, ORD-002, ORD-003.\"}]",
+        "tracebrain.llm.completion": "Thought: I need to check the status for three orders. I will start with the first one, ORD-001.\n{\"tool_call\": {\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-001\"}}}",
+        "tracebrain.llm.thought": "I need to check the status for three orders. I will start with the first one, ORD-001.",
+        "tracebrain.llm.tool_code": "check_order_status({'order_id': 'ORD-001'})",
+        "tracebrain.usage": {
           "prompt_tokens": 72,
           "completion_tokens": 44,
           "total_tokens": 116
@@ -27,10 +27,10 @@
       "parent_id": "9001a2b3c4d5e6f7",
       "name": "Tool Execution: check_order_status",
       "attributes": {
-        "toolbrain.span.type": "tool_execution",
-        "toolbrain.tool.name": "check_order_status",
-        "toolbrain.tool.input": "{'order_id': 'ORD-001'}",
-        "toolbrain.tool.output": "Shipped"
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.name": "check_order_status",
+        "tracebrain.tool.input": "{'order_id': 'ORD-001'}",
+        "tracebrain.tool.output": "Shipped"
       }
     },
     {
@@ -38,12 +38,12 @@
       "parent_id": "9002b3c4d5e6f7a8",
       "name": "LLM Inference (Tool Call 2)",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-001\"}, \"id\": \"call_ord1\"}]}, {\"role\": \"tool\", \"content\": \"Shipped\", \"tool_call_id\": \"call_ord1\"}]",
-        "toolbrain.llm.completion": "Thought: Okay, ORD-001 is shipped. Now I will check the next one, ORD-002.\n{\"tool_call\": {\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-002\"}}}",
-        "toolbrain.llm.thought": "Okay, ORD-001 is shipped. Now I will check the next one, ORD-002.",
-        "toolbrain.llm.tool_code": "check_order_status({'order_id': 'ORD-002'})",
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-001\"}, \"id\": \"call_ord1\"}]}, {\"role\": \"tool\", \"content\": \"Shipped\", \"tool_call_id\": \"call_ord1\"}]",
+        "tracebrain.llm.completion": "Thought: Okay, ORD-001 is shipped. Now I will check the next one, ORD-002.\n{\"tool_call\": {\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-002\"}}}",
+        "tracebrain.llm.thought": "Okay, ORD-001 is shipped. Now I will check the next one, ORD-002.",
+        "tracebrain.llm.tool_code": "check_order_status({'order_id': 'ORD-002'})",
+        "tracebrain.usage": {
           "prompt_tokens": 103,
           "completion_tokens": 39,
           "total_tokens": 142
@@ -55,10 +55,10 @@
       "parent_id": "9003c4d5e6f7a8b9",
       "name": "Tool Execution: check_order_status",
       "attributes": {
-        "toolbrain.span.type": "tool_execution",
-        "toolbrain.tool.name": "check_order_status",
-        "toolbrain.tool.input": "{'order_id': 'ORD-002'}",
-        "toolbrain.tool.output": "Processing"
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.name": "check_order_status",
+        "tracebrain.tool.input": "{'order_id': 'ORD-002'}",
+        "tracebrain.tool.output": "Processing"
       }
     },
     {
@@ -66,12 +66,12 @@
       "parent_id": "9004d5e6f7a8b9c0",
       "name": "LLM Inference (Tool Call 3)",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-002\"}, \"id\": \"call_ord2\"}]}, {\"role\": \"tool\", \"content\": \"Processing\", \"tool_call_id\": \"call_ord2\"}]",
-        "toolbrain.llm.completion": "Thought: ORD-002 is still processing. Finally, I will check ORD-003.\n{\"tool_call\": {\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-003\"}}}",
-        "toolbrain.llm.thought": "ORD-002 is still processing. Finally, I will check ORD-003.",
-        "toolbrain.llm.tool_code": "check_order_status({'order_id': 'ORD-003'})",
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-002\"}, \"id\": \"call_ord2\"}]}, {\"role\": \"tool\", \"content\": \"Processing\", \"tool_call_id\": \"call_ord2\"}]",
+        "tracebrain.llm.completion": "Thought: ORD-002 is still processing. Finally, I will check ORD-003.\n{\"tool_call\": {\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-003\"}}}",
+        "tracebrain.llm.thought": "ORD-002 is still processing. Finally, I will check ORD-003.",
+        "tracebrain.llm.tool_code": "check_order_status({'order_id': 'ORD-003'})",
+        "tracebrain.usage": {
           "prompt_tokens": 104,
           "completion_tokens": 38,
           "total_tokens": 142
@@ -83,10 +83,10 @@
       "parent_id": "9005e6f7a8b9c0d1",
       "name": "Tool Execution: check_order_status",
       "attributes": {
-        "toolbrain.span.type": "tool_execution",
-        "toolbrain.tool.name": "check_order_status",
-        "toolbrain.tool.input": "{'order_id': 'ORD-003'}",
-        "toolbrain.tool.output": "Delivered"
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.name": "check_order_status",
+        "tracebrain.tool.input": "{'order_id': 'ORD-003'}",
+        "tracebrain.tool.output": "Delivered"
       }
     },
     {
@@ -94,11 +94,11 @@
       "parent_id": "9006f7a8b9c0d1e2",
       "name": "LLM Inference (Final Answer)",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-003\"}, \"id\": \"call_ord3\"}]}, {\"role\": \"tool\", \"content\": \"Delivered\", \"tool_call_id\": \"call_ord3\"}]",
-        "toolbrain.llm.completion": "I have checked the status of your orders: ORD-001 is Shipped, ORD-002 is Processing, and ORD-003 is Delivered.",
-        "toolbrain.llm.final_answer": "I have checked the status of your orders: ORD-001 is Shipped, ORD-002 is Processing, and ORD-003 is Delivered.",
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-003\"}, \"id\": \"call_ord3\"}]}, {\"role\": \"tool\", \"content\": \"Delivered\", \"tool_call_id\": \"call_ord3\"}]",
+        "tracebrain.llm.completion": "I have checked the status of your orders: ORD-001 is Shipped, ORD-002 is Processing, and ORD-003 is Delivered.",
+        "tracebrain.llm.final_answer": "I have checked the status of your orders: ORD-001 is Shipped, ORD-002 is Processing, and ORD-003 is Delivered.",
+        "tracebrain.usage": {
           "prompt_tokens": 104,
           "completion_tokens": 27,
           "total_tokens": 131

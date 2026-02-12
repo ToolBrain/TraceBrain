@@ -1,11 +1,11 @@
 """
-ToolBrain Tracing SDK - Client
+TraceBrain Tracing SDK - Client
 
-This module provides a robust client for interacting with the ToolBrain Tracing API.
+This module provides a robust client for interacting with the TraceBrain Tracing API.
 It includes automatic retries, connection pooling, and fail-safe error handling.
 
 Usage:
-    from toolbrain_tracing import TraceClient
+    from tracebrain import TraceClient
     
     # Initialize client
     client = TraceClient(base_url="http://localhost:8000")
@@ -33,7 +33,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from toolbrain_tracing.core.schema import ToolBrainAttributes, SpanType
+from tracebrain.core.schema import TraceBrainAttributes, SpanType
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 class TraceClient:
     """
-    Robust HTTP client for ToolBrain Tracing API.
+    Robust HTTP client for TraceBrain Tracing API.
     
     Features:
     - Connection pooling via requests.Session
@@ -118,7 +118,7 @@ class TraceClient:
         self.session.headers.update({
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": "ToolBrain-Tracing-SDK/2.0.0"
+            "User-Agent": "TraceBrain-Tracing-SDK/1.0.0"
         })
         
         # Add API key if provided
@@ -151,7 +151,7 @@ class TraceClient:
         
         Args:
             trace_data: Dictionary containing the trace data conforming to
-                       ToolBrain Standard OTLP Trace Schema
+                       TraceBrain Standard OTLP Trace Schema
         
         Returns:
             bool: True if trace was successfully logged, False otherwise
@@ -161,7 +161,7 @@ class TraceClient:
                 "trace_id": "a1b2c3d4e5f6a7b8",
                 "attributes": {
                     "system_prompt": "You are a helpful assistant.",
-                    "toolbrain.episode.id": "episode_123"
+                    "tracebrain.episode.id": "episode_123"
                 },
                 "spans": [
                     {
@@ -171,8 +171,8 @@ class TraceClient:
                         "start_time": "2025-10-27T10:30:01.123Z",
                         "end_time": "2025-10-27T10:30:02.234Z",
                         "attributes": {
-                            "toolbrain.span.type": "llm_inference",
-                            "toolbrain.llm.thought": "I need to calculate this"
+                            "tracebrain.span.type": "llm_inference",
+                            "tracebrain.llm.thought": "I need to calculate this"
                         }
                     }
                 ]
@@ -497,7 +497,7 @@ class TraceClient:
         """Reconstruct ChatML messages from a raw OTLP trace."""
         messages: List[Dict[str, str]] = []
         attributes = trace_data.get("attributes") or {}
-        system_prompt = attributes.get(ToolBrainAttributes.SYSTEM_PROMPT) or attributes.get("system_prompt")
+        system_prompt = attributes.get(TraceBrainAttributes.SYSTEM_PROMPT) or attributes.get("system_prompt")
         if system_prompt:
             messages.append({"role": "system", "content": str(system_prompt)})
 
@@ -508,21 +508,21 @@ class TraceClient:
         )
         for span in spans_sorted:
             attrs = span.get("attributes") or {}
-            if attrs.get(ToolBrainAttributes.SPAN_TYPE) != SpanType.LLM_INFERENCE:
+            if attrs.get(TraceBrainAttributes.SPAN_TYPE) != SpanType.LLM_INFERENCE:
                 continue
-            new_content = attrs.get(ToolBrainAttributes.LLM_NEW_CONTENT)
+            new_content = attrs.get(TraceBrainAttributes.LLM_NEW_CONTENT)
             messages.extend(TraceClient._normalize_messages(new_content))
 
         return messages
 
     @staticmethod
     def to_turns(trace_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Reconstruct ToolBrain turns from a raw OTLP trace."""
+        """Reconstruct TraceBrain turns from a raw OTLP trace."""
         turns: List[Dict[str, Any]] = []
         messages: List[Dict[str, str]] = []
 
         attributes = trace_data.get("attributes") or {}
-        system_prompt = attributes.get(ToolBrainAttributes.SYSTEM_PROMPT) or attributes.get("system_prompt")
+        system_prompt = attributes.get(TraceBrainAttributes.SYSTEM_PROMPT) or attributes.get("system_prompt")
         if system_prompt:
             messages.append({"role": "system", "content": str(system_prompt)})
 
@@ -535,26 +535,26 @@ class TraceClient:
         tool_outputs: Dict[str, Any] = {}
         for span in spans_sorted:
             attrs = span.get("attributes") or {}
-            if attrs.get(ToolBrainAttributes.SPAN_TYPE) == SpanType.TOOL_EXECUTION:
+            if attrs.get(TraceBrainAttributes.SPAN_TYPE) == SpanType.TOOL_EXECUTION:
                 parent_id = span.get("parent_id")
                 if parent_id:
-                    tool_outputs[parent_id] = attrs.get(ToolBrainAttributes.TOOL_OUTPUT)
+                    tool_outputs[parent_id] = attrs.get(TraceBrainAttributes.TOOL_OUTPUT)
 
         for span in spans_sorted:
             attrs = span.get("attributes") or {}
-            if attrs.get(ToolBrainAttributes.SPAN_TYPE) != SpanType.LLM_INFERENCE:
+            if attrs.get(TraceBrainAttributes.SPAN_TYPE) != SpanType.LLM_INFERENCE:
                 continue
 
-            new_content = attrs.get(ToolBrainAttributes.LLM_NEW_CONTENT)
+            new_content = attrs.get(TraceBrainAttributes.LLM_NEW_CONTENT)
             new_messages = TraceClient._normalize_messages(new_content)
             if new_messages:
                 messages.extend(new_messages)
 
             turn = {
                 "prompt_for_model": [dict(item) for item in messages],
-                "model_completion": attrs.get(ToolBrainAttributes.LLM_COMPLETION),
-                "thought": attrs.get(ToolBrainAttributes.LLM_THOUGHT),
-                "tool_code": attrs.get(ToolBrainAttributes.LLM_TOOL_CODE),
+                "model_completion": attrs.get(TraceBrainAttributes.LLM_COMPLETION),
+                "thought": attrs.get(TraceBrainAttributes.LLM_THOUGHT),
+                "tool_code": attrs.get(TraceBrainAttributes.LLM_TOOL_CODE),
                 "tool_output": tool_outputs.get(span.get("span_id")),
             }
             turns.append(turn)
@@ -562,8 +562,8 @@ class TraceClient:
         return turns
 
     @staticmethod
-    def to_toolbrain_turns(trace_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Format turns for ToolBrain 1.0 compatibility."""
+    def to_tracebrain_turns(trace_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Format turns for TraceBrain 1.0 compatibility."""
         turns = TraceClient.to_turns(trace_data)
         formatted = []
         for turn in turns:

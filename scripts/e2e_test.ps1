@@ -49,7 +49,7 @@ $trace = @{
             name = "LLM Inference"
             start_time = "2025-02-06T10:00:00Z"
             end_time = "2025-02-06T10:00:01Z"
-            attributes = @{ "toolbrain.span.type" = "llm_inference" }
+            attributes = @{ "tracebrain.span.type" = "llm_inference" }
         }
     )
 }

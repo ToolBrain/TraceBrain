@@ -1,6 +1,6 @@
 # Building Your Own Trace Converter
 
-This guide explains the ToolBrain OTLP schema and shows how to build a custom converter for your own agent.
+This guide explains the TraceBrain OTLP schema and shows how to build a custom converter for your own agent.
 
 ## 1. The Standard Schema (OTLP)
 
@@ -13,7 +13,7 @@ A trace represents a single, complete agent execution. It stores the system prom
   "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
   "attributes": {
     "system_prompt": "You are a helpful assistant that must use tools.",
-    "toolbrain.episode.id": "ep-8f2a1c9b"
+    "tracebrain.episode.id": "ep-8f2a1c9b"
   },
   "spans": [
     { "...": "span 1" },
@@ -28,9 +28,9 @@ A trace represents a single, complete agent execution. It stores the system prom
 - `attributes`: Trace-level metadata. At minimum, store `system_prompt` once here.
 - `spans`: An ordered list of spans (steps) that form a causal chain.
 
-### Episode grouping (`toolbrain.episode.id`)
+### Episode grouping (`tracebrain.episode.id`)
 
-ToolBrain adds `toolbrain.episode.id` to group multiple attempts of the same task into a single episode. This is not part of standard OpenTelemetry, but it is critical for Agentic AI workflows where one task may have several retries.
+TraceBrain adds `tracebrain.episode.id` to group multiple attempts of the same task into a single episode. This is not part of standard OpenTelemetry, but it is critical for Agentic AI workflows where one task may have several retries.
 
 Add it at the trace level:
 
@@ -39,7 +39,7 @@ Add it at the trace level:
   "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
   "attributes": {
     "system_prompt": "You are a helpful assistant that must use tools.",
-    "toolbrain.episode.id": "ep-8f2a1c9b"
+    "tracebrain.episode.id": "ep-8f2a1c9b"
   },
   "spans": [
     { "...": "span 1" }
@@ -47,7 +47,7 @@ Add it at the trace level:
 }
 ```
 
-How to choose `toolbrain.episode.id`:
+How to choose `tracebrain.episode.id`:
 - Prefer a stable ID from your app (session_id, conversation_id, task_id).
 - If you do not have one, generate it once per task and reuse it across retries.
 
@@ -61,65 +61,65 @@ How to choose `toolbrain.episode.id`:
   "start_time": "2025-10-27T10:30:01.123Z",
   "end_time": "2025-10-27T10:30:02.234Z",
   "attributes": {
-    "toolbrain.span.type": "llm_inference",
-    "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the weather in Tokyo?\"}]",
-    "toolbrain.llm.completion": "{\"tool_call\": {\"name\": \"get_weather\", \"arguments\": {\"location\": \"Tokyo\"}}}",
-    "toolbrain.llm.thought": null,
-    "toolbrain.llm.tool_code": "get_weather({'location': 'Tokyo'})",
-    "toolbrain.llm.final_answer": null
+    "tracebrain.span.type": "llm_inference",
+    "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the weather in Tokyo?\"}]",
+    "tracebrain.llm.completion": "{\"tool_call\": {\"name\": \"get_weather\", \"arguments\": {\"location\": \"Tokyo\"}}}",
+    "tracebrain.llm.thought": null,
+    "tracebrain.llm.tool_code": "get_weather({'location': 'Tokyo'})",
+    "tracebrain.llm.final_answer": null
   }
 }
 ```
 
 **Fields**
 - `span_id`: A unique identifier for this step.
-- `parent_id`: The `span_id` of the step that caused this step. This is how ToolBrain builds the chain/tree in the UI and how you reconstruct the prompt later. The first span has `parent_id = null`.
+- `parent_id`: The `span_id` of the step that caused this step. This is how TraceBrain builds the chain/tree in the UI and how you reconstruct the prompt later. The first span has `parent_id = null`.
 - `name`: A short human-readable name (for UI).
 - `start_time` / `end_time`: Standard timing fields (ISO 8601).
 - `attributes`: The schema-specific payload described below.
 
 ### Span types and custom attributes
 
-**LLM inference span** (`toolbrain.span.type = "llm_inference"`)
+**LLM inference span** (`tracebrain.span.type = "llm_inference"`)
 
 ```json
 {
-  "toolbrain.span.type": "llm_inference",
-  "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the weather in Tokyo?\"}]",
-  "toolbrain.llm.completion": "{\"tool_call\": {\"name\": \"get_weather\", \"arguments\": {\"location\": \"Tokyo\"}}}",
-  "toolbrain.llm.thought": null,
-  "toolbrain.llm.tool_code": "get_weather({'location': 'Tokyo'})",
-  "toolbrain.llm.final_answer": null
+  "tracebrain.span.type": "llm_inference",
+  "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the weather in Tokyo?\"}]",
+  "tracebrain.llm.completion": "{\"tool_call\": {\"name\": \"get_weather\", \"arguments\": {\"location\": \"Tokyo\"}}}",
+  "tracebrain.llm.thought": null,
+  "tracebrain.llm.tool_code": "get_weather({'location': 'Tokyo'})",
+  "tracebrain.llm.final_answer": null
 }
 ```
 
 **Meaning of key fields**
-- `toolbrain.llm.new_content`: The delta for this turn. It contains only the *new messages introduced in this step*, not the full history. This is the core of the storage-efficient design.
-- `toolbrain.llm.completion`: The raw model output for this step.
-- `toolbrain.llm.thought`: Optional parsed reasoning text.
-- `toolbrain.llm.tool_code`: The tool call string if the model decided to call a tool.
-- `toolbrain.llm.final_answer`: The final response when the model is done. An LLM step should have either `tool_code` or `final_answer`, not both.
+- `tracebrain.llm.new_content`: The delta for this turn. It contains only the *new messages introduced in this step*, not the full history. This is the core of the storage-efficient design.
+- `tracebrain.llm.completion`: The raw model output for this step.
+- `tracebrain.llm.thought`: Optional parsed reasoning text.
+- `tracebrain.llm.tool_code`: The tool call string if the model decided to call a tool.
+- `tracebrain.llm.final_answer`: The final response when the model is done. An LLM step should have either `tool_code` or `final_answer`, not both.
 
-**Tool execution span** (`toolbrain.span.type = "tool_execution"`)
+**Tool execution span** (`tracebrain.span.type = "tool_execution"`)
 
 ```json
 {
-  "toolbrain.span.type": "tool_execution",
-  "toolbrain.tool.name": "get_weather",
-  "toolbrain.tool.input": "{'location': 'Tokyo'}",
-  "toolbrain.tool.output": "70F and sunny"
+  "tracebrain.span.type": "tool_execution",
+  "tracebrain.tool.name": "get_weather",
+  "tracebrain.tool.input": "{'location': 'Tokyo'}",
+  "tracebrain.tool.output": "70F and sunny"
 }
 ```
 
 **Meaning of key fields**
-- `toolbrain.tool.name`: Tool identifier.
-- `toolbrain.tool.input`: String representation of the tool arguments.
-- `toolbrain.tool.output`: String representation of the tool result.
+- `tracebrain.tool.name`: Tool identifier.
+- `tracebrain.tool.input`: String representation of the tool arguments.
+- `tracebrain.tool.output`: String representation of the tool result.
 
 **Why `parent_id` matters**
 The delta-based schema relies on the causal chain between steps. To rebuild the full prompt for any step, you traverse backwards using `parent_id`, collecting:
-- `toolbrain.llm.new_content` from LLM spans
-- `toolbrain.tool.output` from tool spans
+- `tracebrain.llm.new_content` from LLM spans
+- `tracebrain.tool.output` from tool spans
 
 This makes the trace compact while still being fully reconstructable.
 
@@ -134,8 +134,8 @@ Checklist:
 - Generate `trace_id` once per run.
 - Create spans in chronological order.
 - Use `parent_id` to create the causal chain.
-- Store only the delta in `toolbrain.llm.new_content`.
-- Set `toolbrain.episode.id` to group retries of the same task.
+- Store only the delta in `tracebrain.llm.new_content`.
+- Set `tracebrain.episode.id` to group retries of the same task.
 
 ## 3. Example Implementation (Template)
 
@@ -168,20 +168,20 @@ def convert_steps_to_otlp(steps, system_prompt, episode_id=None):
 
         if step["type"] == "llm":
             attrs = {
-                "toolbrain.span.type": "llm_inference",
-                "toolbrain.llm.new_content": json.dumps(step.get("new_content", [])),
-                "toolbrain.llm.completion": step.get("completion"),
-                "toolbrain.llm.thought": step.get("thought"),
-                "toolbrain.llm.tool_code": step.get("tool_code"),
-                "toolbrain.llm.final_answer": step.get("final_answer"),
+                "tracebrain.span.type": "llm_inference",
+                "tracebrain.llm.new_content": json.dumps(step.get("new_content", [])),
+                "tracebrain.llm.completion": step.get("completion"),
+                "tracebrain.llm.thought": step.get("thought"),
+                "tracebrain.llm.tool_code": step.get("tool_code"),
+                "tracebrain.llm.final_answer": step.get("final_answer"),
             }
             name = "LLM Inference"
         else:
             attrs = {
-                "toolbrain.span.type": "tool_execution",
-                "toolbrain.tool.name": step.get("name"),
-                "toolbrain.tool.input": step.get("input"),
-                "toolbrain.tool.output": step.get("output"),
+                "tracebrain.span.type": "tool_execution",
+                "tracebrain.tool.name": step.get("name"),
+                "tracebrain.tool.input": step.get("input"),
+                "tracebrain.tool.output": step.get("output"),
             }
             name = f"Tool Execution: {step.get('name', 'unknown')}"
 
@@ -200,7 +200,7 @@ def convert_steps_to_otlp(steps, system_prompt, episode_id=None):
         "trace_id": trace_id,
         "attributes": {
           "system_prompt": system_prompt,
-          "toolbrain.episode.id": episode_id,
+          "tracebrain.episode.id": episode_id,
         },
         "spans": spans,
     }

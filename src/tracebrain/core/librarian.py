@@ -1,5 +1,5 @@
 """
-Librarian AI Agent for ToolBrain TraceStore Natural Language Queries
+Librarian AI Agent for TraceBrain TraceStore Natural Language Queries
 
 This module provides a provider-agnostic text-to-SQL agent with conversational
 memory, self-correction, and interactive abstention.
@@ -15,8 +15,8 @@ import re
 
 import sqlparse
 
-from toolbrain_tracing.config import settings
-from toolbrain_tracing.core.llm_providers import select_provider, is_provider_available
+from tracebrain.config import settings
+from tracebrain.core.llm_providers import select_provider, is_provider_available
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +42,8 @@ Table: spans
 - attributes (jsonb)
 
 JSONB usage examples:
-- spans.attributes->>'toolbrain.span.type'
-- spans.attributes->>'toolbrain.tool.name'
+- spans.attributes->>'tracebrain.span.type'
+- spans.attributes->>'tracebrain.tool.name'
 - spans.attributes->>'otel.status_code'
 - traces.feedback->>'rating'
 
@@ -98,7 +98,7 @@ class LibrarianAgent:
 
     def _system_prompt(self) -> str:
         return (
-            "You are the ToolBrain TraceStore Librarian, a text-to-SQL assistant. "
+            "You are the TraceBrain TraceStore Librarian, a text-to-SQL assistant. "
             "Use the run_sql_query tool for ALL database access. "
             "Use search_similar_traces for semantic similarity over trace content; use run_sql_query for metadata filters, counts, and exact matches. "
             "Only write SELECT queries. "
@@ -165,15 +165,15 @@ class LibrarianAgent:
             "answer": "I could not find any matching data. Can you clarify what you want to explore next?",
             "suggestions": [
                 {"label": "Widen time range", "value": "Try the last 30 days"},
-                {"label": "Search by episode", "value": "Filter by toolbrain.episode.id"},
-                {"label": "Search by tool", "value": "Filter by toolbrain.tool.name"},
+                {"label": "Search by episode", "value": "Filter by tracebrain.episode.id"},
+                {"label": "Search by tool", "value": "Filter by tracebrain.tool.name"},
             ],
             "sources": [],
         }
 
     def _abstain_response_from_llm(self, user_query: str, history_text: str) -> Dict[str, Any]:
         system_prompt = (
-            "You are the ToolBrain TraceStore Librarian. "
+            "You are the TraceBrain TraceStore Librarian. "
             "The database returned EMPTY_RESULT. "
             "Ask a clarifying question and provide helpful suggestions. "
             "Return ONLY valid JSON with keys answer, suggestions, sources. "

@@ -1,8 +1,8 @@
 """
-SQLAlchemy ORM models for ToolBrain trace storage.
+SQLAlchemy ORM models for TraceBrain trace storage.
 
 This module defines the database schema for storing agent execution traces
-conforming to the ToolBrain Standard OTLP Trace Schema.
+conforming to the TraceBrain Standard OTLP Trace Schema.
 """
 
 from datetime import datetime
@@ -157,7 +157,7 @@ class Span(Base):
         name (str): Human-readable name describing the operation.
         start_time (datetime): When the operation started.
         end_time (datetime): When the operation completed.
-        attributes (dict): JSONBCompat column storing custom ToolBrain attributes.
+        attributes (dict): JSONBCompat column storing custom TraceBrain attributes.
         trace (Trace): Relationship back to the parent trace.
     """
     __tablename__ = "spans"
@@ -187,12 +187,12 @@ class Span(Base):
     end_time = Column(DateTime(timezone=True), nullable=True, comment="Operation end timestamp")
     
     # JSONBCompat automatically uses JSONB for PostgreSQL, JSON for SQLite
-    # This stores all custom ToolBrain attributes (toolbrain.*)
+    # This stores all custom TraceBrain attributes (tracebrain.*)
     attributes = Column(
         JSONBCompat,
         nullable=False,
         default=dict,
-        comment="Custom ToolBrain semantic attributes"
+        comment="Custom TraceBrain semantic attributes"
     )
     
     # Relationship to trace

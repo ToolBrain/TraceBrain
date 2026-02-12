@@ -1,5 +1,5 @@
 """
-ToolBrain TraceStore REST API Endpoints (v1)
+TraceBrain TraceStore REST API Endpoints (v1)
 
 This module provides FastAPI router with endpoints for interacting with the TraceStore.
 It exposes endpoints for querying traces, retrieving trace details, and adding feedback.
@@ -88,7 +88,7 @@ class SpanOut(BaseModel):
     name: str = Field(..., description="Human-readable operation name")
     start_time: Optional[datetime] = Field(None, description="Operation start timestamp")
     end_time: Optional[datetime] = Field(None, description="Operation end timestamp")
-    attributes: Dict[str, Any] = Field(default_factory=dict, description="Custom ToolBrain attributes")
+    attributes: Dict[str, Any] = Field(default_factory=dict, description="Custom TraceBrain attributes")
     
     @field_serializer('start_time', 'end_time')
     def serialize_datetime(self, dt: Optional[datetime], _info) -> Optional[str]:
@@ -105,9 +105,9 @@ class SpanOut(BaseModel):
                 "start_time": "2025-11-20T10:00:01.000Z",
                 "end_time": "2025-11-20T10:00:02.500Z",
                 "attributes": {
-                    "toolbrain.span.type": "llm_inference",
-                    "toolbrain.llm.thought": "I should use the calculator tool",
-                    "toolbrain.llm.tool_code": "calculator({'expression': '2+2'})"
+                    "tracebrain.span.type": "llm_inference",
+                    "tracebrain.llm.thought": "I should use the calculator tool",
+                    "tracebrain.llm.tool_code": "calculator({'expression': '2+2'})"
                 }
             }
         }
@@ -132,7 +132,7 @@ class TraceOut(BaseModel):
                 "trace_id": "a1b2c3d4e5f6a7b8",
                 "attributes": {
                     "system_prompt": "You are a helpful assistant.",
-                    "toolbrain.episode.id": "episode_123"
+                    "tracebrain.episode.id": "episode_123"
                 },
                 "created_at": "2025-12-11T15:30:00Z",
                 "feedbacks": [{"rating": 5, "comment": "Excellent trace!"}],
@@ -280,7 +280,7 @@ class SpanIn(BaseModel):
     name: str = Field(..., description="Human-readable operation name")
     start_time: Optional[str] = Field(None, description="ISO 8601 timestamp")
     end_time: Optional[str] = Field(None, description="ISO 8601 timestamp")
-    attributes: Dict[str, Any] = Field(default_factory=dict, description="Custom ToolBrain attributes")
+    attributes: Dict[str, Any] = Field(default_factory=dict, description="Custom TraceBrain attributes")
 
 
 class TraceIn(BaseModel):
@@ -306,7 +306,7 @@ def _trace_to_out(trace) -> TraceOut:
     if trace.system_prompt:
         trace_attributes["system_prompt"] = trace.system_prompt
     if trace.episode_id:
-        trace_attributes["toolbrain.episode.id"] = trace.episode_id
+        trace_attributes["tracebrain.episode.id"] = trace.episode_id
 
     return TraceOut(
         trace_id=trace.id,
@@ -327,7 +327,7 @@ def root():
     Root endpoint with API information.
     """
     return {
-        "name": "ToolBrain TraceStore API",
+        "name": "TraceBrain TraceStore API",
         "version": "1.0.0",
         "description": "REST API for managing agent execution traces",
         "docs": "/docs",
@@ -669,7 +669,7 @@ def get_episode_details(episode_id: str):
             status = "OK"
             for span in spans:
                 name = (span.name or "").lower()
-                span_type = (span.attributes or {}).get("toolbrain.span.type")
+                span_type = (span.attributes or {}).get("tracebrain.span.type")
                 if "error" in name or span_type == "tool_error":
                     status = "ERROR"
                     break

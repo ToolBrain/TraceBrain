@@ -7,7 +7,7 @@ using the Strategy pattern. This module can be used for future extensions that
 require direct database access patterns (e.g., FastAPI dependency injection).
 
 Usage:
-    from toolbrain_tracing.db.session import get_session_maker
+    from tracebrain.db.session import get_session_maker
     
     # Get a session maker for direct database access
     SessionLocal = get_session_maker()
@@ -19,7 +19,7 @@ Usage:
         session.close()
         
     # Or use dependency injection in FastAPI:
-    from toolbrain_tracing.db.session import get_db
+    from tracebrain.db.session import get_db
     
     @app.get("/custom")
     def custom_endpoint(db: Session = Depends(get_db)):

@@ -1,10 +1,10 @@
 # Trace Reconstruction Guide
 
-This guide explains how to reconstruct full prompt context from ToolBrain 2.0 delta-based OTLP traces. It is designed for users preparing training data (SFT, RL, DPO) from storage-efficient traces.
+This guide explains how to reconstruct full prompt context from TraceBrain delta-based OTLP traces. It is designed for users preparing training data (SFT, RL, DPO) from storage-efficient traces.
 
 ## 1. Introduction
 
-ToolBrain 2.0 stores traces in a **delta-based OTLP schema**. Each span only contains the **new content introduced at that step** (for example, `toolbrain.llm.new_content`), rather than the full prompt history. This design is compact and efficient for storage and analytics, but training pipelines typically require the **full context**.
+TraceBrain stores traces in a **delta-based OTLP schema**. Each span only contains the **new content introduced at that step** (for example, `tracebrain.llm.new_content`), rather than the full prompt history. This design is compact and efficient for storage and analytics, but training pipelines typically require the **full context**.
 
 **Trace Reconstruction** bridges this gap by rebuilding the complete conversation context from the deltas.
 
@@ -17,8 +17,8 @@ The reconstruction algorithm is a **backwards traversal** over the `parent_id` c
 1. Start at a specific span (often the last LLM step or final answer).
 2. Follow each `parent_id` pointer back to the root span.
 3. Collect:
-   - `toolbrain.llm.new_content` from LLM spans
-   - `toolbrain.tool.output` from tool execution spans
+   - `tracebrain.llm.new_content` from LLM spans
+   - `tracebrain.tool.output` from tool execution spans
 4. Reverse the collected items to restore chronological order.
 5. Prepend the top-level `system_prompt` from `trace.attributes.system_prompt`.
 
@@ -42,8 +42,8 @@ The SDK provides built-in reconstruction helpers in `TraceClient`:
 | Method | Output | Use Case |
 | --- | --- | --- |
 | `TraceClient.to_messages(trace_data)` | ChatML list of `{role, content}` | SFT, ICL, evaluation |
-| `TraceClient.to_turns(trace_data)` | Structured turns (ToolBrain 1.0 style) | RL, tool-augmented training |
-| `TraceClient.to_toolbrain_turns(trace_data)` | ToolBrain 1.0 compatible turns | Backward-compatible pipelines |
+| `TraceClient.to_turns(trace_data)` | Structured turns (TraceBrain 1.0 style) | RL, tool-augmented training |
+| `TraceClient.to_tracebrain_turns(trace_data)` | TraceBrain 1.0 compatible turns | Backward-compatible pipelines |
 
 These helpers handle the backwards traversal and ordering for you.
 
@@ -52,7 +52,7 @@ These helpers handle the backwards traversal and ordering for you.
 ### Reconstructing Messages and Turns
 
 ```python
-from toolbrain_tracing.sdk.client import TraceClient
+from tracebrain.sdk.client import TraceClient
 
 client = TraceClient(base_url="http://localhost:8000")
 trace_data = client.get_trace("trace_id_123")
@@ -60,7 +60,7 @@ trace_data = client.get_trace("trace_id_123")
 # Exporting for SFT (ChatML-style messages)
 messages = TraceClient.to_messages(trace_data)
 
-# Exporting for ToolBrain 1.0 RL (structured turns)
+# Exporting for TraceBrain 1.0 RL (structured turns)
 turns = TraceClient.to_turns(trace_data)
 ```
 
@@ -68,7 +68,7 @@ turns = TraceClient.to_turns(trace_data)
 
 ```python
 import json
-from toolbrain_tracing.sdk.client import TraceClient
+from tracebrain.sdk.client import TraceClient
 
 client = TraceClient(base_url="http://localhost:8000")
 jsonl_payload = client.export_traces(min_rating=4, limit=100)
@@ -84,8 +84,8 @@ messages_per_trace = [TraceClient.to_messages(t) for t in traces]
 Advanced users may need a custom reconstruction format (for example, DPO pairs or task-specific structures). You can implement your own logic directly from the raw OTLP data:
 
 - `trace_data["attributes"]["system_prompt"]`
-- `span["attributes"]["toolbrain.llm.new_content"]`
-- `span["attributes"]["toolbrain.tool.output"]`
+- `span["attributes"]["tracebrain.llm.new_content"]`
+- `span["attributes"]["tracebrain.tool.output"]`
 - `span["parent_id"]`
 
 ### Minimal Pseudocode

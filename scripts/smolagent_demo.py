@@ -1,9 +1,9 @@
-"""Smolagent demo script that logs a trace to ToolBrain Tracing."""
+"""Smolagent demo script that logs a trace to TraceBrain Tracing."""
 
 import argparse
 from datetime import datetime, timezone
 
-from toolbrain_tracing import TraceClient
+from tracebrain import TraceClient
 
 
 def iso_now() -> str:
@@ -18,7 +18,7 @@ def build_trace(trace_id: str):
         "trace_id": trace_id,
         "attributes": {
             "system_prompt": "You are a helpful assistant.",
-            "toolbrain.episode.id": trace_id,
+            "tracebrain.episode.id": trace_id,
         },
         "spans": [
             {
@@ -28,9 +28,9 @@ def build_trace(trace_id: str):
                 "start_time": start,
                 "end_time": end,
                 "attributes": {
-                    "toolbrain.span.type": "llm_inference",
-                    "toolbrain.llm.thought": "I should use calculator for 2+2",
-                    "toolbrain.llm.tool_code": "calculator({'expression': '2+2'})",
+                    "tracebrain.span.type": "llm_inference",
+                    "tracebrain.llm.thought": "I should use calculator for 2+2",
+                    "tracebrain.llm.tool_code": "calculator({'expression': '2+2'})",
                 },
             },
             {
@@ -40,10 +40,10 @@ def build_trace(trace_id: str):
                 "start_time": start,
                 "end_time": end,
                 "attributes": {
-                    "toolbrain.span.type": "tool_execution",
-                    "toolbrain.tool.name": "calculator",
-                    "toolbrain.tool.input": "{'expression': '2+2'}",
-                    "toolbrain.tool.output": "4",
+                    "tracebrain.span.type": "tool_execution",
+                    "tracebrain.tool.name": "calculator",
+                    "tracebrain.tool.input": "{'expression': '2+2'}",
+                    "tracebrain.tool.output": "4",
                 },
             },
             {
@@ -53,8 +53,8 @@ def build_trace(trace_id: str):
                 "start_time": start,
                 "end_time": end,
                 "attributes": {
-                    "toolbrain.span.type": "llm_inference",
-                    "toolbrain.llm.final_answer": "The answer is 4.",
+                    "tracebrain.span.type": "llm_inference",
+                    "tracebrain.llm.final_answer": "The answer is 4.",
                 },
             },
         ],
@@ -63,7 +63,7 @@ def build_trace(trace_id: str):
 
 def main():
     parser = argparse.ArgumentParser(description="Smolagent demo logger")
-    parser.add_argument("--base-url", default="http://localhost:8000", help="ToolBrain API base URL")
+    parser.add_argument("--base-url", default="http://localhost:8000", help="TraceBrain API base URL")
     parser.add_argument("--trace-id", default="demo_trace_001", help="Trace ID")
     parser.add_argument("--api-key", default=None, help="Optional API key")
     args = parser.parse_args()

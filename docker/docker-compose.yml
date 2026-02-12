@@ -2,13 +2,13 @@ services:
   # PostgreSQL Database
   postgres:
     image: ankane/pgvector:v0.5.1
-    container_name: toolbrain-postgres
+    container_name: tracebrain-postgres
     restart: unless-stopped
     env_file:
       - ../.env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-toolbrain}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toolbrain_2026_secure}
+      POSTGRES_USER: ${POSTGRES_USER:-tracebrain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tracebrain_2026_secure}
       POSTGRES_DB: ${POSTGRES_DB:-tracestore}
       PGDATA: /var/lib/postgresql/data/pgdata
     # For local development only. Do not expose DB in production.
@@ -17,26 +17,26 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - toolbrain-network
+      - tracebrain-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U toolbrain -d tracestore"]
+      test: ["CMD-SHELL", "pg_isready -U tracebrain -d tracestore"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
 
-  # ToolBrain Tracing API
+  # TraceBrain Tracing API
   tracing-api:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: toolbrain-tracing-api
+    container_name: tracebrain-tracing-api
     restart: unless-stopped
     env_file:
       - ../.env
     environment:
       # Database Configuration
-      DATABASE_URL: postgresql://${POSTGRES_USER:-toolbrain}:${POSTGRES_PASSWORD:-toolbrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
       
       # Server Configuration
       HOST: 0.0.0.0
@@ -51,7 +51,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - toolbrain-network
+      - tracebrain-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
       interval: 30s
@@ -67,13 +67,13 @@ services:
 volumes:
   postgres_data:
     driver: local
-    name: toolbrain_postgres_data
+    name: tracebrain_postgres_data
   api_logs:
     driver: local
-    name: toolbrain_api_logs
+    name: tracebrain_api_logs
 
 # Networks
 networks:
-  toolbrain-network:
+  tracebrain-network:
     driver: bridge
-    name: toolbrain-network
+    name: tracebrain-network

@@ -1,7 +1,7 @@
 """
-ToolBrain Tracing SDK
+TraceBrain Tracing SDK
 
-This module provides client-side tools for interacting with the ToolBrain Tracing API.
+This module provides client-side tools for interacting with the TraceBrain Tracing API.
 """
 
 from .client import TraceClient

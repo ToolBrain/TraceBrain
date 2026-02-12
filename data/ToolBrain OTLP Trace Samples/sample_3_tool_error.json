@@ -2,7 +2,7 @@
   "trace_id": "c3d4e5f6a7b8c9d0c3d4e5f6a7b8c9d0",
   "attributes": {
     "system_prompt": "You are a data analyst. Use the provided tools to query the database.",
-    "toolbrain.episode.id": "ep-c3d4e5f6"
+    "tracebrain.episode.id": "ep-c3d4e5f6"
   },
   "spans": [
     {
@@ -10,12 +10,12 @@
       "parent_id": null,
       "name": "LLM Inference (Tool Call)",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Find the total sales for product ID 'XYZ-123'.\"}]",
-        "toolbrain.llm.completion": "Thought: I need to query the sales database for the given product ID.\n{\"tool_call\": {\"name\": \"query_sales_db\", \"arguments\": {\"product_id\": \"XYZ-123\"}}}",
-        "toolbrain.llm.thought": "I need to query the sales database for the given product ID.",
-        "toolbrain.llm.tool_code": "query_sales_db({'product_id': 'XYZ-123'})",
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Find the total sales for product ID 'XYZ-123'.\"}]",
+        "tracebrain.llm.completion": "Thought: I need to query the sales database for the given product ID.\n{\"tool_call\": {\"name\": \"query_sales_db\", \"arguments\": {\"product_id\": \"XYZ-123\"}}}",
+        "tracebrain.llm.thought": "I need to query the sales database for the given product ID.",
+        "tracebrain.llm.tool_code": "query_sales_db({'product_id': 'XYZ-123'})",
+        "tracebrain.usage": {
           "prompt_tokens": 69,
           "completion_tokens": 37,
           "total_tokens": 106
@@ -27,10 +27,10 @@
       "parent_id": "3001a2b3c4d5e6f7",
       "name": "Tool Execution: query_sales_db (ERROR)",
       "attributes": {
-        "toolbrain.span.type": "tool_execution",
-        "toolbrain.tool.name": "query_sales_db",
-        "toolbrain.tool.input": "{'product_id': 'XYZ-123'}",
-        "toolbrain.tool.output": "Error: Connection to database failed. Timeout expired.",
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.name": "query_sales_db",
+        "tracebrain.tool.input": "{'product_id': 'XYZ-123'}",
+        "tracebrain.tool.output": "Error: Connection to database failed. Timeout expired.",
         "otel.status_code": "ERROR",
         "otel.status_description": "Tool execution failed"
       }
@@ -40,11 +40,11 @@
       "parent_id": "3002b3c4d5e6f7a8",
       "name": "LLM Inference (Final Answer with Error)",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"query_sales_db\", \"arguments\": {\"product_id\": \"XYZ-123\"}, \"id\": \"call_jkl012\"}]}, {\"role\": \"tool\", \"content\": \"Error: Connection to database failed. Timeout expired.\", \"tool_call_id\": \"call_jkl012\"}]",
-        "toolbrain.llm.completion": "I'm sorry, I was unable to connect to the sales database at this time. Please try again later.",
-        "toolbrain.llm.final_answer": "I'm sorry, I was unable to connect to the sales database at this time. Please try again later.",
-        "toolbrain.usage": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"query_sales_db\", \"arguments\": {\"product_id\": \"XYZ-123\"}, \"id\": \"call_jkl012\"}]}, {\"role\": \"tool\", \"content\": \"Error: Connection to database failed. Timeout expired.\", \"tool_call_id\": \"call_jkl012\"}]",
+        "tracebrain.llm.completion": "I'm sorry, I was unable to connect to the sales database at this time. Please try again later.",
+        "tracebrain.llm.final_answer": "I'm sorry, I was unable to connect to the sales database at this time. Please try again later.",
+        "tracebrain.usage": {
           "prompt_tokens": 115,
           "completion_tokens": 23,
           "total_tokens": 138

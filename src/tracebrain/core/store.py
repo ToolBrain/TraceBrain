@@ -18,9 +18,9 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError, ProgrammingError, TimeoutError
 from sqlalchemy.orm import sessionmaker, Session, selectinload
 
-from toolbrain_tracing.config import settings
-from toolbrain_tracing.core.services.embedding import EmbeddingFactory
-from toolbrain_tracing.db.base import (
+from tracebrain.config import settings
+from tracebrain.core.services.embedding import EmbeddingFactory
+from tracebrain.db.base import (
     Base,
     Trace,
     Span,
@@ -107,7 +107,7 @@ class BaseStorageBackend:
 
         Args:
             trace_data (dict): A dictionary representing a complete trace,
-                conforming to the ToolBrain OTLP schema.
+                conforming to the TraceBrain OTLP schema.
 
         Returns:
             str: The trace_id of the inserted trace.
@@ -121,9 +121,9 @@ class BaseStorageBackend:
 
         attributes = trace_data.get("attributes") or {}
         system_prompt = attributes.get("system_prompt")
-        episode_id = attributes.get("toolbrain.episode.id")
-        status_value = attributes.get("toolbrain.trace.status")
-        priority_value = attributes.get("toolbrain.trace.priority")
+        episode_id = attributes.get("tracebrain.episode.id")
+        status_value = attributes.get("tracebrain.trace.status")
+        priority_value = attributes.get("tracebrain.trace.priority")
 
         spans_data = trace_data.get("spans") or []
         embedding_text = self._extract_embedding_text(system_prompt, spans_data)
@@ -200,12 +200,12 @@ class BaseStorageBackend:
     def _has_active_help_request(spans_data: List[Dict[str, Any]]) -> bool:
         for span in spans_data:
             attrs = (span or {}).get("attributes") or {}
-            if attrs.get("toolbrain.span.type") == "tool_execution":
-                tool_name = attrs.get("toolbrain.tool.name")
+            if attrs.get("tracebrain.span.type") == "tool_execution":
+                tool_name = attrs.get("tracebrain.tool.name")
                 if tool_name == "request_human_intervention":
                     return True
 
-            tool_code = attrs.get("toolbrain.llm.tool_code")
+            tool_code = attrs.get("tracebrain.llm.tool_code")
             if isinstance(tool_code, str) and "request_human_intervention" in tool_code:
                 return True
         return False
@@ -215,7 +215,7 @@ class BaseStorageBackend:
         if not spans_data:
             return None
         attrs = (spans_data[0] or {}).get("attributes") or {}
-        raw = attrs.get("toolbrain.llm.new_content")
+        raw = attrs.get("tracebrain.llm.new_content")
         if not raw:
             return None
         if isinstance(raw, str):
@@ -243,10 +243,10 @@ class BaseStorageBackend:
 
         for span in spans_data:
             attrs = (span or {}).get("attributes") or {}
-            thought = attrs.get("toolbrain.llm.thought")
-            final_answer = attrs.get("toolbrain.llm.final_answer")
-            tool_output = attrs.get("toolbrain.tool.output")
-            completion = attrs.get("toolbrain.llm.completion")
+            thought = attrs.get("tracebrain.llm.thought")
+            final_answer = attrs.get("tracebrain.llm.final_answer")
+            tool_output = attrs.get("tracebrain.tool.output")
+            completion = attrs.get("tracebrain.llm.completion")
 
             for label, value in (
                 ("Thought", thought),
@@ -371,13 +371,13 @@ class BaseStorageBackend:
         if trace.system_prompt:
             trace_attributes["system_prompt"] = trace.system_prompt
         if trace.episode_id:
-            trace_attributes["toolbrain.episode.id"] = trace.episode_id
+            trace_attributes["tracebrain.episode.id"] = trace.episode_id
         if trace.status:
-            trace_attributes["toolbrain.trace.status"] = (
+            trace_attributes["tracebrain.trace.status"] = (
                 trace.status.value if hasattr(trace.status, "value") else str(trace.status)
             )
         if trace.priority is not None:
-            trace_attributes["toolbrain.trace.priority"] = trace.priority
+            trace_attributes["tracebrain.trace.priority"] = trace.priority
 
         span_payloads = []
         for span in spans:
@@ -633,8 +633,8 @@ class BaseStorageBackend:
         session = self.get_session()
         try:
             if self.engine.dialect.name == "postgresql":
-                span_type = func.jsonb_extract_path_text(Span.attributes, "toolbrain.span.type")
-                tool_name = func.jsonb_extract_path_text(Span.attributes, "toolbrain.tool.name")
+                span_type = func.jsonb_extract_path_text(Span.attributes, "tracebrain.span.type")
+                tool_name = func.jsonb_extract_path_text(Span.attributes, "tracebrain.tool.name")
                 rows = (
                     session.query(tool_name.label("tool"), func.count().label("count"))
                     .filter(span_type == "tool_execution")
@@ -652,9 +652,9 @@ class BaseStorageBackend:
             tool_counts: Dict[str, int] = {}
             for (attrs,) in spans:
                 attrs = attrs or {}
-                if attrs.get("toolbrain.span.type") != "tool_execution":
+                if attrs.get("tracebrain.span.type") != "tool_execution":
                     continue
-                tool = attrs.get("toolbrain.tool.name")
+                tool = attrs.get("tracebrain.tool.name")
                 if not tool:
                     continue
                 tool_counts[tool] = tool_counts.get(tool, 0) + 1

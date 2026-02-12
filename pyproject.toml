@@ -3,15 +3,15 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "toolbrain-tracing"
-version = "2.0.0"
+name = "tracebrain-tracing"
+version = "1.0.0"
 description = "Observability platform for Agentic AI - Collect, store, and visualize execution traces"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 keywords = ["ai", "agents", "tracing", "observability", "opentelemetry", "langchain"]
 authors = [
-    {name = "ToolBrain Team"}
+    {name = "TraceBrain Team"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -57,23 +57,23 @@ dev = [
 ]
 
 [project.scripts]
-toolbrain-trace = "toolbrain_tracing.cli:main"
+tracebrain-trace = "tracebrain.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/toolbrain/toolbrain-tracing"
-Documentation = "https://github.com/toolbrain/toolbrain-tracing#readme"
-Repository = "https://github.com/toolbrain/toolbrain-tracing"
-Issues = "https://github.com/toolbrain/toolbrain-tracing/issues"
+Homepage = "https://github.com/tracebrain/tracebrain-tracing"
+Documentation = "https://github.com/tracebrain/tracebrain-tracing#readme"
+Repository = "https://github.com/tracebrain/tracebrain-tracing"
+Issues = "https://github.com/tracebrain/tracebrain-tracing/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["toolbrain_tracing*"]
+include = ["tracebrain*"]
 
 [tool.setuptools.package-data]
-toolbrain_tracing = [
+tracebrain = [
     "static/**/*",
     "../docker/docker-compose.yml",  # Include compose file in package
     "../docker/Dockerfile",

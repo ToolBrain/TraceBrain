@@ -1,6 +1,6 @@
-# Docker Configuration for ToolBrain Tracing
+# Docker Configuration for TraceBrain Tracing
 
-This directory contains all Docker-related files for running ToolBrain Tracing in containers.
+This directory contains all Docker-related files for running TraceBrain Tracing in containers.
 
 ## 📁 Files
 
@@ -14,9 +14,9 @@ This directory contains all Docker-related files for running ToolBrain Tracing i
 
 ```bash
 # From project root
-toolbrain-trace up          # Start all services
-toolbrain-trace status      # Check status
-toolbrain-trace down        # Stop all services
+tracebrain-trace up          # Start all services
+tracebrain-trace status      # Check status
+tracebrain-trace down        # Stop all services
 ```
 
 ### Using Docker Compose Directly
@@ -54,12 +54,12 @@ Create a `.env` file at the project root (recommended) or edit `docker-compose.y
 
 ```env
 # Database
-POSTGRES_USER=toolbrain
-POSTGRES_PASSWORD=toolbrain_2026_secure
+POSTGRES_USER=tracebrain
+POSTGRES_PASSWORD=tracebrain_2026_secure
 POSTGRES_DB=tracestore
 
 # API
-DATABASE_URL=postgresql://toolbrain:toolbrain_2026_secure@postgres:5432/tracestore
+DATABASE_URL=postgresql://tracebrain:tracebrain_2026_secure@postgres:5432/tracestore
 HOST=0.0.0.0
 PORT=8000
 LOG_LEVEL=info
@@ -73,7 +73,7 @@ LLM_API_KEY=your_key_here
 ### postgres
 - **Image**: `postgres:15-alpine`
 - **Port**: `5432`
-- **Volume**: `toolbrain_postgres_data` (persistent)
+- **Volume**: `tracebrain_postgres_data` (persistent)
 - **Health Check**: Automatic readiness probe
 
 Note: The database port is not exposed by default in production. Uncomment the

@@ -2,7 +2,7 @@
   "trace_id": "11112222333344445555666677778888",
   "attributes": {
     "system_prompt": "You are a travel assistant. You must confirm details before booking.",
-    "toolbrain.episode.id": "ep-demo-group-001"
+    "tracebrain.episode.id": "ep-demo-group-001"
   },
   "spans": [
     {
@@ -12,11 +12,11 @@
       "start_time": "2025-12-01T09:00:01.000Z",
       "end_time": "2025-12-01T09:00:02.200Z",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Book me a flight from SFO to JFK next Monday morning.\"}]",
-        "toolbrain.llm.completion": "Thought: I will attempt to book the flight using the booking tool.\n{\"tool_call\": {\"name\": \"book_flight\", \"arguments\": {\"from\": \"SFO\", \"to\": \"JFK\", \"date\": \"next Monday\", \"time\": \"morning\"}}}",
-        "toolbrain.llm.thought": "I will attempt to book the flight using the booking tool.",
-        "toolbrain.llm.tool_code": "book_flight({'from': 'SFO', 'to': 'JFK', 'date': 'next Monday', 'time': 'morning'})"
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Book me a flight from SFO to JFK next Monday morning.\"}]",
+        "tracebrain.llm.completion": "Thought: I will attempt to book the flight using the booking tool.\n{\"tool_call\": {\"name\": \"book_flight\", \"arguments\": {\"from\": \"SFO\", \"to\": \"JFK\", \"date\": \"next Monday\", \"time\": \"morning\"}}}",
+        "tracebrain.llm.thought": "I will attempt to book the flight using the booking tool.",
+        "tracebrain.llm.tool_code": "book_flight({'from': 'SFO', 'to': 'JFK', 'date': 'next Monday', 'time': 'morning'})"
       }
     },
     {
@@ -26,10 +26,10 @@
       "start_time": "2025-12-01T09:00:02.300Z",
       "end_time": "2025-12-01T09:00:03.000Z",
       "attributes": {
-        "toolbrain.span.type": "tool_execution",
-        "toolbrain.tool.name": "book_flight",
-        "toolbrain.tool.input": "{'from': 'SFO', 'to': 'JFK', 'date': 'next Monday', 'time': 'morning'}",
-        "toolbrain.tool.output": "Error: Missing traveler name.",
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.name": "book_flight",
+        "tracebrain.tool.input": "{'from': 'SFO', 'to': 'JFK', 'date': 'next Monday', 'time': 'morning'}",
+        "tracebrain.tool.output": "Error: Missing traveler name.",
         "otel.status_code": "ERROR",
         "otel.status_description": "Booking failed due to missing traveler name"
       }
@@ -41,10 +41,10 @@
       "start_time": "2025-12-01T09:00:03.100Z",
       "end_time": "2025-12-01T09:00:03.800Z",
       "attributes": {
-        "toolbrain.span.type": "llm_inference",
-        "toolbrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"book_flight\", \"arguments\": {\"from\": \"SFO\", \"to\": \"JFK\", \"date\": \"next Monday\", \"time\": \"morning\"}, \"id\": \"call_book1\"}]}, {\"role\": \"tool\", \"content\": \"Error: Missing traveler name.\", \"tool_call_id\": \"call_book1\"}]",
-        "toolbrain.llm.completion": "I need your full name to complete the booking. Please provide the traveler name.",
-        "toolbrain.llm.final_answer": "I need your full name to complete the booking. Please provide the traveler name."
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"book_flight\", \"arguments\": {\"from\": \"SFO\", \"to\": \"JFK\", \"date\": \"next Monday\", \"time\": \"morning\"}, \"id\": \"call_book1\"}]}, {\"role\": \"tool\", \"content\": \"Error: Missing traveler name.\", \"tool_call_id\": \"call_book1\"}]",
+        "tracebrain.llm.completion": "I need your full name to complete the booking. Please provide the traveler name.",
+        "tracebrain.llm.final_answer": "I need your full name to complete the booking. Please provide the traveler name."
       }
     }
   ]

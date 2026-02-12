@@ -1,18 +1,18 @@
 """
-ToolBrain Tracing - Main Application Entry Point
+TraceBrain Tracing - Main Application Entry Point
 
 This module initializes the FastAPI application and configures all middleware,
 routers, and static file serving. It implements the "pip install and run"
 philosophy by serving both the API and the React frontend from a single process.
 
 Usage:
-    from toolbrain_tracing.main import app
+    from tracebrain.main import app
     
     # Run with uvicorn
-    uvicorn toolbrain_tracing.main:app --host 0.0.0.0 --port 8000
+    uvicorn tracebrain.main:app --host 0.0.0.0 --port 8000
     
     # Or use the CLI
-    toolbrain-trace start
+    tracebrain-trace start
 """
 
 from pathlib import Path
@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
     # STARTUP LOGIC
     # ========================================================================
     logger.info("=" * 70)
-    logger.info("ToolBrain Tracing API - Starting Up")
+    logger.info("TraceBrain Tracing API - Starting Up")
     logger.info("=" * 70)
     logger.info(f"Database: {_redact_db_url(settings.DATABASE_URL)}")
     logger.info(f"Backend Type: {settings.get_backend_type()}")
@@ -107,7 +107,7 @@ async def lifespan(app: FastAPI):
     # SHUTDOWN LOGIC
     # ========================================================================
     logger.info("=" * 70)
-    logger.info("ToolBrain Tracing API - Shutting Down")
+    logger.info("TraceBrain Tracing API - Shutting Down")
     logger.info("=" * 70)
     
     # Close database connections
@@ -126,9 +126,9 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI application with lifespan
 app = FastAPI(
-    title="ToolBrain Tracing API",
+    title="TraceBrain Tracing API",
     description="Observability platform for Agentic AI - Collect, store, and visualize execution traces",
-    version="2.0.0",
+    version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/api/openapi.json",
@@ -237,8 +237,8 @@ else:
     async def root_message():
         """Root endpoint when frontend is not available"""
         return {
-            "message": "ToolBrain Tracing API",
-            "version": "2.0.0",
+            "message": "TraceBrain Tracing API",
+            "version": "1.0.0",
             "status": "API only (frontend not built)",
             "api_docs": "/docs",
             "api_base": "/api/v1"

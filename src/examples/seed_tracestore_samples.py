@@ -3,15 +3,15 @@ Seed the TraceStore with sample trace files.
 
 This script demonstrates how to use the TraceStore to ingest
 agent execution traces from JSON files conforming to the
-ToolBrain Standard OTLP Trace Schema.
+TraceBrain Standard OTLP Trace Schema.
 
 Usage:
-        1. Start the backend (Docker): toolbrain-trace up
+        1. Start the backend (Docker): tracebrain-trace up
         2. Run this script: python src/examples/seed_tracestore_samples.py
              Optional overrides:
                  --backend sqlite|postgres
                  --db-url postgresql://user:pass@host:port/db
-                 --samples-dir "path/to/ToolBrain OTLP Trace Samples"
+                 --samples-dir "path/to/TraceBrain OTLP Trace Samples"
 """
 
 import argparse
@@ -24,8 +24,8 @@ from typing import List, Dict, Any
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from toolbrain_tracing.core.store import TraceStore
-from toolbrain_tracing.config import settings
+from tracebrain.core.store import TraceStore
+from tracebrain.config import settings
 
 # Configure logging
 logging.basicConfig(
@@ -82,14 +82,14 @@ def seed_tracestore(backend: str = "postgres", db_url: str = None, samples_dir: 
         db_url (str): Database connection URL.
     """
     print("=" * 70)
-    print("ToolBrain TraceStore Seeding Script")
+    print("TraceBrain TraceStore Seeding Script")
     print("=" * 70)
     print()
     
     # Determine the path to sample traces
     project_root = Path(__file__).parent.parent.parent
     if samples_dir is None:
-        samples_dir = project_root / "data" / "ToolBrain OTLP Trace Samples"
+        samples_dir = project_root / "data" / "TraceBrain OTLP Trace Samples"
     
     print(f"📂 Loading trace files from: {samples_dir}")
     print()
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--samples-dir",
         default=None,
-        help="Path to the sample JSON directory (default: ./data/ToolBrain OTLP Trace Samples)"
+        help="Path to the sample JSON directory (default: ./data/TraceBrain OTLP Trace Samples)"
     )
 
     args = parser.parse_args()
