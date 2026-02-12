@@ -13,9 +13,9 @@ import { useSettings } from "../../contexts/SettingsContext";
 
 const pages = [
   { label: "Dashboard", path: "/dashboard" },
-  { label: "Trace Explorer", path: "/explorer" },
+  { label: "Explorer", path: "/explorer" },
   { label: "History", path: "/history" },
-  { label: "Training Plan ", path: "/training" },
+  { label: "Roadmap", path: "/roadmap" },
   { label: "Settings", path: "/settings" },
 ];
 

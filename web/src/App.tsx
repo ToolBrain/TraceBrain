@@ -10,8 +10,8 @@ import DashboardPage from "./pages/DashboardPage";
 import ExplorerPage from "./pages/ExplorerPage";
 import HistoryPage from "./pages/HistoryPage";
 import { createAppTheme } from "./styles/theme";
-import TrainingPlanPage from "./pages/TrainingPlanPage";
 import { Librarian } from "./components/chat/Librarian";
+import RoadmapPage from "./pages/RoadmapPage";
 
 const App: React.FC = () => {
   const { settings } = useSettings();
@@ -58,7 +58,7 @@ const App: React.FC = () => {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/explorer" element={<ExplorerPage />} />
               <Route path="/history" element={<HistoryPage />} />
-              <Route path="/training" element={<TrainingPlanPage />} />
+              <Route path="/roadmap" element={<RoadmapPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/trace/:id" element={<TracePage />} />
               <Route path="*" element={<div>Page not found!</div>} />

@@ -1,4 +1,5 @@
 import type { Trace } from "../../types/trace";
+import type { CurriculumTask } from "../roadmap/types";
 
 export const fetchTraces = async (
   skip?: number,
@@ -91,4 +92,34 @@ export const evaluateTrace = async (id: string, judgeModelId: string) => {
   return response.json();
 };
 
-export const fetchEpisodes = async () => {};
+export const generateCurriculum = async (): Promise<{
+  status: string;
+  tasks_generated: number;
+}> => {
+  const response = await fetch("/api/curriculum/generate", { method: "POST" });
+  if (!response.ok)
+    throw new Error(`Failed to generate curriculum: ${response.status}`);
+  return response.json();
+};
+
+export const fetchCurriculumTasks = async (): Promise<CurriculumTask[]> => {
+  const response = await fetch("/api/curriculum");
+  if (!response.ok)
+    throw new Error(`Failed to fetch curriculum tasks: ${response.status}`);
+  return response.json();
+};
+
+export const fetchExportCurriculum = async (
+  format: "json" | "jsonl" = "json",
+): Promise<any> => {
+  const params = new URLSearchParams({ format });
+  const response = await fetch(`/api/curriculum/export?${params.toString()}`);
+  if (!response.ok)
+    throw new Error(`Failed to export curriculum: ${response.status}`);
+
+  if (format === "jsonl") {
+    return response.text();
+  }
+
+  return response.json();
+};

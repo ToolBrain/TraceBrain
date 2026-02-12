@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import { Search, Timeline, ViewList, Refresh } from "@mui/icons-material";
 import type { Episode, Trace } from "../../types/trace";
-import { fetchTraces, fetchEpisodes } from "../utils/api";
+import { fetchTraces, fetchEpisodeTraces } from "../utils/api";
 
 const TraceExplorer: React.FC = () => {
   const [viewMode, setViewMode] = useState<"traces" | "episodes">("traces");
@@ -60,6 +60,12 @@ const TraceExplorer: React.FC = () => {
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
             Trace Explorer
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Browse and search the{" "}
+            <Box component="span" sx={{ fontWeight: "bold" }}>
+              TraceStore
+            </Box>
           </Typography>
         </Box>
         <Tooltip title="Refresh">

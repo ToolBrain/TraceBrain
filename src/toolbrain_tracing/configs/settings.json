@@ -7,9 +7,9 @@
     "refreshInterval": 30
   },
   "llm": {
-    "model": "gpt-4o"
+    "model": "gemini-2.5-flash"
   },
   "chatLLM": {
-    "model": "gpt-4o"
+    "model": "gemini-2.5-flash"
   }
 }

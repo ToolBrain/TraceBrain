@@ -7,6 +7,10 @@ export const ALLOWED_STATUSES = [
   "failed",
   "success",
   "error",
+  "pending",
+  "high",
+  "medium",
+  "low",
 ] as const;
 
 export type ChipStatus = (typeof ALLOWED_STATUSES)[number];
@@ -39,14 +43,45 @@ const STATUS_STYLES: Record<
     border: "#f97316",
     label: "URGENT",
   },
-  error: { color: "#721c24", bg: "#fbe9eb", border: "#ff4d4f", label: "ERROR" },
+  error: {
+    color: "#721c24",
+    bg: "#fbe9eb",
+    border: "#ff4d4f",
+    label: "ERROR",
+  },
   failed: {
     color: "#991b1b",
     bg: "#fee2e2",
     border: "#ef4444",
     label: "FAILED",
   },
+  pending: {
+    color: "#92400e",
+    bg: "#fef3c7",
+    border: "#f59e0b",
+    label: "PENDING",
+  },
+  high: {
+    color: "#991b1b",
+    bg: "#fee2e2",
+    border: "#ef4444",
+    label: "HIGH",
+  },
+  medium: {
+    color: "#92400e",
+    bg: "#fed7aa",
+    border: "#f97316",
+    label: "MEDIUM",
+  },
+  low: {
+    color: "#1e40af",
+    bg: "#dbeafe",
+    border: "#3b82f6",
+    label: "LOW",
+  },
 };
+
+const PULSE_LIST: ChipStatus[] = ["needs_review", "high"];
 
 interface StatusChipProps {
   status: ChipStatus;
@@ -58,6 +93,7 @@ const StatusChip: React.FC<StatusChipProps> = ({
   secondary = false,
 }) => {
   const styles = STATUS_STYLES[status];
+  const shouldPulse = PULSE_LIST.includes(status);
 
   return (
     <Chip
@@ -73,7 +109,7 @@ const StatusChip: React.FC<StatusChipProps> = ({
         minWidth: 100,
         textAlign: "center",
         opacity: secondary ? 0.7 : 1,
-        ...(status === "needs_review" && {
+        ...(shouldPulse && {
           animation: "pulse 2s ease-in-out infinite",
           "@keyframes pulse": {
             "0%, 100%": { boxShadow: `0 0 0 0 ${styles.border}66` },

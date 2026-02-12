@@ -55,7 +55,10 @@ const RecentHistory: React.FC = () => {
       >
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
-            Recently Viewed
+            Recent History
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Browse your recently viewed
           </Typography>
         </Box>
         <Tooltip title="Clear History">

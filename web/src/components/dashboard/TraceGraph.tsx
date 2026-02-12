@@ -52,8 +52,10 @@ const formatTimeLabel = (time: Date, range: TimeRange): string => {
   }
 };
 
-// Helper function to get trace start and end times from its spans
-const getTraceTimeBounds = (trace: Trace): { start: Date; end: Date } | null => {
+// Function to get trace start and end times from its spans
+const getTraceTimeBounds = (
+  trace: Trace,
+): { start: Date; end: Date } | null => {
   if (trace.spans.length === 0) return null;
 
   const spanTimes = trace.spans.map((span) => ({
@@ -110,7 +112,7 @@ const TraceGraph: React.FC<TraceGraphProps> = ({ traces }) => {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hour12: true,
   });
 
   const endTime = timeSlots[timeSlots.length - 1].toLocaleString("en-GB", {
@@ -119,7 +121,7 @@ const TraceGraph: React.FC<TraceGraphProps> = ({ traces }) => {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hour12: true,
   });
 
   // Navigate backward or forward in time
@@ -127,12 +129,12 @@ const TraceGraph: React.FC<TraceGraphProps> = ({ traces }) => {
     const step = getNavigationStep(timeRange);
     const multiplier = direction === "prev" ? -1 : 1;
     const newDate = new Date(endDate.getTime() + step * multiplier);
-    
+
     // Prevent navigating beyond the current time
     if (direction === "next" && newDate > new Date()) {
       return;
     }
-    
+
     setEndDate(newDate);
   };
 
