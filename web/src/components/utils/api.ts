@@ -123,3 +123,25 @@ export const fetchExportCurriculum = async (
 
   return response.json();
 };
+
+export const signalTraceIssue = async (traceId: string, reason: string) => {
+  try {
+    const response = await fetch(`/api/traces/${traceId}/signal`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reason }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Failed to signal trace");
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};

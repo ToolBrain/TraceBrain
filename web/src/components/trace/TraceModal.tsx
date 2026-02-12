@@ -9,10 +9,16 @@ import {
   Box,
   CircularProgress,
   Alert,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import { Close, ErrorOutline } from "@mui/icons-material";
 import FeedbackForm from "./FeedbackForm";
-import { submitTraceFeedback, evaluateTrace } from "../utils/api";
+import {
+  submitTraceFeedback,
+  evaluateTrace,
+  signalTraceIssue,
+} from "../utils/api";
 import { useSettings } from "../../contexts/SettingsContext";
 
 interface TraceModalProps {
@@ -27,6 +33,7 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<boolean>(false);
+  const [markForReview, setMarkForReview] = useState(false);
   const { settings } = useSettings();
 
   useEffect(() => {
@@ -36,7 +43,6 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
         setError(false);
         try {
           const data = await evaluateTrace(id, settings.llm.model);
-
           setRating(data.rating);
           setFeedback(data.feedback);
         } catch (error) {
@@ -50,6 +56,14 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
 
     fetchEvaluation();
   }, [type, open, id, settings.llm.model]);
+
+  useEffect(() => {
+    if (rating !== null && rating <= 1) {
+      setMarkForReview(true);
+    } else {
+      setMarkForReview(false);
+    }
+  }, [rating]);
 
   const handleRetry = () => {
     setError(false);
@@ -70,7 +84,13 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
 
   const handleSubmitFeedback = async () => {
     if (rating === null) return;
-    submitTraceFeedback(id, rating, feedback);
+
+    await submitTraceFeedback(id, rating, feedback);
+
+    if (rating <= 2 && markForReview) {
+      await signalTraceIssue(id, feedback);
+    }
+
     onClose();
   };
 
@@ -89,8 +109,21 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
               onRatingChange={setRating}
               onFeedbackChange={setFeedback}
             />
+
+            {rating !== null && rating <= 2 && (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={markForReview}
+                    onChange={(e) => setMarkForReview(e.target.checked)}
+                  />
+                }
+                label="Mark for review"
+              />
+            )}
           </Box>
         );
+
       case "evaluate":
         if (loading) {
           return (
@@ -166,6 +199,18 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
               onRatingChange={setRating}
               onFeedbackChange={setFeedback}
             />
+
+            {rating !== null && rating <= 2 && (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={markForReview}
+                    onChange={(e) => setMarkForReview(e.target.checked)}
+                  />
+                }
+                label="Mark for review"
+              />
+            )}
           </Box>
         );
     }
@@ -176,34 +221,18 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
       return null;
     }
 
-    switch (type) {
-      case "feedback":
-        return (
-          <>
-            <Button onClick={onClose}>Cancel</Button>
-            <Button
-              variant="contained"
-              onClick={handleSubmitFeedback}
-              disabled={rating === null}
-            >
-              Submit
-            </Button>
-          </>
-        );
-      case "evaluate":
-        return (
-          <>
-            <Button onClick={onClose}>Cancel</Button>
-            <Button
-              variant="contained"
-              onClick={handleSubmitFeedback}
-              disabled={rating === null}
-            >
-              Submit
-            </Button>
-          </>
-        );
-    }
+    return (
+      <>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button
+          variant="contained"
+          onClick={handleSubmitFeedback}
+          disabled={rating === null}
+        >
+          Submit
+        </Button>
+      </>
+    );
   };
 
   return (
@@ -231,7 +260,6 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
       </IconButton>
 
       <DialogContent>{renderContent()}</DialogContent>
-
       <DialogActions sx={{ px: 3, pb: 2 }}>{renderActions()}</DialogActions>
     </Dialog>
   );
