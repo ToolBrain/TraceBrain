@@ -6,6 +6,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HomeNavCard from "./HomeNavCard";
 import HomeTitle from "./HomeTitle";
+import { Map } from "@mui/icons-material";
 
 const NAV_ITEMS = [
   {
@@ -29,11 +30,11 @@ const NAV_ITEMS = [
     Icon: HistoryIcon,
   },
   {
-    title: "Settings",
+    title: "Roadmap",
     description:
-      "Configure your environment, AI models, and customise your dashboard preferences.",
-    route: "/settings",
-    Icon: SettingsIcon,
+      "Generate sample training scenarios for your agents to learn from.",
+    route: "/roadmap",
+    Icon: Map,
   },
 ];
 
