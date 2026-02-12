@@ -19,7 +19,7 @@ const HomeTitle: React.FC = () => {
           WebkitTextFillColor: "transparent",
         }}
       >
-        BRAINTRACE
+        TRACEBRAIN
       </Typography>
 
       <Box

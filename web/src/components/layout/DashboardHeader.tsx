@@ -70,7 +70,7 @@ const DashboardHeader: React.FC = () => {
                   userSelect: "none",
                 }}
               >
-                BRAINTRACE
+                TRACEBRAIN
               </Typography>
             </Box>
 
