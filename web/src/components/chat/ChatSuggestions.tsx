@@ -53,15 +53,10 @@ export const ChatSuggestions: React.FC<ChatSuggestionsProps> = ({
               borderColor: "divider",
               borderRadius: 2,
               cursor: "pointer",
-              transition: "all 0.2s ease",
               "&:hover": {
                 bgcolor: "action.hover",
                 borderColor: "primary.main",
-                transform: "translateY(-1px)",
                 boxShadow: 1,
-              },
-              "&:active": {
-                transform: "translateY(0px)",
               },
             }}
           >

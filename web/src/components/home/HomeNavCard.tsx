@@ -31,15 +31,9 @@ const HomeNavCard: React.FC<HomeNavCardProps> = ({
         border: "1px solid",
         borderColor: "divider",
         backgroundColor: "background.paper",
-        transition: "all 0.2s ease",
         "&:hover": {
           borderColor: "primary.main",
           backgroundColor: "action.hover",
-          transform: "translateY(-2px)",
-          boxShadow: 4,
-        },
-        "&:active": {
-          transform: "translateY(0px)",
         },
         userSelect: "none",
       }}
