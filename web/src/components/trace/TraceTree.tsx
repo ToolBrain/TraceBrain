@@ -209,7 +209,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
           borderColor: "divider",
           display: "flex",
           gap: 1,
-          justifyContent: "center",
+          justifyContent: "end",
           flexWrap: "wrap",
         }}
       >

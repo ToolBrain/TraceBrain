@@ -129,7 +129,7 @@ const Roadmap: React.FC = () => {
             Roadmap
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Generate sample scenarios to learn from
+            Generate sample tasks for your agents
           </Typography>
         </Box>
 

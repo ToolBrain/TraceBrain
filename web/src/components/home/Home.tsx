@@ -3,7 +3,6 @@ import { Box } from "@mui/material";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import HistoryIcon from "@mui/icons-material/History";
-import SettingsIcon from "@mui/icons-material/Settings";
 import HomeNavCard from "./HomeNavCard";
 import HomeTitle from "./HomeTitle";
 import { Map } from "@mui/icons-material";
@@ -32,7 +31,7 @@ const NAV_ITEMS = [
   {
     title: "Roadmap",
     description:
-      "Generate sample training scenarios for your agents to learn from.",
+      "Generate sample training tasks for your agents to learn from.",
     route: "/roadmap",
     Icon: Map,
   },
