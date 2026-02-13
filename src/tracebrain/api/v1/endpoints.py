@@ -854,7 +854,7 @@ def natural_language_query(query: NaturalLanguageQuery):
             answer=f"Sorry, I encountered an error processing your query: {str(e)}\n\nPlease try rephrasing your question or check the server logs.",
             session_id=session_id,
             suggestions=[],
-            sources=None,
+            sources=[],
         )
 
 
