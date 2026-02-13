@@ -153,7 +153,7 @@ class TraceListOut(BaseModel):
 class FeedbackIn(BaseModel):
     """Request model for adding feedback to a trace."""
     
-    rating: Optional[int] = Field(None, description="Rating from 1-5")
+    rating: Optional[int] = Field(None, ge=1, le=5, description="Rating from 1-5")
     comment: Optional[str] = Field(None, description="Text comment or feedback")
     tags: Optional[List[str]] = Field(None, description="Tags for categorizing feedback")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
