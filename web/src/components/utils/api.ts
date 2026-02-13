@@ -86,7 +86,8 @@ export const evaluateTrace = async (id: string, judgeModelId: string) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to evaluate trace");
+    const errorData = await response.json();
+    throw new Error(errorData.detail);
   }
 
   return response.json();

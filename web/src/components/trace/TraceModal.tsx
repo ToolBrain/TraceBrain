@@ -32,22 +32,23 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
   const [rating, setRating] = useState<number | null>(null);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
   const [markForReview, setMarkForReview] = useState(false);
   const { settings } = useSettings();
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     const fetchEvaluation = async () => {
       if (type === "evaluate" && open) {
         setLoading(true);
-        setError(false);
+        setError("");
         try {
           const data = await evaluateTrace(id, settings.llm.model);
           setRating(data.rating);
           setFeedback(data.feedback);
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to fetch evaluation:", error);
-          setError(true);
+          setError(error.message);
         } finally {
           setLoading(false);
         }
@@ -66,16 +67,16 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
   }, [rating]);
 
   const handleRetry = () => {
-    setError(false);
+    setError("");
     setLoading(true);
     evaluateTrace(id, settings.llm.model)
       .then((data) => {
         setRating(data.rating);
         setFeedback(data.feedback);
       })
-      .catch((error) => {
+      .catch((error: any) => {
         console.error("Failed to fetch evaluation:", error);
-        setError(true);
+        setError(error.message);
       })
       .finally(() => {
         setLoading(false);
@@ -175,13 +176,40 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   Evaluation Failed
                 </Typography>
-                <Alert severity="error" sx={{ width: "100%" }}>
+                <Typography variant="body2" color="text.secondary">
                   Something went wrong while generating the evaluation. Please
                   try again.
-                </Alert>
-                <Button variant="contained" size="large" onClick={handleRetry}>
-                  Retry
-                </Button>
+                </Typography>
+                {showDetails && (
+                  <Alert
+                    severity="error"
+                    sx={{
+                      width: "100%",
+                      whiteSpace: "pre-wrap",
+                      maxHeight: "150px",
+                      wordBreak: "break-word",
+                      overflow: "auto",
+                    }}
+                  >
+                    {error}
+                  </Alert>
+                )}
+                <Box sx={{ display: "flex", gap: 2 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setShowDetails(!showDetails)}
+                  >
+                    {showDetails ? "Hide" : "Show"} Details
+                  </Button>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={handleRetry}
+                  >
+                    Retry
+                  </Button>
+                </Box>
               </Box>
             </Box>
           );
