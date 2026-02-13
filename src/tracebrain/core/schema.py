@@ -12,7 +12,7 @@ Usage:
 
 from enum import Enum
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 class TraceBrainAttributes(str, Enum):
     """
@@ -61,8 +61,8 @@ class Span(BaseModel):
     # Attributes hold the semantic data (tracebrain.* fields)
     attributes: Dict[str, Any] = Field(default_factory=dict)
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "span_id": "00f067aa0ba902b7",
                 "parent_id": None,
@@ -76,6 +76,7 @@ class Span(BaseModel):
                 }
             }
         }
+    )
 
 class Trace(BaseModel):
     """
@@ -88,8 +89,8 @@ class Trace(BaseModel):
     )
     spans: List[Span] = Field(default_factory=list, description="Ordered list of spans")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
                 "attributes": {
@@ -99,6 +100,7 @@ class Trace(BaseModel):
                 "spans": []
             }
         }
+    )
 
 # --- Helper Utilities ---
 

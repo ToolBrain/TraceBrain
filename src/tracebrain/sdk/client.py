@@ -25,8 +25,9 @@ Usage:
 
 import logging
 import json
-from datetime import datetime
-from typing import Dict, Any, Optional, List
+import uuid
+from datetime import datetime, timezone
+from typing import Dict, Any, Optional, List, Iterator
 from urllib.parse import urljoin
 
 import requests
@@ -140,6 +141,35 @@ class TraceClient:
             str: Full URL
         """
         return urljoin(self.base_url + '/', path.lstrip('/'))
+
+    @staticmethod
+    def _iso_now() -> str:
+        return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    @staticmethod
+    def _ensure_trace_id(trace_data: Dict[str, Any]) -> None:
+        if not trace_data.get("trace_id"):
+            trace_data["trace_id"] = uuid.uuid4().hex
+
+    @staticmethod
+    def _has_error_span(trace_data: Dict[str, Any]) -> bool:
+        for span in trace_data.get("spans") or []:
+            attrs = (span or {}).get("attributes") or {}
+            if str(attrs.get("otel.status_code")).upper() == "ERROR":
+                return True
+        return False
+
+    @staticmethod
+    def _mark_failed_if_error(trace_data: Dict[str, Any]) -> None:
+        if not TraceClient._has_error_span(trace_data):
+            return
+        attributes = trace_data.get("attributes") or {}
+        if attributes.get("tracebrain.trace.status") != "failed":
+            attributes["tracebrain.trace.status"] = "failed"
+        trace_data["attributes"] = attributes
+
+    def trace_scope(self, episode_id: str, system_prompt: str) -> "TraceScope":
+        return TraceScope(self, episode_id=episode_id, system_prompt=system_prompt)
     
     def log_trace(self, trace_data: Dict[str, Any]) -> bool:
         """
@@ -182,6 +212,8 @@ class TraceClient:
             if not success:
                 print("Failed to log trace, but application continues")
         """
+        self._ensure_trace_id(trace_data)
+        self._mark_failed_if_error(trace_data)
         url = self._make_url("/api/v1/traces")
         
         try:
@@ -456,6 +488,46 @@ class TraceClient:
     def __repr__(self) -> str:
         """String representation of the client."""
         return f"TraceClient(base_url='{self.base_url}')"
+
+
+class TraceScope:
+    """Context manager for fail-safe trace logging."""
+
+    def __init__(self, client: TraceClient, episode_id: str, system_prompt: str):
+        self._client = client
+        self._trace_data: Dict[str, Any] = {
+            "trace_id": uuid.uuid4().hex,
+            "attributes": {
+                TraceBrainAttributes.SYSTEM_PROMPT: system_prompt,
+                TraceBrainAttributes.EPISODE_ID: episode_id,
+            },
+            "spans": [],
+        }
+
+    def __enter__(self) -> Dict[str, Any]:
+        return self._trace_data
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        if exc_type is None:
+            self._client.log_trace(self._trace_data)
+            return False
+
+        message = str(exc_val) if exc_val else "Unhandled exception"
+        crash_span = {
+            "span_id": uuid.uuid4().hex[:16],
+            "parent_id": None,
+            "name": "Agent Crash",
+            "start_time": TraceClient._iso_now(),
+            "end_time": TraceClient._iso_now(),
+            "attributes": {
+                "otel.status_code": "ERROR",
+                "otel.status_description": message,
+            },
+        }
+        self._trace_data.setdefault("spans", []).append(crash_span)
+        TraceClient._mark_failed_if_error(self._trace_data)
+        self._client.log_trace(self._trace_data)
+        return False
 
     @staticmethod
     def _parse_iso(timestamp: Optional[str]) -> Optional[datetime]:

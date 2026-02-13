@@ -22,7 +22,7 @@ import json
 
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import Response
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer, ConfigDict
 
 from sqlalchemy import func, cast, Integer
 from sqlalchemy.dialects.postgresql import JSONB
@@ -69,8 +69,8 @@ class FeedbackOut(BaseModel):
     timestamp: Optional[str] = Field(None, description="When feedback was added")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "rating": 5,
                 "comment": "Great reasoning!",
@@ -79,6 +79,7 @@ class FeedbackOut(BaseModel):
                 "metadata": {"reviewer": "user123"}
             }
         }
+    )
 
 
 class SpanOut(BaseModel):
@@ -96,9 +97,9 @@ class SpanOut(BaseModel):
         """Convert datetime to ISO 8601 string for JSON serialization."""
         return dt.isoformat() if dt else None
     
-    class Config:
-        from_attributes = True  # Formerly orm_mode in Pydantic v1
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "span_id": "1001a2b3c4d5e6f7",
                 "parent_id": None,
@@ -112,6 +113,7 @@ class SpanOut(BaseModel):
                 }
             }
         }
+    )
 
 
 class TraceOut(BaseModel):
@@ -126,9 +128,9 @@ class TraceOut(BaseModel):
     feedbacks: List[FeedbackOut] = Field(default_factory=list, description="List of user feedback on trace quality")
     spans: List[SpanOut] = Field(default_factory=list, description="List of spans in this trace")
     
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "trace_id": "a1b2c3d4e5f6a7b8",
                 "attributes": {
@@ -140,6 +142,7 @@ class TraceOut(BaseModel):
                 "spans": []
             }
         }
+    )
 
 
 class TraceListOut(BaseModel):
@@ -158,8 +161,8 @@ class FeedbackIn(BaseModel):
     tags: Optional[List[str]] = Field(None, description="Tags for categorizing feedback")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "rating": 5,
                 "comment": "Great reasoning! The agent handled the multi-step task perfectly.",
@@ -167,6 +170,7 @@ class FeedbackIn(BaseModel):
                 "metadata": {"reviewer": "user123", "session_id": "abc"}
             }
         }
+    )
 
 
 class FeedbackResponse(BaseModel):
@@ -194,7 +198,7 @@ class NaturalLanguageResponse(BaseModel):
     answer: str = Field(..., description="The AI's answer")
     session_id: str = Field(..., description="Conversation session ID")
     suggestions: Optional[List[Suggestion]] = Field(default_factory=list)
-    sources: Optional[List[str]] = Field(None, description="Trace IDs referenced in the answer")
+    sources: List[str] = Field(default_factory=list, description="Trace IDs referenced in the answer")
 
 
 class ChatMessageOut(BaseModel):

@@ -214,6 +214,13 @@ class LibrarianAgent:
                 normalized.append({"label": label, "value": value})
         return normalized
 
+    def _normalize_sources(self, sources: Any, answer: str) -> List[str]:
+        if isinstance(sources, list):
+            cleaned = [str(item).strip() for item in sources if str(item).strip()]
+            return cleaned
+        extracted = self._extract_sources(answer)
+        return extracted if extracted else []
+
     def _extract_sql(self, text: str) -> Optional[str]:
         if not text:
             return None
@@ -251,7 +258,7 @@ class LibrarianAgent:
             return {
                 "answer": "Librarian is not available. Check provider configuration and API keys.",
                 "suggestions": [],
-                "sources": None,
+                "sources": [],
             }
 
         # Select provider with optional model override
@@ -312,14 +319,14 @@ class LibrarianAgent:
 
                 answer = str(parsed.get("answer", "")).strip() or "No response."
                 suggestions = self._normalize_suggestions(parsed.get("suggestions"))
-                sources = parsed.get("sources") or self._extract_sources(answer)
+                sources = self._normalize_sources(parsed.get("sources"), answer)
                 result = {"answer": answer, "suggestions": suggestions, "sources": sources}
                 self.store.save_chat_message(session_id, "assistant", answer)
                 return result
 
             fallback = "Unable to generate a valid SQL query. Please refine the question."
             self.store.save_chat_message(session_id, "assistant", fallback)
-            return {"answer": fallback, "suggestions": [], "sources": None}
+            return {"answer": fallback, "suggestions": [], "sources": []}
 
         session = provider.start_chat(system_prompt, self.tools)
         response = provider.send_user_message(session, user_content)
@@ -375,7 +382,7 @@ class LibrarianAgent:
 
         answer = str(parsed.get("answer", "")).strip() or "No response."
         suggestions = self._normalize_suggestions(parsed.get("suggestions"))
-        sources = parsed.get("sources") or self._extract_sources(answer)
+        sources = self._normalize_sources(parsed.get("sources"), answer)
 
         result = {
             "answer": answer,
