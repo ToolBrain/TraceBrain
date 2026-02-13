@@ -45,7 +45,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch("/api/v1/settings")
       .then((res) => {
         if (!res.ok) throw new Error("Settings not found");
         return res.json();
@@ -64,7 +64,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     setSettings((prev) => {
       const updated = produce(prev, updater);
 
-      fetch("/api/settings", {
+      fetch("/api/v1/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),

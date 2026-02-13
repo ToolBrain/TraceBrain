@@ -9,7 +9,7 @@ export const fetchTraces = async (
   if (skip !== undefined) params.append("skip", String(skip));
   if (limit !== undefined) params.append("limit", String(limit));
 
-  const url = `/api/traces?${params.toString()}`;
+  const url = `/api/v1/traces?${params.toString()}`;
 
   const response = await fetch(url);
   if (!response.ok)
@@ -21,7 +21,7 @@ export const fetchTraces = async (
 
 export const fetchTrace = async (id: string): Promise<Trace[]> => {
   try {
-    const response = await fetch(`/api/traces/${id}`);
+    const response = await fetch(`/api/v1/traces/${id}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch trace: ${response.status}`);
     }
@@ -35,7 +35,7 @@ export const fetchTrace = async (id: string): Promise<Trace[]> => {
 
 export const fetchEpisodeTraces = async (id: string): Promise<Trace[]> => {
   try {
-    const response = await fetch(`/api/episodes/${id}/traces`);
+    const response = await fetch(`/api/v1/episodes/${id}/traces`);
     if (!response.ok) {
       throw new Error(`Failed to fetch episode traces: ${response.status}`);
     }
@@ -59,7 +59,7 @@ export const submitTraceFeedback = async (
     if (tags) body.tags = tags;
     if (metadata) body.metadata = metadata;
 
-    const response = await fetch(`/api/traces/${id}/feedback`, {
+    const response = await fetch(`/api/v1/traces/${id}/feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -75,7 +75,7 @@ export const submitTraceFeedback = async (
 };
 
 export const evaluateTrace = async (id: string, judgeModelId: string) => {
-  const response = await fetch(`/api/ai_evaluate/${id}`, {
+  const response = await fetch(`/api/v1/ai_evaluate/${id}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -97,14 +97,16 @@ export const generateCurriculum = async (): Promise<{
   status: string;
   tasks_generated: number;
 }> => {
-  const response = await fetch("/api/curriculum/generate", { method: "POST" });
+  const response = await fetch("/api/v1/curriculum/generate", {
+    method: "POST",
+  });
   if (!response.ok)
     throw new Error(`Failed to generate curriculum: ${response.status}`);
   return response.json();
 };
 
 export const fetchCurriculumTasks = async (): Promise<CurriculumTask[]> => {
-  const response = await fetch("/api/curriculum");
+  const response = await fetch("/api/v1/curriculum");
   if (!response.ok)
     throw new Error(`Failed to fetch curriculum tasks: ${response.status}`);
   return response.json();
@@ -114,7 +116,9 @@ export const fetchExportCurriculum = async (
   format: "json" | "jsonl" = "json",
 ): Promise<any> => {
   const params = new URLSearchParams({ format });
-  const response = await fetch(`/api/curriculum/export?${params.toString()}`);
+  const response = await fetch(
+    `/api/v1/curriculum/export?${params.toString()}`,
+  );
   if (!response.ok)
     throw new Error(`Failed to export curriculum: ${response.status}`);
 
@@ -127,7 +131,7 @@ export const fetchExportCurriculum = async (
 
 export const signalTraceIssue = async (traceId: string, reason: string) => {
   try {
-    const response = await fetch(`/api/traces/${traceId}/signal`, {
+    const response = await fetch(`/api/v1/traces/${traceId}/signal`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

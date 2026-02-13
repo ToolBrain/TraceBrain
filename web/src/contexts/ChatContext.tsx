@@ -22,7 +22,7 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | null>(null);
 
-const chatEngine = new ChatEngine("/api");
+const chatEngine = new ChatEngine("/api/v1");
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
