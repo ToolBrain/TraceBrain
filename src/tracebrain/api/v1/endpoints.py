@@ -181,6 +181,7 @@ class NaturalLanguageQuery(BaseModel):
     """Request model for natural language queries."""
     query: str = Field(..., description="Natural language question about traces")
     session_id: Optional[str] = Field(None, description="Conversation session ID")
+    model_id: Optional[str] = Field(None, description="Override LLM model for this request (e.g., 'gemini-2.0-flash-exp', 'gpt-4o')")
 
 
 class Suggestion(BaseModel):

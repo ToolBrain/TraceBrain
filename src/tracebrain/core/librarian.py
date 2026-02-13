@@ -16,7 +16,7 @@ import re
 import sqlparse
 
 from tracebrain.config import settings
-from tracebrain.core.llm_providers import select_provider, is_provider_available
+from tracebrain.core.llm_providers import select_provider, is_provider_available, BaseProvider
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,6 @@ class LibrarianAgent:
     def __init__(self, store):
         self.store = store
         self.tools = _build_tool_specs()
-        self.provider = select_provider()
 
     def _system_prompt(self) -> str:
         return (
@@ -171,7 +170,7 @@ class LibrarianAgent:
             "sources": [],
         }
 
-    def _abstain_response_from_llm(self, user_query: str, history_text: str) -> Dict[str, Any]:
+    def _abstain_response_from_llm(self, user_query: str, history_text: str, provider: BaseProvider) -> Dict[str, Any]:
         system_prompt = (
             "You are the TraceBrain TraceStore Librarian. "
             "The database returned EMPTY_RESULT. "
@@ -188,9 +187,9 @@ class LibrarianAgent:
             "Return JSON only."
         )
         try:
-            session = self.provider.start_chat(system_prompt, [])
-            response = self.provider.send_user_message(session, user_content)
-            answer_text = self.provider.extract_text(response)
+            session = provider.start_chat(system_prompt, [])
+            response = provider.send_user_message(session, user_content)
+            answer_text = provider.extract_text(response)
             parsed = self._extract_json(answer_text)
 
             answer = str(parsed.get("answer", "")).strip()
@@ -240,14 +239,23 @@ class LibrarianAgent:
         results = self.store.search_similar_experiences(query, min_rating=min_rating, limit=limit)
         return json.dumps(results, default=str)
 
-    def query(self, user_query: str, session_id: str) -> Dict[str, Any]:
-        """Process a natural language query using the configured provider."""
+    def query(self, user_query: str, session_id: str, model_id: Optional[str] = None) -> Dict[str, Any]:
+        """Process a natural language query using the configured provider.
+        
+        Args:
+            user_query: Natural language question about traces
+            session_id: Conversation session ID for context
+            model_id: Optional model override (e.g., 'gpt-4o', 'gemini-2.0-flash-exp')
+        """
         if not LIBRARIAN_AVAILABLE:
             return {
                 "answer": "Librarian is not available. Check provider configuration and API keys.",
                 "suggestions": [],
                 "sources": None,
             }
+
+        # Select provider with optional model override
+        provider = select_provider(model_override=model_id)
 
         history = self.store.get_chat_history(session_id)
         history_text = self._format_history(history)
@@ -265,16 +273,17 @@ class LibrarianAgent:
 
         logger.debug("Librarian system prompt:\n%s", system_prompt)
         logger.debug("Librarian user content:\n%s", user_content)
+        logger.debug("Librarian using provider: %s (model: %s)", provider.name, getattr(provider, 'model', getattr(provider, 'model_name', 'unknown')))
 
-        if not self.provider.supports_tools:
-            session = self.provider.start_chat(system_prompt, [])
+        if not provider.supports_tools:
+            session = provider.start_chat(system_prompt, [])
             prompt = (
                 user_content
                 + "\n\nProvide a SQL SELECT query only (or JSON with key 'sql')."
             )
             for _ in range(3):
-                response = self.provider.send_user_message(session, prompt)
-                text = self.provider.extract_text(response)
+                response = provider.send_user_message(session, prompt)
+                text = provider.extract_text(response)
                 sql_query = self._extract_sql(text)
                 if not sql_query:
                     prompt = "Failed to parse SQL. Please output a single SELECT query."
@@ -285,7 +294,7 @@ class LibrarianAgent:
                     prompt = f"SQL error: {tool_result}. Please fix and output a new SELECT query."
                     continue
                 if tool_result.startswith("EMPTY_RESULT"):
-                    result = self._abstain_response_from_llm(user_query, history_text)
+                    result = self._abstain_response_from_llm(user_query, history_text, provider)
                     self.store.save_chat_message(session_id, "assistant", result["answer"])
                     return result
 
@@ -294,8 +303,8 @@ class LibrarianAgent:
                     "answer, suggestions, sources:\n"
                     f"{tool_result}"
                 )
-                response = self.provider.send_user_message(session, prompt)
-                answer_text = self.provider.extract_text(response)
+                response = provider.send_user_message(session, prompt)
+                answer_text = provider.extract_text(response)
                 try:
                     parsed = self._extract_json(answer_text)
                 except Exception:
@@ -312,11 +321,11 @@ class LibrarianAgent:
             self.store.save_chat_message(session_id, "assistant", fallback)
             return {"answer": fallback, "suggestions": [], "sources": None}
 
-        session = self.provider.start_chat(system_prompt, self.tools)
-        response = self.provider.send_user_message(session, user_content)
+        session = provider.start_chat(system_prompt, self.tools)
+        response = provider.send_user_message(session, user_content)
 
         for _ in range(3):
-            tool_calls = self.provider.extract_tool_calls(response)
+            tool_calls = provider.extract_tool_calls(response)
             if not tool_calls:
                 break
 
@@ -344,7 +353,7 @@ class LibrarianAgent:
                 else:
                     tool_result = "UNKNOWN_TOOL"
 
-                response = self.provider.send_tool_result(
+                response = provider.send_tool_result(
                     session,
                     tool_name=tool_name,
                     tool_result=tool_result,
@@ -354,11 +363,11 @@ class LibrarianAgent:
                 if tool_name == "run_sql_query" and tool_result.startswith("EXECUTION_FAILED"):
                     break
                 if tool_name == "run_sql_query" and tool_result.startswith("EMPTY_RESULT"):
-                    result = self._abstain_response_from_llm(user_query, history_text)
+                    result = self._abstain_response_from_llm(user_query, history_text, provider)
                     self.store.save_chat_message(session_id, "assistant", result["answer"])
                     return result
 
-        answer_text = self.provider.extract_text(response)
+        answer_text = provider.extract_text(response)
         try:
             parsed = self._extract_json(answer_text)
         except Exception:
