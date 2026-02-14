@@ -22,11 +22,19 @@ import {
 } from "../utils/api";
 import { useSettings } from "../../contexts/SettingsContext";
 
+interface AIEvaluation {
+  rating: number;
+  confidence: number;
+  feedback: string;
+  status: string;
+}
+
 interface TraceModalProps {
   open: boolean;
   onClose: () => void;
   type: "feedback" | "evaluate";
   id: string;
+  evaluation?: AIEvaluation;
 }
 
 const ReviewToggle = ({
@@ -55,7 +63,13 @@ const ReviewToggle = ({
   </Box>
 );
 
-const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
+const TraceModal: React.FC<TraceModalProps> = ({
+  open,
+  onClose,
+  type,
+  id,
+  evaluation,
+}) => {
   const [rating, setRating] = useState<number | null>(null);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
@@ -92,6 +106,13 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, type, id }) => {
       setMarkForReview(false);
     }
   }, [rating]);
+
+  useEffect(() => {
+    if (type === "feedback" && evaluation) {
+      setRating(evaluation.rating);
+      setFeedback(evaluation.feedback);
+    }
+  }, [evaluation]);
 
   const handleRetry = () => {
     setError("");

@@ -27,7 +27,7 @@ const TraceVisualizer: React.FC<TraceVisualizerProps> = ({ traces }) => {
 
     while (current?.parent_id) {
       nodesToExpand.add(current.parent_id);
-      current = allSpans.find((s) => s.span_id === current!.parent_id);
+      current = allSpans.find((s) => s.span_id === current?.parent_id);
     }
 
     setExpandedNodes(nodesToExpand);

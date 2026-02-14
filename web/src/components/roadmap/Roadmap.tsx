@@ -9,9 +9,13 @@ import {
   MenuItem,
   IconButton,
 } from "@mui/material";
-import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import { ArrowDownward, ArrowUpward, Refresh } from "@mui/icons-material";
+import {
+  ArrowDownward,
+  ArrowUpward,
+  AutoAwesome,
+  FileDownloadOutlined,
+  Refresh,
+} from "@mui/icons-material";
 import CurriculumList from "./CurriculumList";
 import {
   generateCurriculum,
@@ -233,7 +237,7 @@ const Roadmap: React.FC = () => {
             {/* JSON export button */}
             <Button
               variant="outlined"
-              startIcon={<FileDownloadOutlinedIcon />}
+              startIcon={<FileDownloadOutlined />}
               onClick={handleExportJSON}
               disabled={isLoading || tasks.length === 0}
             >
@@ -243,7 +247,7 @@ const Roadmap: React.FC = () => {
             {/* JSONL export button */}
             <Button
               variant="outlined"
-              startIcon={<FileDownloadOutlinedIcon />}
+              startIcon={<FileDownloadOutlined />}
               onClick={handleExportJSONL}
               disabled={isLoading || tasks.length === 0}
             >
@@ -253,7 +257,7 @@ const Roadmap: React.FC = () => {
             {/* Generate tasks button */}
             <Button
               variant="contained"
-              startIcon={<AutoAwesomeIcon />}
+              startIcon={<AutoAwesome />}
               onClick={handleGenerate}
               disabled={isLoading}
             >

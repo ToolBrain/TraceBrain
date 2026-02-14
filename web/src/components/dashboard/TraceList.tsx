@@ -24,6 +24,7 @@ import React from "react";
 import { spanGetOutput, spanHasError } from "../utils/spanUtils";
 import StatusChip, { ALLOWED_STATUSES, type ChipStatus } from "./StatusChip";
 import { traceGetPriority, traceGetStatus } from "../utils/traceUtils";
+import ConfidenceIndicator from "./ConfidenceIndicator";
 
 interface TraceListProps {
   traces: Trace[];
@@ -47,7 +48,6 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
   };
 
   const getTraceStartTime = (trace: Trace): string => {
-    if (trace.spans.length === 0) return trace.created_at;
     const startTimes = trace.spans.map((span) =>
       new Date(span.start_time).getTime(),
     );
@@ -55,7 +55,6 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
   };
 
   const getTraceDuration = (trace: Trace): number => {
-    if (trace.spans.length === 0) return 0;
     const spanTimes = trace.spans.map((span) => ({
       start: new Date(span.start_time).getTime(),
       end: new Date(span.end_time).getTime(),
@@ -67,7 +66,12 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
 
   const getTraceStatus = (trace: Trace): ChipStatus => {
     const status = traceGetStatus(trace);
-    return ALLOWED_STATUSES.includes(status) ? status : "running";
+
+    if (!status) return "running";
+
+    return (ALLOWED_STATUSES as readonly string[]).includes(status)
+      ? (status as ChipStatus)
+      : "running";
   };
 
   const toggleTrace = (traceId: string) => {
@@ -115,23 +119,26 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
             }}
           >
             <TableCell sx={{ width: "2%", fontWeight: 600 }}></TableCell>
-            <TableCell sx={{ width: "15%", fontWeight: 600 }}>
+            <TableCell sx={{ width: "16%", fontWeight: 600 }}>
               Timestamp
             </TableCell>
-            <TableCell sx={{ width: "20%", fontWeight: 600 }}>Type</TableCell>
-            <TableCell sx={{ width: "20%", fontWeight: 600 }}>Status</TableCell>
-            <TableCell sx={{ width: "20%", fontWeight: 600 }}>
+            <TableCell sx={{ width: "12%", fontWeight: 600 }}>Type</TableCell>
+            <TableCell sx={{ width: "15%", fontWeight: 600 }}>Status</TableCell>
+            <TableCell sx={{ width: "15%", fontWeight: 600 }}>
               Duration
             </TableCell>
-            <TableCell sx={{ width: "20%", fontWeight: 600 }}>
+            <TableCell sx={{ width: "25%", fontWeight: 600 }}>
               Trace ID
+            </TableCell>
+            <TableCell sx={{ width: "15%", fontWeight: 600 }}>
+              AI Confidence
             </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {traces.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} sx={{ textAlign: "center", py: 4 }}>
+              <TableCell colSpan={7} sx={{ textAlign: "center", py: 4 }}>
                 No traces found.
               </TableCell>
             </TableRow>
@@ -143,6 +150,9 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
               const status = getTraceStatus(trace);
               const priority = traceGetPriority(trace);
 
+              const confidence = 1;
+              const suggestion_status = "pending_review";
+
               return (
                 <React.Fragment key={trace.trace_id}>
                   <TableRow
@@ -150,9 +160,12 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                     sx={{
                       cursor: "pointer",
                       "&:hover": { bgcolor: "action.hover" },
+                      "& > td": { p: 2 },
+                      "& > td:first-of-type": { p: 1 },
                     }}
+                    onClick={() => handleTraceClick(trace.trace_id)}
                   >
-                    <TableCell sx={{ p: 1 }}>
+                    <TableCell>
                       <IconButton
                         size="small"
                         onClick={(e) => {
@@ -167,10 +180,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                         )}
                       </IconButton>
                     </TableCell>
-                    <TableCell
-                      onClick={() => handleTraceClick(trace.trace_id)}
-                      sx={{ p: 2 }}
-                    >
+                    <TableCell>
                       <Typography
                         variant="body2"
                         sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}
@@ -178,10 +188,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                         {formatDateTime(startTime)}
                       </Typography>
                     </TableCell>
-                    <TableCell
-                      onClick={() => handleTraceClick(trace.trace_id)}
-                      sx={{ p: 2 }}
-                    >
+                    <TableCell>
                       <Typography variant="body2">Trace</Typography>
                       <Typography variant="caption" color="text.secondary">
                         <Layers
@@ -204,16 +211,10 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                         {priority}
                       </Typography>
                     </TableCell>
-                    <TableCell
-                      onClick={() => handleTraceClick(trace.trace_id)}
-                      sx={{ p: 2 }}
-                    >
+                    <TableCell>
                       <StatusChip status={status} />
                     </TableCell>
-                    <TableCell
-                      onClick={() => handleTraceClick(trace.trace_id)}
-                      sx={{ p: 2 }}
-                    >
+                    <TableCell>
                       <Typography
                         variant="body2"
                         sx={{ fontFamily: "monospace" }}
@@ -221,10 +222,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                         {duration.toFixed(2)}s
                       </Typography>
                     </TableCell>
-                    <TableCell
-                      onClick={() => handleTraceClick(trace.trace_id)}
-                      sx={{ p: 2 }}
-                    >
+                    <TableCell>
                       <Typography
                         variant="body2"
                         sx={{
@@ -236,9 +234,15 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                         {trace.trace_id}
                       </Typography>
                     </TableCell>
+                    <TableCell>
+                      <ConfidenceIndicator
+                        confidence={confidence}
+                        status={suggestion_status}
+                      />
+                    </TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell sx={{ p: 0, border: 0 }} colSpan={6}>
+                    <TableCell sx={{ p: 0, border: 0 }} colSpan={7}>
                       <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                         <Box sx={{ bgcolor: "action.hover", py: 1 }}>
                           <Table
@@ -247,11 +251,12 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                           >
                             <colgroup>
                               <col style={{ width: "2%" }} />
+                              <col style={{ width: "16%" }} />
+                              <col style={{ width: "12%" }} />
                               <col style={{ width: "15%" }} />
-                              <col style={{ width: "20%" }} />
-                              <col style={{ width: "20%" }} />
-                              <col style={{ width: "20%" }} />
-                              <col style={{ width: "20%" }} />
+                              <col style={{ width: "15%" }} />
+                              <col style={{ width: "25%" }} />
+                              <col style={{ width: "15%" }} />
                             </colgroup>
                             <TableBody>
                               {trace.spans.map((span) => {
@@ -276,22 +281,24 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                                     sx={{
                                       cursor: "pointer",
                                       "&:hover": { bgcolor: "action.hover" },
+                                      "& > td": { p: 2 },
+                                      "& > td:first-of-type": { p: 1 },
                                     }}
                                   >
-                                    <TableCell sx={{ p: 2 }}></TableCell>
-                                    <TableCell sx={{ p: 2 }}>
+                                    <TableCell></TableCell>
+                                    <TableCell>
                                       <Typography
                                         variant="body2"
                                         sx={{
                                           fontFamily: "monospace",
-                                          fontSize: "0.8rem",
+                                          fontSize: "0.75rem",
                                           color: "text.secondary",
                                         }}
                                       >
                                         {formatDateTime(span.start_time)}
                                       </Typography>
                                     </TableCell>
-                                    <TableCell sx={{ p: 2 }}>
+                                    <TableCell>
                                       <Typography
                                         variant="body2"
                                         sx={{ fontSize: "0.875rem" }}
@@ -311,13 +318,13 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                                         {spanGetOutput(span)}
                                       </Typography>
                                     </TableCell>
-                                    <TableCell sx={{ p: 2 }}>
+                                    <TableCell>
                                       <StatusChip
                                         status={spanStatus}
                                         secondary
                                       />
                                     </TableCell>
-                                    <TableCell sx={{ p: 2 }}>
+                                    <TableCell>
                                       <Typography
                                         variant="body2"
                                         sx={{
@@ -328,7 +335,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                                         {spanDuration}s
                                       </Typography>
                                     </TableCell>
-                                    <TableCell sx={{ p: 2 }}>
+                                    <TableCell>
                                       <Typography
                                         variant="body2"
                                         sx={{
@@ -343,6 +350,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                                         {span.span_id}
                                       </Typography>
                                     </TableCell>
+                                    <TableCell></TableCell>
                                   </TableRow>
                                 );
                               })}

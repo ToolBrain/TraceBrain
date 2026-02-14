@@ -15,11 +15,13 @@ import {
   ArrowUpward,
   Clear,
   Refresh,
+  PlaylistAddCheck,
 } from "@mui/icons-material";
 import { useMemo, useState } from "react";
 import TraceList from "./TraceList";
 import type { Trace } from "../../types/trace";
-import { traceGetPriority } from "../utils/traceUtils";
+import { traceGetEvaluation, traceGetPriority } from "../utils/traceUtils";
+import { batchEvaluateTraces } from "../utils/api";
 
 interface MainContentProps {
   traces: Trace[];
@@ -30,6 +32,7 @@ interface MainContentProps {
 const sortOptions = [
   { value: "datetime", label: "DateTime" },
   { value: "duration", label: "Duration" },
+  { value: "confidence", label: "Confidence" },
   { value: "priority", label: "Priority" },
 ];
 
@@ -41,6 +44,14 @@ const MainContent: React.FC<MainContentProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("datetime");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  const handleEvaluateTraces = async () => {
+    try {
+      await batchEvaluateTraces();
+    } catch (error: any) {
+      console.error("Failed to start batch evaluation:", error);
+    }
+  };
 
   // Sort traces based on sortBy and sortOrder
   const sortedTraces = useMemo(() => {
@@ -60,8 +71,10 @@ const MainContent: React.FC<MainContentProps> = ({
       const endTime = Math.max(...spanTimes.map((t) => t.end));
       const duration = endTime - startTime;
       const priority = traceGetPriority(trace);
+      const evaluation = traceGetEvaluation(trace);
+      const confidence = evaluation?.confidence ?? 0.5; // set undefined confidence to average
 
-      return { trace, startTime, duration, priority };
+      return { trace, startTime, duration, priority, confidence };
     });
 
     return tracesWithMetrics
@@ -74,6 +87,8 @@ const MainContent: React.FC<MainContentProps> = ({
           compareValue = a.duration - b.duration;
         } else if (sortBy === "priority") {
           compareValue = a.priority - b.priority;
+        } else if (sortBy === "confidence") {
+          compareValue = a.confidence - b.confidence;
         }
 
         return sortOrder === "asc" ? compareValue : -compareValue;
@@ -140,6 +155,20 @@ const MainContent: React.FC<MainContentProps> = ({
           }}
         >
           <Refresh fontSize="small" />
+        </Button>
+
+        <Button
+          variant="outlined"
+          onClick={handleEvaluateTraces}
+          size="small"
+          startIcon={<PlaylistAddCheck />}
+          sx={{
+            borderRadius: "4px",
+            height: "40px",
+            fontWeight: 600,
+          }}
+        >
+          Evaluate Traces
         </Button>
 
         <TextField

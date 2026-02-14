@@ -150,3 +150,24 @@ export const signalTraceIssue = async (traceId: string, reason: string) => {
     throw error;
   }
 };
+
+export const batchEvaluateTraces = async () => {
+  try {
+    const response = await fetch(`/api/v1/ops/batch_evaluate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Failed to batch evaluate traces");
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
