@@ -6,7 +6,8 @@
     "tracebrain.ai_evaluation": {
       "rating": 5,
       "confidence": 0.98,
-      "status": "auto_verified"
+      "status": "auto_verified",
+      "feedback": "Correct tool use and final answer delivered."
     }
   },
   "spans": [

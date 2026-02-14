@@ -6,7 +6,8 @@
     "tracebrain.ai_evaluation": {
       "rating": 3,
       "confidence": 0.7,
-      "status": "pending_review"
+      "status": "pending_review",
+      "feedback": "Comparison completed; check source accuracy."
     }
   },
   "spans": [
