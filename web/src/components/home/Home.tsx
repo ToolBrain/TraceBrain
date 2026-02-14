@@ -16,7 +16,7 @@ const NAV_ITEMS = [
     Icon: DashboardIcon,
   },
   {
-    title: "Trace Explorer",
+    title: "Explorer",
     description: "Search and filter through your agent traces and episodes.",
     route: "/explorer",
     Icon: TimelineIcon,
