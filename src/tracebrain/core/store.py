@@ -413,6 +413,17 @@ class BaseStorageBackend:
         finally:
             session.close()
 
+    def get_traces_by_ids(self, trace_ids: List[str], include_spans: bool = False) -> List[Trace]:
+        """Get traces by a list of trace IDs."""        
+        session = self.get_session()
+        try:
+            query = session.query(Trace).filter(Trace.id.in_(trace_ids))
+            if include_spans:
+                query = query.options(selectinload(Trace.spans))
+            return query.all()
+        finally:
+            session.close()
+
     def get_traces_by_episode_id(self, episode_id: str) -> List[Trace]:
         """Get all traces for a specific episode ID."""
         session = self.get_session()
@@ -670,6 +681,18 @@ class BaseStorageBackend:
             return {"tools": tools, "total_tool_calls": sum(tool_counts.values())}
         finally:
             session.close()
+
+    def add_history():
+        """Add an entry for a trace/episode to users history."""
+        return
+    
+    def get_history():
+        """Return trace/episode entries within history."""
+        return
+    
+    def clear_history():
+        """Empty the complete trace/episode entries history."""
+        return
 
 
 class SQLiteBackend(BaseStorageBackend):

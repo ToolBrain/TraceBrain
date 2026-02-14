@@ -11,6 +11,7 @@ Features:
 - GET /api/v1/stats: Get database statistics
 - GET /api/v1/analytics/tool_usage: Get tool usage analytics
 - POST /api/v1/natural_language_query: AI-powered natural language queries
+- GET /api/v1/episodes/{episode_id}/traces: Retrieve all traces belonging to an episode
 """
 
 from typing import List, Optional, Dict, Any
@@ -58,7 +59,7 @@ def get_librarian_agent():
 # ============================================================================
 # Pydantic Models for API Schema
 # ============================================================================
-
+    
 class FeedbackOut(BaseModel):
     """Response model for feedback data."""
     
@@ -152,7 +153,6 @@ class TraceListOut(BaseModel):
     limit: int = Field(..., description="Maximum number of traces requested")
     traces: List[TraceOut] = Field(..., description="List of traces")
 
-
 class FeedbackIn(BaseModel):
     """Request model for adding feedback to a trace."""
     
@@ -230,9 +230,14 @@ class TraceSummaryOut(BaseModel):
 
 
 class EpisodeOut(BaseModel):
-    """Details for an episode containing multiple traces."""
+    """Details for an episode containing multiple traces details."""
     episode_id: str
     traces: List[TraceSummaryOut]
+
+class EpisodeTracesOut(BaseModel):
+    """Details for an episode containing multiple traces."""
+    episode_id: str
+    traces: List[TraceOut]
 
 
 class AIEvaluationIn(BaseModel):
@@ -302,7 +307,12 @@ class TraceIngestResponse(BaseModel):
 
 
 def _trace_to_out(trace) -> TraceOut:
-    span_outs = [SpanOut.model_validate(span) for span in trace.spans]
+    span_outs = []
+    for span in trace.spans:
+        span_data = SpanOut.model_validate(span)
+        if trace.system_prompt:
+            span_data.attributes["system_prompt"] = trace.system_prompt
+        span_outs.append(span_data)
 
     feedbacks = []
     if trace.feedback:
@@ -313,6 +323,10 @@ def _trace_to_out(trace) -> TraceOut:
         trace_attributes["system_prompt"] = trace.system_prompt
     if trace.episode_id:
         trace_attributes["tracebrain.episode.id"] = trace.episode_id
+    if trace.status:
+        trace_attributes["tracebrain.trace.status"] = trace.status
+    if trace.priority:
+        trace_attributes["tracebrain.trace.priority"] = trace.priority
     if trace.ai_evaluation:
         trace_attributes["tracebrain.ai_evaluation"] = trace.ai_evaluation
 
@@ -759,6 +773,24 @@ def get_episode_details(episode_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/episodes/{episode_id}/traces", response_model=EpisodeTracesOut, tags=["Episodes"])
+def get_episode_traces(episode_id: str):
+    """Get all traces related to an episode"""
+    try:
+        traces_in_episode = store.get_traces_by_episode_id(episode_id)
+        if not traces_in_episode:
+            raise HTTPException(status_code=404, detail="Episode not found")
+        
+        trace_ids = [trace.id for trace in traces_in_episode]
+        traces = store.get_traces_by_ids(trace_ids, include_spans=True)
+        trace_outs = [_trace_to_out(trace) for trace in traces]
+        return EpisodeTracesOut(episode_id=episode_id, traces=trace_outs)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================================
@@ -886,7 +918,7 @@ def natural_language_query(query: NaturalLanguageQuery):
             answer=f"Sorry, I encountered an error processing your query: {str(e)}\n\nPlease try rephrasing your question or check the server logs.",
             session_id=session_id,
             suggestions=[],
-            sources=None,
+            sources=[],
         )
 
 

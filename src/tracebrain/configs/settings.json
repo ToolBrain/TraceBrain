@@ -1,0 +1,15 @@
+{
+  "appearance": {
+    "theme": "dark"
+  },
+  "refresh": {
+    "autoRefresh": false,
+    "refreshInterval": 30
+  },
+  "llm": {
+    "model": "gemini-2.5-flash"
+  },
+  "chatLLM": {
+    "model": "gemini-2.5-flash"
+  }
+}
