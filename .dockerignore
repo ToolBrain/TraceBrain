@@ -59,10 +59,15 @@ temp/
 .DS_Store
 Thumbs.db
 
-# Data (omit large samples from image)
+# Ignore all data
 data/
-*.json
-*.csv
+
+# Allow folder structure
+!data/
+!data/**/
+
+# Allow only sample traces
+!data/**/*.json
 
 # Node (if frontend is included)
 node_modules/

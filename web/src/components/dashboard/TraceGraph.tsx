@@ -1,6 +1,6 @@
 import { BarChart } from "@mui/x-charts/BarChart";
 import { Box, Typography, IconButton, Select, MenuItem } from "@mui/material";
-import { ChevronLeft, ChevronRight, Transform } from "@mui/icons-material";
+import { ChevronLeft, ChevronRight } from "@mui/icons-material";
 import { useState, useMemo } from "react";
 import type { Trace } from "../../types/trace";
 

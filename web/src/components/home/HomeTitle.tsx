@@ -7,9 +7,9 @@ const HomeTitle: React.FC = () => {
       <Typography
         sx={{
           fontFamily: "sans-serif",
-          fontSize: { xs: "3.5rem", sm: "5rem", md: "6rem" },
+          fontSize: { xs: "2.5rem", sm: "4.5rem", md: "6rem" },
           fontWeight: 400,
-          letterSpacing: "0.25em",
+          letterSpacing: { xs: "0.12em", sm: "0.2em", md: "0.25em" },
           lineHeight: 1,
           background: (theme) =>
             theme.palette.mode === "dark"
@@ -24,7 +24,7 @@ const HomeTitle: React.FC = () => {
 
       <Box
         sx={{
-          mt: 1.5,
+          mt: { xs: 1, sm: 1.5 },
           mx: "auto",
           width: "100%",
           height: "2px",

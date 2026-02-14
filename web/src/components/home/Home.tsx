@@ -44,10 +44,13 @@ const Home: React.FC = () => {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "flex-start",
         height: "100%",
-        gap: 4,
-        p: 4,
+        minHeight: 0,
+        overflowY: "auto",
+        gap: { xs: 3, md: 4 },
+        p: { xs: 2, sm: 3, md: 4 },
+        pb: { xs: 4, md: 5 },
       }}
     >
       <HomeTitle />
@@ -56,11 +59,10 @@ const Home: React.FC = () => {
         sx={{
           display: "grid",
           gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-          gap: 3,
+          gap: { xs: 2, sm: 3 },
           width: "100%",
-          height: "100%",
-          maxHeight: 640,
           maxWidth: 960,
+          alignContent: "start",
         }}
       >
         {NAV_ITEMS.map((item) => (

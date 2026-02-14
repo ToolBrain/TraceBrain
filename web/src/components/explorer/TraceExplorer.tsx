@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Card,
@@ -10,12 +10,9 @@ import {
   TextField,
   InputAdornment,
   IconButton,
-  CircularProgress,
   Tooltip,
 } from "@mui/material";
 import { Search, Timeline, ViewList, Refresh } from "@mui/icons-material";
-import type { Episode, Trace } from "../../types/trace";
-import { fetchTraces, fetchEpisodeTraces } from "../utils/api";
 
 const TraceExplorer: React.FC = () => {
   const [viewMode, setViewMode] = useState<"traces" | "episodes">("traces");
@@ -23,12 +20,8 @@ const TraceExplorer: React.FC = () => {
   const [rowsPerPage] = useState(20);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [traces, setTraces] = useState<Trace[]>([]);
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
-  const [totalTraces, setTotalTraces] = useState(0);
-  const [totalEpisodes, setTotalEpisodes] = useState(0);
-
-  const [loading, setLoading] = useState(false);
+  const [totalTraces] = useState(0);
+  const [totalEpisodes] = useState(0);
 
   const handleViewModeChange = (
     _: React.SyntheticEvent,

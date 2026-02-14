@@ -324,8 +324,10 @@ def _trace_to_out(trace) -> TraceOut:
     if trace.episode_id:
         trace_attributes["tracebrain.episode.id"] = trace.episode_id
     if trace.status:
-        trace_attributes["tracebrain.trace.status"] = trace.status
-    if trace.priority:
+        trace_attributes["tracebrain.trace.status"] = (
+            trace.status.value if hasattr(trace.status, "value") else str(trace.status)
+        )
+    if trace.priority is not None:
         trace_attributes["tracebrain.trace.priority"] = trace.priority
     if trace.ai_evaluation:
         trace_attributes["tracebrain.ai_evaluation"] = trace.ai_evaluation

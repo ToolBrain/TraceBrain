@@ -25,7 +25,7 @@ const HomeNavCard: React.FC<HomeNavCardProps> = ({
         display: "flex",
         flexDirection: "column",
         gap: 2.5,
-        p: 5,
+        p: { xs: 3, sm: 4, md: 5 },
         borderRadius: 2,
         cursor: "pointer",
         border: "1px solid",

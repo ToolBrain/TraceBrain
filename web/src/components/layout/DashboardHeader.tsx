@@ -6,7 +6,6 @@ import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
-import tracebrainimg from "../../assets/tracebrain.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import { LightMode, DarkMode } from "@mui/icons-material";
 import { useSettings } from "../../contexts/SettingsContext";
@@ -52,11 +51,6 @@ const DashboardHeader: React.FC = () => {
                 userSelect: "none",
               }}
             >
-              <Box
-                component={"img"}
-                src={tracebrainimg}
-                sx={{ width: "5rem" }}
-              />
               <Typography
                 variant="h6"
                 noWrap

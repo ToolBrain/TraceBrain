@@ -11,17 +11,14 @@ import {
   IconButton,
 } from "@mui/material";
 import { Timeline, ViewList, Delete } from "@mui/icons-material";
-import type { Episode, Trace } from "../../types/trace";
 
 const RecentHistory: React.FC = () => {
   const [viewMode, setViewMode] = useState<"traces" | "episodes">("traces");
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(20);
 
-  const [traces, setTraces] = useState<Trace[]>([]);
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
-  const [totalTraces, setTotalTraces] = useState(0);
-  const [totalEpisodes, setTotalEpisodes] = useState(0);
+  const [totalTraces] = useState(0);
+  const [totalEpisodes] = useState(0);
 
   const handleViewModeChange = (
     _: React.SyntheticEvent,

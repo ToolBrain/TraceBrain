@@ -15,6 +15,8 @@ import {
 } from "@mui/material";
 import { Close, ErrorOutline, HelpOutline } from "@mui/icons-material";
 import FeedbackForm from "./FeedbackForm";
+import ConfidenceIndicator from "../dashboard/ConfidenceIndicator";
+import StatusChip, { type ChipStatus } from "../dashboard/StatusChip";
 import {
   submitTraceFeedback,
   evaluateTrace,
@@ -72,11 +74,22 @@ const TraceModal: React.FC<TraceModalProps> = ({
 }) => {
   const [rating, setRating] = useState<number | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [confidence, setConfidence] = useState<number | null>(null);
+  const [evalStatus, setEvalStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [markForReview, setMarkForReview] = useState(false);
   const { settings } = useSettings();
   const [showDetails, setShowDetails] = useState(false);
+
+  const resolveEvalStatus = (status: string | null): ChipStatus | null => {
+    if (!status) return null;
+    const normalized = status.toLowerCase();
+    if (normalized === "pending_review") return "pending_review";
+    if (normalized === "auto_verified") return "auto_verified";
+    if (normalized === "completed") return "completed";
+    return null;
+  };
 
   useEffect(() => {
     const fetchEvaluation = async () => {
@@ -87,6 +100,8 @@ const TraceModal: React.FC<TraceModalProps> = ({
           const data = await evaluateTrace(id, settings.llm.model);
           setRating(data.rating);
           setFeedback(data.feedback);
+          setConfidence(data.confidence ?? null);
+          setEvalStatus(data.status ?? null);
         } catch (error: any) {
           console.error("Failed to fetch evaluation:", error);
           setError(error.message);
@@ -111,6 +126,8 @@ const TraceModal: React.FC<TraceModalProps> = ({
     if (type === "feedback" && evaluation) {
       setRating(evaluation.rating);
       setFeedback(evaluation.feedback);
+      setConfidence(evaluation.confidence ?? null);
+      setEvalStatus(evaluation.status ?? null);
     }
   }, [evaluation]);
 
@@ -121,6 +138,8 @@ const TraceModal: React.FC<TraceModalProps> = ({
       .then((data) => {
         setRating(data.rating);
         setFeedback(data.feedback);
+        setConfidence(data.confidence ?? null);
+        setEvalStatus(data.status ?? null);
       })
       .catch((error: any) => {
         console.error("Failed to fetch evaluation:", error);
@@ -151,6 +170,27 @@ const TraceModal: React.FC<TraceModalProps> = ({
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
               Provide Feedback
             </Typography>
+
+            {confidence !== null && (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Confidence: {(confidence * 100).toFixed(0)}%
+                </Typography>
+                <ConfidenceIndicator
+                  confidence={confidence}
+                  status={(evalStatus as "pending_review" | "auto_verified" | "completed") || "pending_review"}
+                />
+              </Box>
+            )}
+
+            {resolveEvalStatus(evalStatus) && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Evaluation status:
+                </Typography>
+                <StatusChip status={resolveEvalStatus(evalStatus) as ChipStatus} secondary />
+              </Box>
+            )}
 
             <FeedbackForm
               rating={rating}
@@ -254,6 +294,39 @@ const TraceModal: React.FC<TraceModalProps> = ({
                   </Button>
                 </Box>
               </Box>
+            </Box>
+          );
+        }
+
+        if (confidence !== null) {
+          return (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                AI Evaluation
+              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Confidence: {(confidence * 100).toFixed(0)}%
+                </Typography>
+                <ConfidenceIndicator
+                  confidence={confidence}
+                  status={(evalStatus as "pending_review" | "auto_verified" | "completed") || "pending_review"}
+                />
+                {resolveEvalStatus(evalStatus) && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Evaluation status:
+                    </Typography>
+                    <StatusChip status={resolveEvalStatus(evalStatus) as ChipStatus} secondary />
+                  </Box>
+                )}
+              </Box>
+              <FeedbackForm
+                rating={rating}
+                feedback={feedback}
+                onRatingChange={setRating}
+                onFeedbackChange={setFeedback}
+              />
             </Box>
           );
         }

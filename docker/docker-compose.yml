@@ -63,6 +63,24 @@ services:
       # - ../src:/app/src
       - api_logs:/app/logs
 
+  # Seed sample data once (skips if DB already has traces)
+  tracebrain-seed:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: tracebrain-seed
+    restart: "no"
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
+    depends_on:
+      tracing-api:
+        condition: service_healthy
+    command: ["python", "/app/scripts/seed_if_empty.py"]
+    networks:
+      - tracebrain-network
+
 # Named volumes for data persistence
 volumes:
   postgres_data:

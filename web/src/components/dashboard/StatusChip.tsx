@@ -1,4 +1,5 @@
 import { Chip } from "@mui/material";
+import { Schedule, VerifiedUser } from "@mui/icons-material";
 
 export const ALLOWED_STATUSES = [
   "running",
@@ -8,6 +9,8 @@ export const ALLOWED_STATUSES = [
   "success",
   "error",
   "pending",
+  "pending_review",
+  "auto_verified",
   "high",
   "medium",
   "low",
@@ -61,6 +64,18 @@ const STATUS_STYLES: Record<
     border: "#f59e0b",
     label: "PENDING",
   },
+  pending_review: {
+    color: "#7c2d12",
+    bg: "#fff7ed",
+    border: "#f97316",
+    label: "PENDING REVIEW",
+  },
+  auto_verified: {
+    color: "#065f46",
+    bg: "#d1fae5",
+    border: "#10b981",
+    label: "AUTO VERIFIED",
+  },
   high: {
     color: "#991b1b",
     bg: "#fee2e2",
@@ -81,7 +96,12 @@ const STATUS_STYLES: Record<
   },
 };
 
-const PULSE_LIST: ChipStatus[] = ["needs_review", "high"];
+const PULSE_LIST: ChipStatus[] = ["needs_review", "pending_review", "high"];
+
+const STATUS_ICONS: Partial<Record<ChipStatus, React.ReactElement>> = {
+  pending_review: <Schedule sx={{ fontSize: 16 }} />,
+  auto_verified: <VerifiedUser sx={{ fontSize: 16 }} />,
+};
 
 interface StatusChipProps {
   status: ChipStatus;
@@ -99,6 +119,7 @@ const StatusChip: React.FC<StatusChipProps> = ({
     <Chip
       label={styles.label}
       size="small"
+      icon={STATUS_ICONS[status]}
       sx={{
         fontWeight: 600,
         fontSize: "0.75rem",
