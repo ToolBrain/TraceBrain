@@ -119,6 +119,12 @@ class Trace(Base):
         default=None,
         comment="User feedback on trace quality (rating, comments, etc.)"
     )
+    ai_evaluation = Column(
+        JSONBCompat,
+        nullable=True,
+        default=None,
+        comment="AI evaluation metadata (rating, confidence, status, feedback)"
+    )
     
     # Relationship to spans
     spans = relationship(
@@ -132,6 +138,7 @@ class Trace(Base):
         Index("idx_trace_created_at", "created_at"),
         Index("idx_trace_episode_id", "episode_id"),
         Index("idx_trace_feedback_gin", "feedback", postgresql_using="gin"),
+        Index("idx_trace_ai_eval_gin", "ai_evaluation", postgresql_using="gin"),
     )
     
     def __repr__(self):

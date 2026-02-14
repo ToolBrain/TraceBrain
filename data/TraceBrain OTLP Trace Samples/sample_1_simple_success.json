@@ -2,7 +2,12 @@
   "trace_id": "a1b2c3d4e5f6a7b8a1b2c3d4e5f6a7b8",
   "attributes": {
     "system_prompt": "You are a helpful assistant. You must use tools to answer questions about geography.",
-    "tracebrain.episode.id": "ep-a1b2c3d4"
+    "tracebrain.episode.id": "ep-a1b2c3d4",
+    "tracebrain.ai_evaluation": {
+      "rating": 5,
+      "confidence": 0.98,
+      "status": "auto_verified"
+    }
   },
   "spans": [
     {

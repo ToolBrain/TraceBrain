@@ -242,6 +242,7 @@ class AIEvaluationIn(BaseModel):
 class AIEvaluationOut(BaseModel):
     rating: int = Field(..., ge=0, le=5, description="Rating from 0-5")
     feedback: str = Field(..., description="AI judge feedback")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Judge confidence score")
 
 
 class TraceSignalIn(BaseModel):
@@ -312,6 +313,8 @@ def _trace_to_out(trace) -> TraceOut:
         trace_attributes["system_prompt"] = trace.system_prompt
     if trace.episode_id:
         trace_attributes["tracebrain.episode.id"] = trace.episode_id
+    if trace.ai_evaluation:
+        trace_attributes["tracebrain.ai_evaluation"] = trace.ai_evaluation
 
     return TraceOut(
         trace_id=trace.id,
@@ -341,6 +344,7 @@ def root():
             "list_traces": "GET /api/v1/traces",
             "get_trace": "GET /api/v1/traces/{trace_id}",
             "ingest_trace": "POST /api/v1/traces",
+            "batch_evaluate": "POST /api/v1/ops/batch_evaluate",
             "add_feedback": "POST /api/v1/traces/{trace_id}/feedback",
             "signal_trace": "POST /api/v1/traces/{trace_id}/signal",
             "search_traces": "GET /api/v1/traces/search",
@@ -552,6 +556,19 @@ def add_feedback(trace_id: str, feedback: FeedbackIn):
         
         # Store feedback
         store.add_feedback(trace_id, feedback_data)
+
+        session = store.get_session()
+        try:
+            trace = session.query(Trace).filter(Trace.id == trace_id).first()
+            if trace and trace.ai_evaluation:
+                updated = dict(trace.ai_evaluation)
+                updated["status"] = "completed"
+                updated["timestamp"] = datetime.utcnow().isoformat()
+                trace.ai_evaluation = updated
+                trace.status = TraceStatus.completed
+                session.commit()
+        finally:
+            session.close()
         
         return FeedbackResponse(
             success=True,
@@ -570,6 +587,53 @@ def add_feedback(trace_id: str, feedback: FeedbackIn):
             status_code=500,
             detail=f"Failed to add feedback: {str(e)}"
         )
+
+
+@router.post("/ops/batch_evaluate", tags=["Operations"])
+def batch_evaluate_traces(
+    limit: int = Query(5, ge=1, le=50, description="Max traces to evaluate per call"),
+):
+    """Evaluate recent traces without AI evaluations and attach scores."""
+    session = store.get_session()
+    judge = AIJudge(store)
+    processed = 0
+    failed = 0
+    errors: List[Dict[str, str]] = []
+    try:
+        traces = (
+            session.query(Trace)
+            .filter(Trace.ai_evaluation.is_(None))
+            .order_by(Trace.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        for trace in traces:
+            try:
+                result = judge.evaluate(trace.id, settings.LLM_MODEL)
+                confidence = float(result["confidence"])
+                status_value = "auto_verified" if confidence > 0.8 else "pending_review"
+                ai_eval = {
+                    "rating": result["rating"],
+                    "feedback": result["feedback"],
+                    "confidence": confidence,
+                    "status": status_value,
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+                trace.ai_evaluation = dict(ai_eval)
+                processed += 1
+            except Exception as exc:
+                failed += 1
+                logger.exception("Batch evaluate failed for trace %s", trace.id)
+                errors.append({"trace_id": trace.id, "error": str(exc)})
+
+        session.commit()
+        return {"success": True, "processed": processed, "failed": failed, "errors": errors}
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to batch evaluate traces: {str(e)}")
+    finally:
+        session.close()
 
 
 @router.post("/traces/{trace_id}/signal", response_model=FeedbackResponse, tags=["Governance"])

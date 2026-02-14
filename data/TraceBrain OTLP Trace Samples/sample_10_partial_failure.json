@@ -2,7 +2,13 @@
   "trace_id": "a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5",
   "attributes": {
     "system_prompt": "You are a corporate research assistant. Your goal is to gather information about companies using the provided tools.",
-    "tracebrain.episode.id": "ep-a0b1c2d3"
+    "tracebrain.episode.id": "ep-a0b1c2d3",
+    "tracebrain.ai_evaluation": {
+      "rating": 1,
+      "confidence": 0.45,
+      "status": "pending_review",
+      "feedback": "Potential logic loop detected."
+    }
   },
   "spans": [
     {

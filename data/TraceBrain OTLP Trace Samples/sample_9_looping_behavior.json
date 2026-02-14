@@ -2,7 +2,12 @@
   "trace_id": "9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f",
   "attributes": {
     "system_prompt": "You are an order management assistant. Check the status of all requested orders.",
-    "tracebrain.episode.id": "ep-9c0d1e2f"
+    "tracebrain.episode.id": "ep-9c0d1e2f",
+    "tracebrain.ai_evaluation": {
+      "rating": 5,
+      "confidence": 0.98,
+      "status": "auto_verified"
+    }
   },
   "spans": [
     {

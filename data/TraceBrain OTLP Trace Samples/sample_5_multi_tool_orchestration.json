@@ -2,7 +2,12 @@
   "trace_id": "e5f6a7b8c9d0e1f2e5f6a7b8c9d0e1f2",
   "attributes": {
     "system_prompt": "You are a helpful assistant. First, find the current price of a stock, then calculate a value based on that price.",
-    "tracebrain.episode.id": "ep-e5f6a7b8"
+    "tracebrain.episode.id": "ep-e5f6a7b8",
+    "tracebrain.ai_evaluation": {
+      "rating": 5,
+      "confidence": 0.98,
+      "status": "auto_verified"
+    }
   },
   "spans": [
     {

@@ -2,7 +2,12 @@
   "trace_id": "b2c3d4e5f6a7b8c9b2c3d4e5f6a7b8c9",
   "attributes": {
     "system_prompt": "You are a financial analyst. Use tools to gather data and provide a summary.",
-    "tracebrain.episode.id": "ep-b2c3d4e5"
+    "tracebrain.episode.id": "ep-b2c3d4e5",
+    "tracebrain.ai_evaluation": {
+      "rating": 5,
+      "confidence": 0.98,
+      "status": "auto_verified"
+    }
   },
   "spans": [
     {

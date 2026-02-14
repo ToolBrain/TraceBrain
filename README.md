@@ -150,6 +150,7 @@ docker compose -f docker/docker-compose.yml build --no-cache
 
 **AI Evaluation**
 - `POST /api/v1/ai_evaluate/{trace_id}` - Evaluate a trace with a judge model
+- `POST /api/v1/ops/batch_evaluate` - Run AI judge over recent traces missing `tracebrain.ai_evaluation`
 
 **Semantic Search**
 - `GET /api/v1/traces/search` - Find similar traces using vector similarity
@@ -308,7 +309,6 @@ similar = search_similar_traces("multi-step planning", min_rating=4, limit=3)
 
 # Escalate to human when the agent is blocked
 help_request = request_human_intervention("User request is ambiguous, need clarification")
-```
 
 ### Building a Custom Converter
 

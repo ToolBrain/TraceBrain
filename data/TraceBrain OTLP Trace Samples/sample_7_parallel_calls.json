@@ -2,7 +2,12 @@
   "trace_id": "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
   "attributes": {
     "system_prompt": "You are an assistant that answers comparison questions by gathering data for each item.",
-    "tracebrain.episode.id": "ep-7a8b9c0d"
+    "tracebrain.episode.id": "ep-7a8b9c0d",
+    "tracebrain.ai_evaluation": {
+      "rating": 3,
+      "confidence": 0.7,
+      "status": "pending_review"
+    }
   },
   "spans": [
     {

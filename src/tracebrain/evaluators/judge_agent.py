@@ -105,7 +105,10 @@ class AIJudge:
 
         system_instruction = (
             "You are an AI judge evaluating the quality of an agent trace. "
-            "Return only strict JSON with keys: rating (0-5) and feedback (string)."
+            "Return only strict JSON with keys: rating (0-5), feedback (string), "
+            "and confidence (float between 0.0 and 1.0). "
+            "If the trace shows clear success or obvious failure, confidence should be high. "
+            "If the trace logic is ambiguous, circular, or lacks clear output, confidence should be lower."
         )
         user_content = (
             "Prior Experience (human-labeled examples):\n"
@@ -115,6 +118,7 @@ class AIJudge:
             "Guidelines:\n"
             "- rating: 0 (very poor) to 5 (excellent)\n"
             "- feedback: brief reasoning based on the trace and prior examples\n"
+            "- confidence: 0.0 to 1.0 (higher when outcome is clear)\n"
             "Output JSON only."
         )
         prompt = f"{system_instruction}\n\n{user_content}"
@@ -137,10 +141,13 @@ class AIJudge:
         parsed = self._extract_json(raw_text)
         rating = int(parsed.get("rating"))
         feedback = str(parsed.get("feedback", "")).strip()
+        confidence = float(parsed.get("confidence"))
 
         if rating < 0 or rating > 5:
             raise ValueError("Judge rating out of range (0-5)")
         if not feedback:
             raise ValueError("Judge feedback is empty")
+        if confidence < 0.0 or confidence > 1.0:
+            raise ValueError("Judge confidence out of range (0.0-1.0)")
 
-        return {"rating": rating, "feedback": feedback}
+        return {"rating": rating, "feedback": feedback, "confidence": confidence}

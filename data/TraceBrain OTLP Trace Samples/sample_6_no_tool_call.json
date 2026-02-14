@@ -2,7 +2,12 @@
   "trace_id": "f6a7b8c9d0e1f2a3f6a7b8c9d0e1f2a3",
   "attributes": {
     "system_prompt": "You are a helpful assistant with access to many tools.",
-    "tracebrain.episode.id": "ep-f6a7b8c9"
+    "tracebrain.episode.id": "ep-f6a7b8c9",
+    "tracebrain.ai_evaluation": {
+      "rating": 5,
+      "confidence": 0.98,
+      "status": "auto_verified"
+    }
   },
   "spans": [
     {

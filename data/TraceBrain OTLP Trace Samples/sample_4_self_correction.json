@@ -2,7 +2,12 @@
   "trace_id": "d4e5f6a7b8c9d0e1d4e5f6a7b8c9d0e1",
   "attributes": {
     "system_prompt": "You are a research assistant. Use the web_search tool to find information.",
-    "tracebrain.episode.id": "ep-d4e5f6a7"
+    "tracebrain.episode.id": "ep-d4e5f6a7",
+    "tracebrain.ai_evaluation": {
+      "rating": 5,
+      "confidence": 0.98,
+      "status": "auto_verified"
+    }
   },
   "spans": [
     {

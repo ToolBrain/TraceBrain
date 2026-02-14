@@ -2,7 +2,12 @@
   "trace_id": "9999aaaabbbbccccddddeeeeffff0000",
   "attributes": {
     "system_prompt": "You are a travel assistant. You must confirm details before booking.",
-    "tracebrain.episode.id": "ep-demo-group-001"
+    "tracebrain.episode.id": "ep-demo-group-001",
+    "tracebrain.ai_evaluation": {
+      "rating": 3,
+      "confidence": 0.7,
+      "status": "pending_review"
+    }
   },
   "spans": [
     {

@@ -124,6 +124,7 @@ class BaseStorageBackend:
         episode_id = attributes.get("tracebrain.episode.id")
         status_value = attributes.get("tracebrain.trace.status")
         priority_value = attributes.get("tracebrain.trace.priority")
+        ai_evaluation = attributes.get("tracebrain.ai_evaluation")
 
         spans_data = trace_data.get("spans") or []
         embedding_text = self._extract_embedding_text(system_prompt, spans_data)
@@ -151,6 +152,7 @@ class BaseStorageBackend:
             status=status,
             priority=priority,
             embedding=embedding or None,
+            ai_evaluation=ai_evaluation,
         )
 
         for span_data in spans_data:
@@ -378,6 +380,8 @@ class BaseStorageBackend:
             )
         if trace.priority is not None:
             trace_attributes["tracebrain.trace.priority"] = trace.priority
+        if trace.ai_evaluation is not None:
+            trace_attributes["tracebrain.ai_evaluation"] = trace.ai_evaluation
 
         span_payloads = []
         for span in spans:
