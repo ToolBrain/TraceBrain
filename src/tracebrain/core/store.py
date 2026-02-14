@@ -124,6 +124,7 @@ class BaseStorageBackend:
         episode_id = attributes.get("tracebrain.episode.id")
         status_value = attributes.get("tracebrain.trace.status")
         priority_value = attributes.get("tracebrain.trace.priority")
+        ai_evaluation = attributes.get("tracebrain.ai_evaluation")
 
         spans_data = trace_data.get("spans") or []
         embedding_text = self._extract_embedding_text(system_prompt, spans_data)
@@ -151,6 +152,7 @@ class BaseStorageBackend:
             status=status,
             priority=priority,
             embedding=embedding or None,
+            ai_evaluation=ai_evaluation,
         )
 
         for span_data in spans_data:
@@ -437,6 +439,8 @@ class BaseStorageBackend:
             )
         if trace.priority is not None:
             trace_attributes["tracebrain.trace.priority"] = trace.priority
+        if trace.ai_evaluation is not None:
+            trace_attributes["tracebrain.ai_evaluation"] = trace.ai_evaluation
 
         span_payloads = []
         for span in spans:
@@ -462,6 +466,17 @@ class BaseStorageBackend:
         session = self.get_session()
         try:
             query = session.query(Trace).order_by(Trace.created_at.desc()).offset(skip).limit(limit)
+            if include_spans:
+                query = query.options(selectinload(Trace.spans))
+            return query.all()
+        finally:
+            session.close()
+
+    def get_traces_by_ids(self, trace_ids: List[str], include_spans: bool = False) -> List[Trace]:
+        """Get traces by a list of trace IDs."""        
+        session = self.get_session()
+        try:
+            query = session.query(Trace).filter(Trace.id.in_(trace_ids))
             if include_spans:
                 query = query.options(selectinload(Trace.spans))
             return query.all()
@@ -725,6 +740,18 @@ class BaseStorageBackend:
             return {"tools": tools, "total_tool_calls": sum(tool_counts.values())}
         finally:
             session.close()
+
+    def add_history():
+        """Add an entry for a trace/episode to users history."""
+        return
+    
+    def get_history():
+        """Return trace/episode entries within history."""
+        return
+    
+    def clear_history():
+        """Empty the complete trace/episode entries history."""
+        return
 
 
 class SQLiteBackend(BaseStorageBackend):

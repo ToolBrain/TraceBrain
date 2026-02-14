@@ -2,7 +2,13 @@
   "trace_id": "c3d4e5f6a7b8c9d0c3d4e5f6a7b8c9d0",
   "attributes": {
     "system_prompt": "You are a data analyst. Use the provided tools to query the database.",
-    "tracebrain.episode.id": "ep-c3d4e5f6"
+    "tracebrain.episode.id": "ep-c3d4e5f6",
+    "tracebrain.ai_evaluation": {
+      "rating": 5,
+      "confidence": 0.98,
+      "status": "auto_verified",
+      "feedback": "Tool error handled and user notified appropriately."
+    }
   },
   "spans": [
     {

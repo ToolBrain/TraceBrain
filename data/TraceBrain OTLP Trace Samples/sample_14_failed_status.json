@@ -4,7 +4,13 @@
     "system_prompt": "You are a helpful assistant. Use tools when needed.",
     "tracebrain.episode.id": "ep-c3d4e5f6",
     "tracebrain.trace.status": "failed",
-    "tracebrain.trace.priority": 2
+    "tracebrain.trace.priority": 2,
+    "tracebrain.ai_evaluation": {
+      "rating": 5,
+      "confidence": 0.98,
+      "status": "auto_verified",
+      "feedback": "Detected division by zero; tool reported error."
+    }
   },
   "spans": [
     {

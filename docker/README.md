@@ -34,14 +34,14 @@ docker compose -f docker/docker-compose.yml down
 ```
 ┌─────────────────────┐
 │   tracing-api       │
-│   (FastAPI)         │
+│   (FastAPI + UI)    │
 │   Port: 8000        │
 └──────────┬──────────┘
            │
            ▼
 ┌─────────────────────┐
 │   postgres          │
-│   (PostgreSQL 15)   │
+│   (pgvector)        │
 │   Port: 5432        │
 └─────────────────────┘
 ```
@@ -71,7 +71,7 @@ LLM_API_KEY=your_key_here
 ## 📊 Services
 
 ### postgres
-- **Image**: `postgres:15-alpine`
+- **Image**: `ankane/pgvector:v0.5.1`
 - **Port**: `5432`
 - **Volume**: `tracebrain_postgres_data` (persistent)
 - **Health Check**: Automatic readiness probe
@@ -84,6 +84,18 @@ Note: The database port is not exposed by default in production. Uncomment the
 - **Port**: `8000`
 - **Depends on**: postgres (healthy)
 - **Health Check**: `/healthz` endpoint
+- **Frontend**: Served from the same URL as the API
+
+### tracebrain-seed
+- **Purpose**: One-time seed of sample traces
+- **Runs**: After `tracing-api` is healthy
+- **Behavior**: Skips if traces already exist
+
+## ✅ Access URLs
+
+- Frontend UI: http://localhost:8000/
+- API Docs: http://localhost:8000/docs
+- API Base: http://localhost:8000/api/v1/
 
 ## 🔍 Troubleshooting
 

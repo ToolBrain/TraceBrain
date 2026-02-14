@@ -2,7 +2,13 @@
   "trace_id": "8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e",
   "attributes": {
     "system_prompt": "You are a flight booking assistant. You must have all necessary information before calling a tool.",
-    "tracebrain.episode.id": "ep-8b9c0d1e"
+    "tracebrain.episode.id": "ep-8b9c0d1e",
+    "tracebrain.ai_evaluation": {
+      "rating": 5,
+      "confidence": 0.98,
+      "status": "auto_verified",
+      "feedback": "Asked for missing details before tool use."
+    }
   },
   "spans": [
     {

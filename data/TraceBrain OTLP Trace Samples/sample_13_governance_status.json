@@ -4,7 +4,13 @@
     "system_prompt": "You are a helpful assistant. If uncertain, request human help.",
     "tracebrain.episode.id": "ep-b2c3d4e5",
     "tracebrain.trace.status": "needs_review",
-    "tracebrain.trace.priority": 5
+    "tracebrain.trace.priority": 5,
+    "tracebrain.ai_evaluation": {
+      "rating": 5,
+      "confidence": 0.98,
+      "status": "auto_verified",
+      "feedback": "Escalated high-risk request appropriately."
+    }
   },
   "spans": [
     {

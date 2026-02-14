@@ -27,12 +27,12 @@ As AI agents become increasingly autonomous and operationally complex, TraceBrai
 - **Your AI Agent:** Any agent framework. Uses the TraceClient SDK to send data.
 - **TraceStore API:** The central FastAPI server. Ingests, stores, and serves trace data.
 - **Database:** The persistence layer (PostgreSQL or SQLite).
-- **Admin Panel UI:** A client (Streamlit/React) that consumes the TraceStore API.
+- **Admin Panel UI:** A React client in `web/` that consumes the TraceStore API.
 
 **Tech Stack:**
 - **Backend**: FastAPI, SQLAlchemy 2.0, Pydantic V2
 - **Database**: PostgreSQL (production), SQLite (development), pgvector (semantic search)
-- **Frontend**: Streamlit (Admin UI), React placeholder in `web/`
+- **Frontend**: React (Vite + MUI) in `web/`
 - **Deployment**: Docker Compose
 - **AI Integration**: LibrarianAgent + AI Judge with multi-provider LLM support
 - **Embeddings**: sentence-transformers (local) or OpenAI/Gemini (cloud)
@@ -58,20 +58,21 @@ As AI agents become increasingly autonomous and operationally complex, TraceBrai
    # Install the CLI tool
    pip install -e .
    
-   # Start PostgreSQL + API server
+    # Start PostgreSQL + API server (multi-stage build bundles frontend)
    tracebrain-trace up
    ```
 
 3. **Access the services**
-   - API: http://localhost:8000
-   - API Docs: http://localhost:8000/docs
-   - Streamlit UI: Run separately with `streamlit run src/examples/app.py`
-   - If needed: `pip install streamlit pandas`
+    - Frontend UI: http://localhost:8000/
+    - API: http://localhost:8000/api/v1/
+    - API Docs: http://localhost:8000/docs
 
 4. **Seed sample data** (optional)
    ```bash
-   cd src/examples
-   python seed_tracestore_samples.py --backend postgresql --db-url "postgresql://traceuser:tracepass@localhost:5432/tracedb"
+    # Data is auto-seeded once on first start (Docker only).
+    # If you want to re-seed, remove the volume then bring it up again:
+    docker compose -f docker/docker-compose.yml down -v
+    tracebrain-trace up
    ```
 
 ### Option 2: Local Development
@@ -98,11 +99,12 @@ As AI agents become increasingly autonomous and operationally complex, TraceBrai
     tracebrain-trace start
     ```
 
-4. **Run the Streamlit UI**
-   ```bash
-   cd src/examples
-   streamlit run app.py
-   ```
+4. **Run the React frontend**
+    ```bash
+    cd web
+    npm install
+    npm run dev
+    ```
 
 ## 📖 Usage
 
@@ -150,6 +152,7 @@ docker compose -f docker/docker-compose.yml build --no-cache
 
 **AI Evaluation**
 - `POST /api/v1/ai_evaluate/{trace_id}` - Evaluate a trace with a judge model
+- `POST /api/v1/ops/batch_evaluate` - Run AI judge over recent traces missing `tracebrain.ai_evaluation`
 
 **Semantic Search**
 - `GET /api/v1/traces/search` - Find similar traces using vector similarity
@@ -215,7 +218,7 @@ requests.post("http://localhost:8000/api/v1/traces/trace-001/feedback", json={
 })
 ```
 
-### Streamlit UI
+### React Frontend
 
 The admin UI provides:
 - **Trace Browser**: View all traces with filters
@@ -227,10 +230,12 @@ The admin UI provides:
 - **Governance Signal**: Mark traces with status and priority
 - **Curriculum**: Generate and review training tasks
 
-Dependencies for the UI:
+Frontend dev server (local development only):
 
 ```bash
-pip install streamlit pandas
+cd web
+npm install
+npm run dev
 ```
 
 ### Embeddings and Semantic Search
@@ -359,7 +364,6 @@ tracebrain-tracing/
 │   │   ├── config.py               # Settings management
 │   │   └── main.py                 # FastAPI app entry
 │   └── examples/                   # Example implementations
-│       ├── app.py                  # Streamlit admin UI
 │       └── seed_tracestore_samples.py  # Sample data seeder
 ├── data/                           # Sample OTLP traces
 │   └── TraceBrain OTLP Trace Samples/
@@ -369,7 +373,7 @@ tracebrain-tracing/
 │   └── README.md
 ├── docs/                           # Documentation
 │   └── Converter.md
-├── web/                            # React frontend (future)
+├── web/                            # React frontend
 ├── pyproject.toml                  # Project metadata
 └── README.md
 ```

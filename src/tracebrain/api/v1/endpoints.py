@@ -11,6 +11,7 @@ Features:
 - GET /api/v1/stats: Get database statistics
 - GET /api/v1/analytics/tool_usage: Get tool usage analytics
 - POST /api/v1/natural_language_query: AI-powered natural language queries
+- GET /api/v1/episodes/{episode_id}/traces: Retrieve all traces belonging to an episode
 """
 
 from typing import List, Optional, Dict, Any
@@ -58,7 +59,7 @@ def get_librarian_agent():
 # ============================================================================
 # Pydantic Models for API Schema
 # ============================================================================
-
+    
 class FeedbackOut(BaseModel):
     """Response model for feedback data."""
     
@@ -152,7 +153,6 @@ class TraceListOut(BaseModel):
     limit: int = Field(..., description="Maximum number of traces requested")
     traces: List[TraceOut] = Field(..., description="List of traces")
 
-
 class FeedbackIn(BaseModel):
     """Request model for adding feedback to a trace."""
     
@@ -230,9 +230,14 @@ class TraceSummaryOut(BaseModel):
 
 
 class EpisodeOut(BaseModel):
-    """Details for an episode containing multiple traces."""
+    """Details for an episode containing multiple traces details."""
     episode_id: str
     traces: List[TraceSummaryOut]
+
+class EpisodeTracesOut(BaseModel):
+    """Details for an episode containing multiple traces."""
+    episode_id: str
+    traces: List[TraceOut]
 
 
 class AIEvaluationIn(BaseModel):
@@ -242,6 +247,7 @@ class AIEvaluationIn(BaseModel):
 class AIEvaluationOut(BaseModel):
     rating: int = Field(..., ge=0, le=5, description="Rating from 0-5")
     feedback: str = Field(..., description="AI judge feedback")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Judge confidence score")
 
 
 class TraceSignalIn(BaseModel):
@@ -307,7 +313,12 @@ class TraceInitIn(BaseModel):
 
 
 def _trace_to_out(trace) -> TraceOut:
-    span_outs = [SpanOut.model_validate(span) for span in trace.spans]
+    span_outs = []
+    for span in trace.spans:
+        span_data = SpanOut.model_validate(span)
+        if trace.system_prompt:
+            span_data.attributes["system_prompt"] = trace.system_prompt
+        span_outs.append(span_data)
 
     feedbacks = []
     if trace.feedback:
@@ -318,6 +329,14 @@ def _trace_to_out(trace) -> TraceOut:
         trace_attributes["system_prompt"] = trace.system_prompt
     if trace.episode_id:
         trace_attributes["tracebrain.episode.id"] = trace.episode_id
+    if trace.status:
+        trace_attributes["tracebrain.trace.status"] = (
+            trace.status.value if hasattr(trace.status, "value") else str(trace.status)
+        )
+    if trace.priority is not None:
+        trace_attributes["tracebrain.trace.priority"] = trace.priority
+    if trace.ai_evaluation:
+        trace_attributes["tracebrain.ai_evaluation"] = trace.ai_evaluation
 
     return TraceOut(
         trace_id=trace.id,
@@ -347,6 +366,7 @@ def root():
             "list_traces": "GET /api/v1/traces",
             "get_trace": "GET /api/v1/traces/{trace_id}",
             "ingest_trace": "POST /api/v1/traces",
+            "batch_evaluate": "POST /api/v1/ops/batch_evaluate",
             "init_trace": "POST /api/v1/traces/init",
             "add_feedback": "POST /api/v1/traces/{trace_id}/feedback",
             "signal_trace": "POST /api/v1/traces/{trace_id}/signal",
@@ -579,6 +599,19 @@ def add_feedback(trace_id: str, feedback: FeedbackIn):
         
         # Store feedback
         store.add_feedback(trace_id, feedback_data)
+
+        session = store.get_session()
+        try:
+            trace = session.query(Trace).filter(Trace.id == trace_id).first()
+            if trace and trace.ai_evaluation:
+                updated = dict(trace.ai_evaluation)
+                updated["status"] = "completed"
+                updated["timestamp"] = datetime.utcnow().isoformat()
+                trace.ai_evaluation = updated
+                trace.status = TraceStatus.completed
+                session.commit()
+        finally:
+            session.close()
         
         return FeedbackResponse(
             success=True,
@@ -597,6 +630,53 @@ def add_feedback(trace_id: str, feedback: FeedbackIn):
             status_code=500,
             detail=f"Failed to add feedback: {str(e)}"
         )
+
+
+@router.post("/ops/batch_evaluate", tags=["Operations"])
+def batch_evaluate_traces(
+    limit: int = Query(5, ge=1, le=50, description="Max traces to evaluate per call"),
+):
+    """Evaluate recent traces without AI evaluations and attach scores."""
+    session = store.get_session()
+    judge = AIJudge(store)
+    processed = 0
+    failed = 0
+    errors: List[Dict[str, str]] = []
+    try:
+        traces = (
+            session.query(Trace)
+            .filter(Trace.ai_evaluation.is_(None))
+            .order_by(Trace.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        for trace in traces:
+            try:
+                result = judge.evaluate(trace.id, settings.LLM_MODEL)
+                confidence = float(result["confidence"])
+                status_value = "auto_verified" if confidence > 0.8 else "pending_review"
+                ai_eval = {
+                    "rating": result["rating"],
+                    "feedback": result["feedback"],
+                    "confidence": confidence,
+                    "status": status_value,
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+                trace.ai_evaluation = dict(ai_eval)
+                processed += 1
+            except Exception as exc:
+                failed += 1
+                logger.exception("Batch evaluate failed for trace %s", trace.id)
+                errors.append({"trace_id": trace.id, "error": str(exc)})
+
+        session.commit()
+        return {"success": True, "processed": processed, "failed": failed, "errors": errors}
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to batch evaluate traces: {str(e)}")
+    finally:
+        session.close()
 
 
 @router.post("/traces/{trace_id}/signal", response_model=FeedbackResponse, tags=["Governance"])
@@ -717,6 +797,24 @@ def get_episode_details(episode_id: str):
             )
 
         return EpisodeOut(episode_id=episode_id, traces=trace_summaries)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/episodes/{episode_id}/traces", response_model=EpisodeTracesOut, tags=["Episodes"])
+def get_episode_traces(episode_id: str):
+    """Get all traces related to an episode"""
+    try:
+        traces_in_episode = store.get_traces_by_episode_id(episode_id)
+        if not traces_in_episode:
+            raise HTTPException(status_code=404, detail="Episode not found")
+        
+        trace_ids = [trace.id for trace in traces_in_episode]
+        traces = store.get_traces_by_ids(trace_ids, include_spans=True)
+        trace_outs = [_trace_to_out(trace) for trace in traces]
+        return EpisodeTracesOut(episode_id=episode_id, traces=trace_outs)
 
     except HTTPException:
         raise
@@ -849,7 +947,7 @@ def natural_language_query(query: NaturalLanguageQuery):
             answer=f"Sorry, I encountered an error processing your query: {str(e)}\n\nPlease try rephrasing your question or check the server logs.",
             session_id=session_id,
             suggestions=[],
-            sources=None,
+            sources=[],
         )
 
 

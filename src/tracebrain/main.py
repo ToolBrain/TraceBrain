@@ -28,6 +28,7 @@ from fastapi.responses import JSONResponse
 
 from .config import settings
 from .api.v1.endpoints import router as api_v1_router
+from .api.v1.routers.settings import router as settings_router
 
 # Configure logging
 logging.basicConfig(
@@ -166,6 +167,8 @@ app.add_middleware(
 # API Router Registration
 # ============================================================================
 # Mount the v1 API router under /api/v1 prefix
+api_v1_router.include_router(settings_router)
+
 app.include_router(
     api_v1_router,
     prefix="/api/v1",
