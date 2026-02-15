@@ -48,11 +48,16 @@ class AIJudge:
         return "\n".join(lines)
 
     def _get_prior_experience(self, episode_id: Optional[str], current_trace_id: str) -> str:
-        """Gather human feedback from previous traces in the same episode."""
+        """Gather human feedback signals from previous traces in the same episode."""
         if not episode_id:
             return ""
 
         traces = self.store.get_traces_by_episode_id(episode_id)
+        try:
+            traces = sorted(traces, key=lambda item: item.created_at, reverse=True)
+        except Exception:
+            pass
+
         examples = []
         for trace in traces:
             if trace.id == current_trace_id:
@@ -61,13 +66,24 @@ class AIJudge:
                 continue
 
             rating = trace.feedback.get("rating")
-            comment = trace.feedback.get("comment") or trace.feedback.get("metadata")
+            comment = trace.feedback.get("comment")
+            tags = trace.feedback.get("tags")
+            metadata = trace.feedback.get("metadata")
             if rating is None:
                 continue
 
             reason = comment if isinstance(comment, str) else json.dumps(comment) if comment else "No comment"
+            tag_text = ", ".join(tags) if isinstance(tags, list) and tags else "None"
+            meta_text = ""
+            if metadata:
+                meta_text = json.dumps(metadata) if not isinstance(metadata, str) else metadata
+
             examples.append(
-                f"Trace {trace.id} was rated {rating} because {reason}."
+                "Trace "
+                f"{trace.id} rating={rating}; "
+                f"tags=[{tag_text}]; "
+                f"reason={reason}; "
+                f"metadata={meta_text or 'None'}"
             )
 
         if not examples:
@@ -108,6 +124,8 @@ class AIJudge:
             "Your primary metric is **Task Goal Completion**."
             "Return only strict JSON with keys: rating (1-5), feedback (string), "
             "and confidence (float between 0.0 and 1.0).\n\n"
+            "When prior human feedback from the same episode is available, align "
+            "your evaluation with those preferences.\n\n"
             
             "### SCORING RUBRIC:\n"
             "- 5 (Perfect): Task completed successfully and efficiently.\n"
