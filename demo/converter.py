@@ -3,6 +3,7 @@
 import json
 import re
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Dict
 
 from smolagents import CodeAgent
@@ -87,6 +88,20 @@ def convert_smolagent_to_otlp(agent: CodeAgent, query: str) -> Dict:
             return first_line or None
         return text.strip() or None
 
+    def _serialize_tool_output(observations) -> str | None:
+        if observations is None:
+            return None
+        if isinstance(observations, (dict, list)):
+            return json.dumps(observations, ensure_ascii=True)
+        return str(observations)
+
+    def _isoformat(ts: datetime) -> str:
+        return ts.isoformat().replace("+00:00", "Z")
+
+    current_time = datetime.now(timezone.utc)
+    llm_duration = timedelta(seconds=1.1)
+    tool_duration = timedelta(seconds=0.7)
+
     for step in agent.memory.steps:
         if step.__class__.__name__ != "ActionStep":
             continue
@@ -103,12 +118,16 @@ def convert_smolagent_to_otlp(agent: CodeAgent, query: str) -> Dict:
                 final_answer = tool_code
             tool_code = None
 
+        llm_start = current_time
+        llm_end = llm_start + llm_duration
+        current_time = llm_end
+
         llm_span = {
             "span_id": llm_span_id,
             "parent_id": parent_id,
             "name": "LLM Inference",
-            "start_time": get_iso_time_now(),
-            "end_time": get_iso_time_now(),
+            "start_time": _isoformat(llm_start),
+            "end_time": _isoformat(llm_end),
             "attributes": {
                 TraceBrainAttributes.SPAN_TYPE: SpanType.LLM_INFERENCE,
                 TraceBrainAttributes.LLM_NEW_CONTENT: json.dumps(new_content),
@@ -124,17 +143,21 @@ def convert_smolagent_to_otlp(agent: CodeAgent, query: str) -> Dict:
         if tool_code:
             tool_name = _extract_tool_name(tool_code)
             tool_span_id = uuid.uuid4().hex[:16]
+            tool_start = current_time
+            tool_end = tool_start + tool_duration
+            current_time = tool_end
+
             tool_span = {
                 "span_id": tool_span_id,
                 "parent_id": parent_id,
                 "name": f"Tool Execution: {tool_name}",
-                "start_time": get_iso_time_now(),
-                "end_time": get_iso_time_now(),
+                "start_time": _isoformat(tool_start),
+                "end_time": _isoformat(tool_end),
                 "attributes": {
                     TraceBrainAttributes.SPAN_TYPE: SpanType.TOOL_EXECUTION,
                     TraceBrainAttributes.TOOL_NAME: tool_name,
                     TraceBrainAttributes.TOOL_INPUT: tool_code,
-                    TraceBrainAttributes.TOOL_OUTPUT: step.observations,
+                    TraceBrainAttributes.TOOL_OUTPUT: _serialize_tool_output(step.observations),
                 },
             }
             spans.append(tool_span)

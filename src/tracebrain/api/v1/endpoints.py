@@ -5,13 +5,25 @@ This module provides FastAPI router with endpoints for interacting with the Trac
 It exposes endpoints for querying traces, retrieving trace details, and adding feedback.
 
 Features:
+- GET /api/v1/health: Health check
 - GET /api/v1/traces: List all traces with pagination
 - GET /api/v1/traces/{trace_id}: Get detailed trace information
+- POST /api/v1/traces: Ingest a trace
+- POST /api/v1/traces/init: Initialize a trace before spans are available
+- POST /api/v1/ops/batch_evaluate: Batch AI evaluation
 - POST /api/v1/traces/{trace_id}/feedback: Add user feedback to a trace
+- POST /api/v1/traces/{trace_id}/signal: Mark a trace as needs review
+- GET /api/v1/traces/search: Semantic experience search
+- GET /api/v1/export/traces: Export traces
+- GET /api/v1/episodes/{episode_id}: Retrieve episode summary
 - GET /api/v1/stats: Get database statistics
 - GET /api/v1/analytics/tool_usage: Get tool usage analytics
+- POST /api/v1/ai_evaluate/{trace_id}: Evaluate a trace with AI judge
 - POST /api/v1/natural_language_query: AI-powered natural language queries
-- GET /api/v1/episodes/{episode_id}/traces: Retrieve all traces belonging to an episode
+- GET /api/v1/librarian_sessions/{session_id}: Retrieve librarian chat history
+- POST /api/v1/curriculum/generate: Generate curriculum tasks
+- GET /api/v1/curriculum: List curriculum tasks
+- GET /api/v1/curriculum/export: Export curriculum tasks
 """
 
 from typing import List, Optional, Dict, Any
@@ -248,6 +260,8 @@ class AIEvaluationOut(BaseModel):
     rating: int = Field(..., ge=0, le=5, description="Rating from 0-5")
     feedback: str = Field(..., description="AI judge feedback")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Judge confidence score")
+    status: Optional[str] = Field(None, description="Evaluation status")
+    timestamp: Optional[str] = Field(None, description="When the evaluation was recorded")
 
 
 class TraceSignalIn(BaseModel):
@@ -961,7 +975,29 @@ def evaluate_trace_with_ai(trace_id: str, payload: AIEvaluationIn):
     try:
         judge = AIJudge(store)
         result = judge.evaluate(trace_id, payload.judge_model_id)
-        return AIEvaluationOut(**result)
+
+        confidence = float(result.get("confidence", 0.0))
+        status_value = "auto_verified" if confidence > 0.8 else "pending_review"
+        timestamp = datetime.utcnow().isoformat()
+        ai_eval = {
+            "rating": result.get("rating"),
+            "feedback": result.get("feedback"),
+            "confidence": confidence,
+            "status": status_value,
+            "timestamp": timestamp,
+        }
+
+        session = store.get_session()
+        try:
+            trace = session.query(Trace).filter(Trace.id == trace_id).first()
+            if not trace:
+                raise HTTPException(status_code=404, detail="Trace not found")
+            trace.ai_evaluation = dict(ai_eval)
+            session.commit()
+        finally:
+            session.close()
+
+        return AIEvaluationOut(**ai_eval)
 
     except ValueError as e:
         message = str(e)

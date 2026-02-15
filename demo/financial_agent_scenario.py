@@ -63,20 +63,13 @@ def _sleep():
 def main() -> None:
 	logger = AgentLogger(level=LogLevel.INFO)
 
-	skip_agent_init = os.getenv("TRACEBRAIN_DEMO_SKIP_AGENT_INIT", "").lower() in {
-		"1",
-		"true",
-		"yes",
-	}
-
-	if not skip_agent_init:
-		print("Initializing demo agent...")
-		model = TransformersModel(model_id="Qwen/Qwen2.5-3B-Instruct")
-		_ = CodeAgent(
-			tools=[get_stock_data, get_competitor_data],
-			model=model,
-			instructions=SYSTEM_PROMPT,
-		)
+	print("Initializing demo agent...")
+	model = TransformersModel(model_id="Qwen/Qwen2.5-3B-Instruct")
+	_ = CodeAgent(
+		tools=[get_stock_data, get_competitor_data],
+		model=model,
+		instructions=SYSTEM_PROMPT,
+	)
 
 	client = TraceClient(base_url="http://localhost:8000")
 

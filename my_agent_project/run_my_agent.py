@@ -5,6 +5,7 @@ from smolagents import CodeAgent, tool, TransformersModel
 
 # --- TraceBrain Tracing import ---
 from tracebrain import TraceClient
+# from tracebrain.sdk.agent_tools import request_human_intervention, search_past_experiences
 
 from converter import convert_smolagent_to_otlp
 
@@ -41,6 +42,11 @@ if __name__ == "__main__":
         print("\n❌ TraceBrain Tracing server is not running. Please run 'tracebrain-trace up' first.")
     else:
         # 3. Run the agent as usual
+        # NOTE: If your agent uses request_human_intervention (Active Help Request),
+        # wrap the run in trace_scope so the help signal is attached to a trace_id.
+        # Example:
+        # with client.trace_scope(system_prompt=my_agent.instructions):
+        #     my_agent.run(query)
         query = "What is the stock price of NVDA?"
         print(f"\n--- Running agent for query: '{query}' ---")
         my_agent.run(query)
