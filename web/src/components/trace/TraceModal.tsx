@@ -30,19 +30,11 @@ import {
 import { useSettings } from "../../contexts/SettingsContext";
 import type { Feedback } from "../../types/trace";
 
-interface AIEvaluation {
-  rating: number;
-  confidence: number;
-  feedback: string;
-  status: string;
-}
-
 interface TraceModalProps {
   open: boolean;
   onClose: () => void;
   type: "feedback" | "evaluate";
   id: string;
-  evaluation?: AIEvaluation;
   feedback?: Feedback | null;
 }
 
@@ -77,7 +69,6 @@ const TraceModal: React.FC<TraceModalProps> = ({
   onClose,
   type,
   id,
-  evaluation,
   feedback: latestFeedback,
 }) => {
   const [rating, setRating] = useState<number | null>(null);
@@ -155,12 +146,7 @@ const TraceModal: React.FC<TraceModalProps> = ({
       setRating(latestFeedback.rating ?? null);
       setFeedback(latestFeedback.comment ?? "");
     }
-
-    if (evaluation) {
-      setConfidence(evaluation.confidence ?? null);
-      setEvalStatus(evaluation.status ?? null);
-    }
-  }, [evaluation, latestFeedback, type]);
+  }, [latestFeedback, type]);
 
   const handleRetry = () => {
     setError("");
@@ -221,27 +207,6 @@ const TraceModal: React.FC<TraceModalProps> = ({
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
               Provide Feedback
             </Typography>
-
-            {confidence !== null && (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Confidence: {(confidence * 100).toFixed(0)}%
-                </Typography>
-                <ConfidenceIndicator
-                  confidence={confidence}
-                  status={(evalStatus as "pending_review" | "auto_verified" | "completed") || "pending_review"}
-                />
-              </Box>
-            )}
-
-            {resolveEvalStatus(evalStatus) && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Evaluation status:
-                </Typography>
-                <StatusChip status={resolveEvalStatus(evalStatus) as ChipStatus} secondary />
-              </Box>
-            )}
 
             <FeedbackForm
               rating={rating}

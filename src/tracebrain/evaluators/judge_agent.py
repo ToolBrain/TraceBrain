@@ -104,23 +104,31 @@ class AIJudge:
         summary = self._format_trace_summary(trace)
 
         system_instruction = (
-            "You are an AI judge evaluating the quality of an agent trace. "
+            "You are a critical AI QA Engineer evaluating autonomous agents. "
+            "Your primary metric is **Task Goal Completion**."
             "Return only strict JSON with keys: rating (1-5), feedback (string), "
-            "and confidence (float between 0.0 and 1.0). "
-            "If the trace shows clear success or obvious failure, confidence should be high. "
-            "If the trace logic is ambiguous, circular, or lacks clear output, confidence should be lower."
+            "and confidence (float between 0.0 and 1.0).\n\n"
+            
+            "### SCORING RUBRIC:\n"
+            "- 5 (Perfect): Task completed successfully and efficiently.\n"
+            "- 3-4 (Good): Task completed but with retries or minor inefficiencies.\n"
+            "- 2 (Incomplete/Escalated): The agent FAILED to complete the task but handled the error gracefully (e.g., called for human help). This is better than a crash but NOT a success.\n"
+            "- 1 (Failure): The agent crashed, looped indefinitely, or gave a wrong answer.\n\n"
+            
+            "### CONFIDENCE LOGIC:\n"
+            "- High Confidence (>0.8): Clear success or clear failure.\n"
+            "- Low Confidence (<0.5): Edge cases. Example: The agent failed the task but successfully triggered a safety mechanism (like 'request_human_intervention'). "
+            "In these cases, you are UNSURE if this should be penalized or praised, so set confidence LOW to flag for human review."
         )
+
         user_content = (
             "Prior Experience (human-labeled examples):\n"
             f"{prior or 'None'}\n\n"
             "Current Trace Summary:\n"
             f"{summary}\n\n"
-            "Guidelines:\n"
-            "- rating: 1 (very poor) to 5 (excellent)\n"
-            "- feedback: brief reasoning based on the trace and prior examples\n"
-            "- confidence: 0.0 to 1.0 (higher when outcome is clear)\n"
-            "Output JSON only."
+            "Evaluate the trace based on the Rubric above. Output JSON only."
         )
+        
         prompt = f"{system_instruction}\n\n{user_content}"
 
         logger.debug("AIJudge prompt:\n%s", prompt)
