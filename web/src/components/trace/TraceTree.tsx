@@ -13,7 +13,7 @@ import type { Span, Trace } from "../../types/trace";
 import TraceModal from "./TraceModal";
 import { useParams } from "react-router-dom";
 import { spanHasError } from "../utils/spanUtils";
-import { traceGetEvaluation } from "../utils/traceUtils";
+import { traceGetEvaluation, traceGetLatestFeedback } from "../utils/traceUtils";
 
 interface TraceTreeProps {
   traces: Trace[];
@@ -238,6 +238,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
           type={openModal}
           id={id}
           evaluation={traceGetEvaluation(traces[0])}
+          feedback={traceGetLatestFeedback(traces[0])}
         />
       )}
     </Box>

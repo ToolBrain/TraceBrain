@@ -13,7 +13,12 @@ import {
   FormControlLabel,
   Tooltip,
 } from "@mui/material";
-import { Close, ErrorOutline, HelpOutline } from "@mui/icons-material";
+import {
+  ArrowCircleUp,
+  Close,
+  ErrorOutline,
+  HelpOutline,
+} from "@mui/icons-material";
 import FeedbackForm from "./FeedbackForm";
 import ConfidenceIndicator from "../dashboard/ConfidenceIndicator";
 import StatusChip, { type ChipStatus } from "../dashboard/StatusChip";
@@ -23,6 +28,7 @@ import {
   signalTraceIssue,
 } from "../utils/api";
 import { useSettings } from "../../contexts/SettingsContext";
+import type { Feedback } from "../../types/trace";
 
 interface AIEvaluation {
   rating: number;
@@ -37,6 +43,7 @@ interface TraceModalProps {
   type: "feedback" | "evaluate";
   id: string;
   evaluation?: AIEvaluation;
+  feedback?: Feedback | null;
 }
 
 const ReviewToggle = ({
@@ -71,6 +78,7 @@ const TraceModal: React.FC<TraceModalProps> = ({
   type,
   id,
   evaluation,
+  feedback: latestFeedback,
 }) => {
   const [rating, setRating] = useState<number | null>(null);
   const [feedback, setFeedback] = useState("");
@@ -79,6 +87,9 @@ const TraceModal: React.FC<TraceModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [markForReview, setMarkForReview] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const { settings } = useSettings();
   const [showDetails, setShowDetails] = useState(false);
 
@@ -115,6 +126,19 @@ const TraceModal: React.FC<TraceModalProps> = ({
   }, [type, open, id, settings.llm.model]);
 
   useEffect(() => {
+    setRating(null);
+    setFeedback("");
+    setConfidence(null);
+    setEvalStatus(null);
+    setError("");
+    setShowDetails(false);
+    setMarkForReview(false);
+    setSubmitting(false);
+    setSuccessOpen(false);
+    setSuccessMessage("");
+  }, [id, type]);
+
+  useEffect(() => {
     if (rating !== null && rating <= 1) {
       setMarkForReview(true);
     } else {
@@ -123,13 +147,20 @@ const TraceModal: React.FC<TraceModalProps> = ({
   }, [rating]);
 
   useEffect(() => {
-    if (type === "feedback" && evaluation) {
-      setRating(evaluation.rating);
-      setFeedback(evaluation.feedback);
+    if (type !== "feedback") {
+      return;
+    }
+
+    if (latestFeedback) {
+      setRating(latestFeedback.rating ?? null);
+      setFeedback(latestFeedback.comment ?? "");
+    }
+
+    if (evaluation) {
       setConfidence(evaluation.confidence ?? null);
       setEvalStatus(evaluation.status ?? null);
     }
-  }, [evaluation]);
+  }, [evaluation, latestFeedback, type]);
 
   const handleRetry = () => {
     setError("");
@@ -152,13 +183,33 @@ const TraceModal: React.FC<TraceModalProps> = ({
 
   const handleSubmitFeedback = async () => {
     if (rating === null) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      if (type === "feedback") {
+        await submitTraceFeedback(id, rating, feedback);
 
-    await submitTraceFeedback(id, rating, feedback);
+        if (rating <= 2 && markForReview) {
+          await signalTraceIssue(id, feedback);
+        }
+      }
 
-    if (rating <= 2 && markForReview) {
-      await signalTraceIssue(id, feedback);
+      setSuccessMessage(
+        type === "evaluate"
+          ? "Evaluation captured successfully."
+          : "Feedback submitted successfully.",
+      );
+      setSuccessOpen(true);
+    } catch (submitError: any) {
+      console.error("Failed to submit feedback:", submitError);
+      setError(submitError?.message || "Failed to submit feedback.");
+    } finally {
+      setSubmitting(false);
     }
+  };
 
+  const handleSuccessClose = () => {
+    setSuccessOpen(false);
     onClose();
   };
 
@@ -366,41 +417,77 @@ const TraceModal: React.FC<TraceModalProps> = ({
         <Button
           variant="contained"
           onClick={handleSubmitFeedback}
-          disabled={rating === null}
+          disabled={rating === null || submitting}
         >
-          Submit
+          {submitting ? "Submitting..." : "Submit"}
         </Button>
       </>
     );
   };
 
   return (
-    <Dialog
-      open={open}
-      maxWidth={false}
-      slotProps={{
-        paper: {
-          sx: {
-            width: "60vw",
-            height: "50vh",
+    <>
+      <Dialog
+        open={open}
+        maxWidth={false}
+        slotProps={{
+          paper: {
+            sx: {
+              width: "60vw",
+              height: "50vh",
+            },
           },
-        },
-      }}
-    >
-      <IconButton
-        onClick={onClose}
-        sx={{
-          position: "absolute",
-          right: 8,
-          top: 8,
         }}
       >
-        <Close />
-      </IconButton>
+        <IconButton
+          onClick={onClose}
+          sx={{
+            position: "absolute",
+            right: 8,
+            top: 8,
+          }}
+        >
+          <Close />
+        </IconButton>
 
-      <DialogContent>{renderContent()}</DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>{renderActions()}</DialogActions>
-    </Dialog>
+        <DialogContent>
+          {error && type === "feedback" && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          {renderContent()}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>{renderActions()}</DialogActions>
+      </Dialog>
+
+      <Dialog open={successOpen} onClose={handleSuccessClose} maxWidth="xs">
+        <DialogContent>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 2,
+              py: 2,
+            }}
+          >
+            <ArrowCircleUp sx={{ fontSize: 64, color: "success.main" }} />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Success
+            </Typography>
+            <Typography variant="body2" color="text.secondary" align="center">
+              {successMessage}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
+          <Button variant="contained" onClick={handleSuccessClose}>
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 

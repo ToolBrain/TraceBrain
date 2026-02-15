@@ -9,6 +9,7 @@ Features:
 - GET /api/v1/traces: List all traces with pagination
 - GET /api/v1/traces/{trace_id}: Get detailed trace information
 - POST /api/v1/traces: Ingest a trace
+- POST /api/v1/traces/init: Initialize a trace before spans are available
 - POST /api/v1/ops/batch_evaluate: Batch AI evaluation
 - POST /api/v1/traces/{trace_id}/feedback: Add user feedback to a trace
 - POST /api/v1/traces/{trace_id}/signal: Mark a trace as needs review
@@ -259,6 +260,8 @@ class AIEvaluationOut(BaseModel):
     rating: int = Field(..., ge=0, le=5, description="Rating from 0-5")
     feedback: str = Field(..., description="AI judge feedback")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Judge confidence score")
+    status: Optional[str] = Field(None, description="Evaluation status")
+    timestamp: Optional[str] = Field(None, description="When the evaluation was recorded")
 
 
 class TraceSignalIn(BaseModel):
@@ -317,6 +320,12 @@ class TraceIngestResponse(BaseModel):
     message: str = Field(..., description="Status message")
 
 
+class TraceInitIn(BaseModel):
+    trace_id: str = Field(..., description="Unique trace identifier")
+    episode_id: Optional[str] = Field(None, description="Episode identifier")
+    system_prompt: Optional[str] = Field(None, description="System prompt used by the agent")
+
+
 def _trace_to_out(trace) -> TraceOut:
     span_outs = []
     for span in trace.spans:
@@ -372,6 +381,7 @@ def root():
             "get_trace": "GET /api/v1/traces/{trace_id}",
             "ingest_trace": "POST /api/v1/traces",
             "batch_evaluate": "POST /api/v1/ops/batch_evaluate",
+            "init_trace": "POST /api/v1/traces/init",
             "add_feedback": "POST /api/v1/traces/{trace_id}/feedback",
             "signal_trace": "POST /api/v1/traces/{trace_id}/signal",
             "search_traces": "GET /api/v1/traces/search",
@@ -556,6 +566,26 @@ def ingest_trace(trace: TraceIn):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to store trace: {str(e)}")
+
+
+@router.post("/traces/init", response_model=TraceIngestResponse, status_code=status.HTTP_201_CREATED, tags=["Traces"])
+def init_trace(trace: TraceInitIn):
+    """Pre-register a trace before spans are available."""
+    try:
+        trace_id = store.init_trace(
+            trace_id=trace.trace_id,
+            episode_id=trace.episode_id,
+            system_prompt=trace.system_prompt,
+        )
+        return TraceIngestResponse(
+            success=True,
+            trace_id=trace_id,
+            message="Trace initialized successfully",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to initialize trace: {str(e)}")
 
 
 @router.post("/traces/{trace_id}/feedback", response_model=FeedbackResponse, tags=["Feedback"])
@@ -945,7 +975,29 @@ def evaluate_trace_with_ai(trace_id: str, payload: AIEvaluationIn):
     try:
         judge = AIJudge(store)
         result = judge.evaluate(trace_id, payload.judge_model_id)
-        return AIEvaluationOut(**result)
+
+        confidence = float(result.get("confidence", 0.0))
+        status_value = "auto_verified" if confidence > 0.8 else "pending_review"
+        timestamp = datetime.utcnow().isoformat()
+        ai_eval = {
+            "rating": result.get("rating"),
+            "feedback": result.get("feedback"),
+            "confidence": confidence,
+            "status": status_value,
+            "timestamp": timestamp,
+        }
+
+        session = store.get_session()
+        try:
+            trace = session.query(Trace).filter(Trace.id == trace_id).first()
+            if not trace:
+                raise HTTPException(status_code=404, detail="Trace not found")
+            trace.ai_evaluation = dict(ai_eval)
+            session.commit()
+        finally:
+            session.close()
+
+        return AIEvaluationOut(**ai_eval)
 
     except ValueError as e:
         message = str(e)

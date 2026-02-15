@@ -18,6 +18,28 @@ def tool(func):
 API_BASE_URL = os.getenv("TRACEBRAIN_API_BASE_URL", "http://localhost:8000/api/v1")
 
 
+class ActiveHelpRequest(RuntimeError):
+    """Raised when an agent explicitly requests human intervention."""
+
+    def __init__(self, reason: str, response: Optional[Dict[str, Any]] = None):
+        super().__init__(reason)
+        self.reason = reason
+        self.response = response or {}
+
+
+def _init_trace_if_missing(trace_id: str) -> None:
+    if not trace_id:
+        return
+    try:
+        requests.post(
+            f"{API_BASE_URL}/traces/init",
+            json={"trace_id": trace_id},
+            timeout=5,
+        )
+    except requests.exceptions.RequestException:
+        return
+
+
 @tool
 def search_past_experiences(task_description: str, min_rating: int = 4, limit: int = 3) -> Dict[str, Any]:
     """Find similar high-quality traces for in-context learning."""
@@ -58,5 +80,30 @@ def request_human_intervention(reason: str) -> Dict[str, Any]:
         json={"reason": reason},
         timeout=10,
     )
+    if response.status_code == 404:
+        _init_trace_if_missing(trace_id)
+        response = requests.post(
+            f"{API_BASE_URL}/traces/{trace_id}/signal",
+            json={"reason": reason},
+            timeout=10,
+        )
     response.raise_for_status()
     return response.json()
+
+
+@tool
+def request_human_intervention_and_abort(reason: str) -> Dict[str, Any]:
+    """Escalate to the command center and abort execution.
+
+    Args:
+        reason: Short description of why human intervention is needed.
+    """
+    try:
+        response = request_human_intervention(reason)
+    except Exception as exc:
+        response = {
+            "success": False,
+            "message": str(exc),
+            "reason": reason,
+        }
+    raise ActiveHelpRequest(reason=reason, response=response)

@@ -167,14 +167,73 @@ class BaseStorageBackend:
             return trace_id
         except IntegrityError:
             session.rollback()
-            existing = session.query(Trace.id).filter(Trace.id == trace_id).first()
+            existing = (
+                session.query(Trace)
+                .options(selectinload(Trace.spans))
+                .filter(Trace.id == trace_id)
+                .first()
+            )
             if existing:
-                logger.info("Trace %s already exists; treating as idempotent insert", trace_id)
+                if system_prompt and not existing.system_prompt:
+                    existing.system_prompt = system_prompt
+                if episode_id and not existing.episode_id:
+                    existing.episode_id = episode_id
+                if status != TraceStatus.running or existing.status == TraceStatus.running:
+                    existing.status = status
+                if priority != existing.priority:
+                    existing.priority = priority
+                if embedding and not existing.embedding:
+                    existing.embedding = embedding
+
+                existing_span_ids = {span.span_id for span in existing.spans}
+                for span_data in spans_data:
+                    span_id = span_data.get("span_id")
+                    if not span_id or span_id in existing_span_ids:
+                        continue
+                    span = self._create_span_from_dict(span_data, trace_id)
+                    existing.spans.append(span)
+
+                session.commit()
+                logger.info("Merged trace %s with %s new spans", trace_id, len(spans_data))
                 return trace_id
             raise
         except Exception:
             session.rollback()
             logger.exception("Failed to add trace")
+            raise
+        finally:
+            session.close()
+
+    def init_trace(
+        self,
+        trace_id: str,
+        episode_id: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+    ) -> str:
+        if not trace_id:
+            raise ValueError("trace_id is required")
+
+        session = self.get_session()
+        try:
+            existing = session.query(Trace).filter(Trace.id == trace_id).first()
+            if existing:
+                return trace_id
+
+            trace = Trace(
+                id=trace_id,
+                system_prompt=system_prompt,
+                episode_id=episode_id,
+                created_at=datetime.utcnow(),
+                status=TraceStatus.running,
+                priority=3,
+            )
+            session.add(trace)
+            session.commit()
+            logger.info("Initialized trace %s", trace_id)
+            return trace_id
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to initialize trace")
             raise
         finally:
             session.close()

@@ -7,10 +7,18 @@ export interface Span {
   attributes: Record<string, any>;
 }
 
+export interface Feedback {
+  rating?: number;
+  comment?: string;
+  tags?: string[];
+  timestamp?: string;
+  metadata?: Record<string, any>;
+}
+
 export interface Trace {
   trace_id: string;
   created_at: string;
-  feedbacks: any[];
+  feedbacks: Feedback[];
   attributes: Record<string, any>;
   spans: Span[];
 }

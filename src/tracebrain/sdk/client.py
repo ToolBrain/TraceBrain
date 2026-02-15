@@ -25,6 +25,7 @@ Usage:
 
 import logging
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List, Iterator
@@ -35,6 +36,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from tracebrain.core.schema import TraceBrainAttributes, SpanType
+from tracebrain.sdk.agent_tools import ActiveHelpRequest
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
@@ -168,7 +170,7 @@ class TraceClient:
             attributes["tracebrain.trace.status"] = "failed"
         trace_data["attributes"] = attributes
 
-    def trace_scope(self, episode_id: str, system_prompt: str) -> "TraceScope":
+    def trace_scope(self, system_prompt: str, episode_id: Optional[str] = None) -> "TraceScope":
         return TraceScope(self, episode_id=episode_id, system_prompt=system_prompt)
     
     def log_trace(self, trace_data: Dict[str, Any]) -> bool:
@@ -249,6 +251,34 @@ class TraceClient:
                 f"The TraceStore may be slow or unreachable."
             )
             return False
+
+    def init_trace(
+        self,
+        trace_id: Optional[str] = None,
+        episode_id: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+    ) -> Optional[str]:
+        """Pre-register a trace so governance signals can be sent mid-run."""
+        url = self._make_url("/api/v1/traces/init")
+        payload = {
+            "trace_id": trace_id or uuid.uuid4().hex,
+            "episode_id": episode_id,
+            "system_prompt": system_prompt,
+        }
+
+        try:
+            response = self.session.post(url, json=payload, timeout=self.timeout)
+            if response.status_code in (200, 201):
+                return payload["trace_id"]
+            logger.warning(
+                "Failed to initialize trace. Status: %s, Response: %s",
+                response.status_code,
+                response.text[:200],
+            )
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error("Error initializing trace: %s", str(e))
+            return None
             
         except requests.exceptions.ConnectionError as e:
             logger.error(
@@ -493,8 +523,11 @@ class TraceClient:
 class TraceScope:
     """Context manager for fail-safe trace logging."""
 
-    def __init__(self, client: TraceClient, episode_id: str, system_prompt: str):
+    def __init__(self, client: TraceClient, episode_id: Optional[str], system_prompt: str):
         self._client = client
+        self._previous_trace_id = os.getenv("TRACEBRAIN_TRACE_ID")
+        if not episode_id:
+            episode_id = f"ep-{uuid.uuid4().hex[:8]}"
         self._trace_data: Dict[str, Any] = {
             "trace_id": uuid.uuid4().hex,
             "attributes": {
@@ -505,12 +538,49 @@ class TraceScope:
         }
 
     def __enter__(self) -> Dict[str, Any]:
+        trace_id = self._trace_data.get("trace_id")
+        initialized_id = self._client.init_trace(
+            trace_id=trace_id,
+            episode_id=self._trace_data["attributes"].get(TraceBrainAttributes.EPISODE_ID),
+            system_prompt=self._trace_data["attributes"].get(TraceBrainAttributes.SYSTEM_PROMPT),
+        )
+        if initialized_id:
+            self._trace_data["trace_id"] = initialized_id
+        os.environ["TRACEBRAIN_TRACE_ID"] = self._trace_data["trace_id"]
         return self._trace_data
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
         if exc_type is None:
             self._client.log_trace(self._trace_data)
+            if self._previous_trace_id is None:
+                os.environ.pop("TRACEBRAIN_TRACE_ID", None)
+            else:
+                os.environ["TRACEBRAIN_TRACE_ID"] = self._previous_trace_id
             return False
+
+        if exc_type is not None and issubclass(exc_type, ActiveHelpRequest):
+            reason = getattr(exc_val, "reason", None) or "Active help requested"
+            response = getattr(exc_val, "response", None) or {"reason": reason}
+            help_span = {
+                "span_id": uuid.uuid4().hex[:16],
+                "parent_id": None,
+                "name": "Active Help Request",
+                "start_time": TraceClient._iso_now(),
+                "end_time": TraceClient._iso_now(),
+                "attributes": {
+                    TraceBrainAttributes.SPAN_TYPE: SpanType.TOOL_EXECUTION,
+                    TraceBrainAttributes.TOOL_NAME: "request_human_intervention",
+                    TraceBrainAttributes.TOOL_INPUT: reason,
+                    TraceBrainAttributes.TOOL_OUTPUT: response,
+                },
+            }
+            self._trace_data.setdefault("spans", []).append(help_span)
+            self._client.log_trace(self._trace_data)
+            if self._previous_trace_id is None:
+                os.environ.pop("TRACEBRAIN_TRACE_ID", None)
+            else:
+                os.environ["TRACEBRAIN_TRACE_ID"] = self._previous_trace_id
+            return True
 
         message = str(exc_val) if exc_val else "Unhandled exception"
         crash_span = {
@@ -527,6 +597,10 @@ class TraceScope:
         self._trace_data.setdefault("spans", []).append(crash_span)
         TraceClient._mark_failed_if_error(self._trace_data)
         self._client.log_trace(self._trace_data)
+        if self._previous_trace_id is None:
+            os.environ.pop("TRACEBRAIN_TRACE_ID", None)
+        else:
+            os.environ["TRACEBRAIN_TRACE_ID"] = self._previous_trace_id
         return False
 
     @staticmethod
