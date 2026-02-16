@@ -75,9 +75,20 @@ def _build_tool_specs() -> List[Dict[str, Any]]:
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Semantic search query"},
-                    "min_rating": {"type": "integer", "description": "Minimum rating", "default": 4},
-                    "limit": {"type": "integer", "description": "Max results", "default": 3},
+                    "query": {
+                        "type": "string",
+                        "description": "Semantic search query describing the target behavior or failure",
+                    },
+                    "min_rating": {
+                        "type": "integer",
+                        "description": "Minimum human feedback rating to include (use higher to focus on best traces)",
+                        "default": 4,
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return (keep small for focused context)",
+                        "default": 3,
+                    },
                 },
                 "required": ["query"],
             },
@@ -97,21 +108,25 @@ class LibrarianAgent:
 
     def _system_prompt(self) -> str:
         return (
-            "You are the TraceBrain TraceStore Librarian, a text-to-SQL assistant. "
-            "Use the run_sql_query tool for ALL database access. "
-            "Use search_similar_traces for semantic similarity over trace content; use run_sql_query for metadata filters, counts, and exact matches. "
-            "Only write SELECT queries. "
-            "If the SQL execution fails, correct the query and try again. "
-            "If the tool returns EMPTY_RESULT, do NOT hallucinate. Instead, ask a clarifying question and return JSON with suggestions. "
-            "Return ONLY valid JSON matching this schema: "
+            "You are the TraceBrain AI Librarian, an expert in Agent Operations (AgentOps). "
+            "Your task is to analyze agent execution traces to help human experts diagnose issues.\n\n"
+            
+            "### CORE TOOLS:\n"
+            "1. run_sql_query: Use this for counts, status filters, time-based queries, and metadata analysis.\n"
+            "2. search_similar_traces: Use this ONLY when the user asks for 'similar' cases or semantic patterns in reasoning/thoughts.\n\n"
+            
+            "### CRITICAL SQL RULES:\n"
+            "- All timestamps are in UTC. Use 'now() - interval X hours' for relative time queries.\n"
+            "- To see agent thoughts or tool outputs, you MUST JOIN 'traces' and 'spans' on 'spans.trace_id = traces.id'.\n"
+            "- For JSONB fields, use '->>' to get values as text (e.g., attributes->>'tracebrain.tool.name').\n"
+            "- Only perform SELECT queries. If the database returns EMPTY_RESULT, do not guess; explain that no data matches the criteria.\n\n"
+            
+            "### OUTPUT FORMAT (Strict JSON):\n"
             "{"
-            "\"answer\": \"string\", "
-            "\"suggestions\": [{\"label\": \"string\", \"value\": \"string\"}], "
-            "\"sources\": [\"string\"]"
-            "}. "
-            "suggestions MUST be an array (can be empty). "
-            "sources MUST be an array (can be empty). "
-            "Do not include markdown or extra keys.\n\n"
+            "\"answer\": \"A concise summary of findings. Mention specific errors or patterns found.\", "
+            "\"suggestions\": [{\"label\": \"Follow-up question\", \"value\": \"Exact query text\"}], "
+            "\"sources\": [\"list of trace_ids discovered\"]"
+            "}\n\n"
             f"{SCHEMA_CONTEXT}"
         )
 
@@ -172,12 +187,24 @@ class LibrarianAgent:
 
     def _abstain_response_from_llm(self, user_query: str, history_text: str, provider: BaseProvider) -> Dict[str, Any]:
         system_prompt = (
-            "You are the TraceBrain TraceStore Librarian. "
-            "The database returned EMPTY_RESULT. "
-            "Ask a clarifying question and provide helpful suggestions. "
-            "Return ONLY valid JSON with keys answer, suggestions, sources. "
-            "suggestions must be an array of objects with label/value strings. "
-            "sources must be an empty array."
+            "You are the TraceBrain AI Librarian expert. The database returned EMPTY_RESULT for the user's request.\n\n"
+            "### YOUR TASK:\n"
+            "1. Analyze the User Question and explain politely that no traces currently match those specific criteria.\n"
+            "2. Identify potential reasons for the empty result (e.g., a time range that is too narrow, a specific error code that hasn't occurred, or a tool name typo).\n"
+            "3. Provide 3-4 ACTIONABLE suggestions to help the user find what they need. These should be formatted as direct questions or commands the user can click.\n\n"
+            "### SUGGESTION GUIDELINES:\n"
+            "- 'Broaden Time': Suggest looking back further (e.g., last 7 days).\n"
+            "- 'Relax Filters': If they asked for errors, suggest looking for all traces of that tool.\n"
+            "- 'Semantic Search': Suggest using natural language to find 'similar behavior' instead of exact SQL matches.\n\n"
+            "### OUTPUT RULES:\n"
+            "Return ONLY a strict JSON object:\n"
+            "{\n"
+            "  \"answer\": \"A professional explanation of why no data was found and what might be the cause.\",\n"
+            "  \"suggestions\": [\n"
+            "    {\"label\": \"Short label for UI button\", \"value\": \"The full natural language query to try next\"}\n"
+            "  ],\n"
+            "  \"sources\": []\n"
+            "}"
         )
         user_content = (
             "Conversation History:\n"
@@ -216,8 +243,12 @@ class LibrarianAgent:
 
     def _normalize_sources(self, sources: Any, answer: str) -> List[str]:
         if isinstance(sources, list):
-            cleaned = [str(item).strip() for item in sources if str(item).strip()]
-            return cleaned
+            cleaned = []
+            for item in sources:
+                value = str(item).strip()
+                if value:
+                    cleaned.append(value)
+            return list(dict.fromkeys(cleaned))
         extracted = self._extract_sources(answer)
         return extracted if extracted else []
 
@@ -298,7 +329,11 @@ class LibrarianAgent:
 
                 tool_result = self.run_sql_query(sql_query)
                 if tool_result.startswith("EXECUTION_FAILED"):
-                    prompt = f"SQL error: {tool_result}. Please fix and output a new SELECT query."
+                    prompt = (
+                        "SQL execution failed. Here is the database error message. "
+                        "Fix the SQL and output a new SELECT query only.\n"
+                        f"ERROR: {tool_result}"
+                    )
                     continue
                 if tool_result.startswith("EMPTY_RESULT"):
                     result = self._abstain_response_from_llm(user_query, history_text, provider)
@@ -368,6 +403,14 @@ class LibrarianAgent:
                 )
 
                 if tool_name == "run_sql_query" and tool_result.startswith("EXECUTION_FAILED"):
+                    response = provider.send_user_message(
+                        session,
+                        (
+                            "The SQL query failed. Use the error message to fix the query. "
+                            "Return a corrected SQL query only.\n"
+                            f"ERROR: {tool_result}"
+                        ),
+                    )
                     break
                 if tool_name == "run_sql_query" and tool_result.startswith("EMPTY_RESULT"):
                     result = self._abstain_response_from_llm(user_query, history_text, provider)

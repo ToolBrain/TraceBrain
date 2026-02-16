@@ -162,11 +162,24 @@ class TraceClient:
         return False
 
     @staticmethod
+    def _has_active_help_request(trace_data: Dict[str, Any]) -> bool:
+        for span in trace_data.get("spans") or []:
+            attrs = (span or {}).get("attributes") or {}
+            tool_name = str(attrs.get("tracebrain.tool.name", ""))
+            tool_code = str(attrs.get("tracebrain.llm.tool_code", ""))
+            if "request_human_intervention" in tool_name or "request_human_intervention" in tool_code:
+                return True
+        return False
+
+    @staticmethod
     def _mark_failed_if_error(trace_data: Dict[str, Any]) -> None:
         if not TraceClient._has_error_span(trace_data):
             return
+        if TraceClient._has_active_help_request(trace_data):
+            return
         attributes = trace_data.get("attributes") or {}
-        if attributes.get("tracebrain.trace.status") != "failed":
+        status_value = attributes.get("tracebrain.trace.status")
+        if status_value is None or str(status_value).lower() == "running":
             attributes["tracebrain.trace.status"] = "failed"
         trace_data["attributes"] = attributes
 

@@ -71,11 +71,61 @@ class CurriculumCurator:
     def _summarize_traces(self, traces: List[Trace]) -> str:
         lines = []
         for trace in traces:
-            reason = ""
+            feedback_comment = ""
             if trace.feedback and isinstance(trace.feedback, dict):
-                reason = trace.feedback.get("comment") or ""
+                feedback_comment = trace.feedback.get("comment") or ""
+
+            error_details = []
+            tool_usage = []
+
+            recent_spans = (trace.spans or [])[-5:]
+            for span in recent_spans:
+                attrs = span.attributes or {}
+                span_type = attrs.get("tracebrain.span.type")
+                span_name = (span.name or "").lower()
+
+                if span_type == "tool_execution" or "tool execution" in span_name:
+                    tool_name = attrs.get("tracebrain.tool.name") or span.name
+                    tool_output = str(attrs.get("tracebrain.tool.output", ""))[:200]
+                    if tool_name:
+                        tool_usage.append(f"Tool: {tool_name}")
+
+                    lower_output = tool_output.lower()
+                    error_markers = (
+                        "error",
+                        "exception",
+                        "failed",
+                        "failure",
+                        "timeout",
+                        "timed out",
+                        "rate limit",
+                        "unauthorized",
+                        "forbidden",
+                        "not found",
+                        "invalid",
+                        "traceback",
+                        "stack trace",
+                    )
+                    has_error_marker = any(marker in lower_output for marker in error_markers)
+                    has_status_code = re.search(r"\b[4-5]\d{2}\b", tool_output) is not None
+                    if has_error_marker or has_status_code:
+                        error_details.append(f"Tool Error: {tool_output}")
+
+                if attrs.get("otel.status_code") == "ERROR":
+                    desc = attrs.get("otel.status_description", "Unknown Error")
+                    error_details.append(f"Span Error: {desc}")
+
             status = trace.status.value if hasattr(trace.status, "value") else str(trace.status)
-            lines.append(f"Trace {trace.id} | status={status} | feedback={reason}")
+            summary_line = f"Trace ID: {trace.id[-6:]} | Status: {status}"
+            if feedback_comment:
+                summary_line += f" | Human Feedback: {feedback_comment}"
+            if tool_usage:
+                summary_line += f" | Actions: {', '.join(tool_usage)}"
+            if error_details:
+                summary_line += f" | ERRORS FOUND: {'; '.join(error_details)}"
+
+            lines.append(summary_line)
+
         return "\n".join(lines)
 
     def _extract_json(self, text: str) -> List[Dict[str, Any]]:
@@ -103,14 +153,21 @@ class CurriculumCurator:
 
         summary = self._summarize_traces(traces)
         system_prompt = (
-            "You analyze failed agent traces and propose training tasks. "
+            "You are an expert AI Coach for Autonomous Agents. Your goal is to design a training curriculum. "
+            "Do NOT suggest fixing the logging system or database. "
+            "Focus ONLY on the agent's behavior, reasoning, and tool usage. "
             "Return ONLY valid JSON as a list of objects with keys: task, reasoning, priority."
         )
         user_prompt = (
-            "Analyze these failed agent traces. Identify 3 key weaknesses. "
-            "Then, generate 5 specific, actionable training tasks (scenarios) to help the agent improve. "
-            "Return the output as a JSON list of objects with keys: 'task', 'reasoning', 'priority'.\n\n"
-            f"Failed Traces:\n{summary}"
+            "Analyze the following failed traces. Focus on the 'ERRORS FOUND' and 'Human Feedback' sections.\n"
+            "Identify the root cause of the agent's failure (e.g., infinite loop, hallucination, bad SQL syntax, "
+            "API rate limit).\n\n"
+            "Based on this, generate 5 specific training scenarios (curriculum tasks) to teach the agent how "
+            "to handle these situations better.\n"
+            "The 'task' should be a prompt or scenario description.\n"
+            "The 'reasoning' should explain why this helps the agent.\n\n"
+            "Return valid JSON list of objects: [{'task': '...', 'reasoning': '...', 'priority': 'high/medium'}]\n"
+            f"\n### FAILED TRACES LOG:\n{summary}"
         )
 
         session = self.provider.start_chat(system_prompt, [])

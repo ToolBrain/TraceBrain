@@ -116,6 +116,15 @@ class AIJudge:
         if not trace:
             raise ValueError(f"Trace not found: {trace_id}")
 
+        has_active_help = False
+        for span in trace.spans or []:
+            attrs = span.attributes or {}
+            tool_name = str(attrs.get("tracebrain.tool.name", ""))
+            tool_code = str(attrs.get("tracebrain.llm.tool_code", ""))
+            if "request_human_intervention" in tool_name or "request_human_intervention" in tool_code:
+                has_active_help = True
+                break
+
         prior = self._get_prior_experience(trace.episode_id, trace_id)
         summary = self._format_trace_summary(trace)
 
@@ -135,16 +144,21 @@ class AIJudge:
             
             "### CONFIDENCE LOGIC:\n"
             "- High Confidence (>0.8): Clear success or clear failure.\n"
-            "- Low Confidence (<0.5): Edge cases. Example: The agent failed the task but successfully triggered a safety mechanism (like 'request_human_intervention'). "
-            "In these cases, you are UNSURE if this should be penalized or praised, so set confidence LOW to flag for human review."
+            "- Low Confidence (<0.5): **MANDATORY for cases where the agent calls 'request_human_intervention'**. "
+            "Because the agent has admitted uncertainty or encountered a loop it cannot break, the final quality is operationally ambiguous. "
+            "In such cases, you MUST set confidence between 0.30 and 0.49 to flag this trace for human review."
         )
 
+        # Add a warning flag if the agent requested human help.
+        intervention_flag = "⚠️ AGENT HAS REQUESTED HUMAN HELP IN THIS TRACE." if has_active_help else ""
+
         user_content = (
-            "Prior Experience (human-labeled examples):\n"
-            f"{prior or 'None'}\n\n"
+            f"{intervention_flag}\n"
             "Current Trace Summary:\n"
             f"{summary}\n\n"
-            "Evaluate the trace based on the Rubric above. Output JSON only."
+            "Prior Experience:\n"
+            f"{prior or 'None'}\n\n"
+            "Instruction: Evaluate based on the Mandatory Uncertainty Protocol. Output JSON only."
         )
         
         prompt = f"{system_instruction}\n\n{user_content}"
