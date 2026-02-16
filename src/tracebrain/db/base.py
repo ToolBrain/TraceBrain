@@ -113,6 +113,12 @@ class Trace(Base):
         nullable=True,
         comment="Trace embedding vector",
     )
+    attributes = Column(
+        JSONBCompat,
+        nullable=True,
+        default=dict,
+        comment="Trace-level attributes (episode ID, AI eval, etc.)",
+    )
     feedback = Column(
         JSONBCompat,
         nullable=True,
@@ -137,6 +143,7 @@ class Trace(Base):
     __table_args__ = (
         Index("idx_trace_created_at", "created_at"),
         Index("idx_trace_episode_id", "episode_id"),
+        Index("idx_trace_attributes_gin", "attributes", postgresql_using="gin"),
         Index("idx_trace_feedback_gin", "feedback", postgresql_using="gin"),
         Index("idx_trace_ai_eval_gin", "ai_evaluation", postgresql_using="gin"),
     )
@@ -278,6 +285,7 @@ class History(Base):
     __table_args__ = (
         Index("idx_accessed", "last_accessed"),
     )
+    
 class CurriculumTask(Base):
     """Represents a generated training task for the automated curriculum."""
 

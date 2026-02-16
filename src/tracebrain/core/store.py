@@ -152,6 +152,7 @@ class BaseStorageBackend:
             status=status,
             priority=priority,
             embedding=embedding or None,
+            attributes=attributes,
             ai_evaluation=ai_evaluation,
         )
 
@@ -178,12 +179,19 @@ class BaseStorageBackend:
                     existing.system_prompt = system_prompt
                 if episode_id and not existing.episode_id:
                     existing.episode_id = episode_id
+                if attributes:
+                    if isinstance(existing.attributes, dict):
+                        existing.attributes = {**existing.attributes, **attributes}
+                    else:
+                        existing.attributes = dict(attributes)
                 if status != TraceStatus.running or existing.status == TraceStatus.running:
                     existing.status = status
                 if priority != existing.priority:
                     existing.priority = priority
                 if embedding and not existing.embedding:
                     existing.embedding = embedding
+                if ai_evaluation and not existing.ai_evaluation:
+                    existing.ai_evaluation = ai_evaluation
 
                 existing_span_ids = {span.span_id for span in existing.spans}
                 for span_data in spans_data:
@@ -226,6 +234,10 @@ class BaseStorageBackend:
                 created_at=datetime.utcnow(),
                 status=TraceStatus.running,
                 priority=3,
+                attributes={
+                    "system_prompt": system_prompt,
+                    "tracebrain.episode.id": episode_id,
+                },
             )
             session.add(trace)
             session.commit()
@@ -429,6 +441,8 @@ class BaseStorageBackend:
         spans.sort(key=lambda span: (span.start_time or datetime.min, span.id))
 
         trace_attributes: Dict[str, Any] = {}
+        if isinstance(trace.attributes, dict):
+            trace_attributes.update(trace.attributes)
         if trace.system_prompt:
             trace_attributes["system_prompt"] = trace.system_prompt
         if trace.episode_id:
