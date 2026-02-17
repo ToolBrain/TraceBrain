@@ -1,9 +1,10 @@
 import React from "react";
-import { Box, Typography } from "@mui/material";
-import type { Span } from "../../types/trace";
+import { Box, Typography, Chip } from "@mui/material";
+import type { Span, Trace } from "../../types/trace";
 import { parseLLMContent } from "./utils";
 import SpanContent from "./SpanContent";
 import TokenUsageBar from "./TokenUsageBar";
+import AIEvaluation from "./AIEvaluation";
 import {
   spanGetType,
   spanGetToolName,
@@ -13,12 +14,47 @@ import {
   spanGetOutput,
   spanGetSystemPrompt,
 } from "../utils/spanUtils";
+import { traceGetEvaluation } from "../utils/traceUtils";
 
-interface SpanDetailsProps {
+interface TraceDetailsProps {
   span: Span | null;
+  trace: Trace | null;
 }
 
-const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
+const TraceDetails: React.FC<TraceDetailsProps> = ({ span, trace }) => {
+  // Show trace details when trace is selected
+  if (trace) {
+    const evaluation = traceGetEvaluation(trace);
+
+    return (
+      <Box
+        sx={{ width: "75%", bgcolor: "background.paper", overflowY: "auto" }}
+      >
+        <Box
+          sx={{
+            p: 2,
+            borderBottom: 1,
+            borderColor: "divider",
+            bgcolor: "background.default",
+          }}
+        >
+          <Typography variant="h5">Trace Details</Typography>
+        </Box>
+        <Box sx={{ p: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{ mb: 2, fontFamily: "monospace", color: "text.secondary" }}
+          >
+            {"Trace ID: "}
+            {trace.trace_id}
+          </Typography>
+          {evaluation && <AIEvaluation evaluation={evaluation} />}
+        </Box>
+      </Box>
+    );
+  }
+
+  // Nothing if neither are selected
   if (!span) {
     return (
       <Box
@@ -32,15 +68,16 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
             bgcolor: "background.default",
           }}
         >
-          <Typography variant="h5">Span Details</Typography>
+          <Typography variant="h5">Details</Typography>
         </Box>
         <Box sx={{ p: 2, textAlign: "center", color: "text.secondary" }}>
-          Select a span to view details
+          Select a trace or span to view details
         </Box>
       </Box>
     );
   }
-  // Capturing JSON span attributes
+
+  // Show span details when span is selected
   const spanType = spanGetType(span);
   const toolName = spanGetToolName(span);
   const hasError = spanHasError(span);
@@ -131,4 +168,4 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
   );
 };
 
-export default SpanDetails;
+export default TraceDetails;

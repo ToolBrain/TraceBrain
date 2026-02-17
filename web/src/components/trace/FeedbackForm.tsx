@@ -16,6 +16,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
 }) => {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {/* Rating */}
       <Box>
         <Typography
           variant="subtitle2"
@@ -49,6 +50,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
         </Box>
       </Box>
 
+      {/* Comments */}
       <Box>
         <Typography
           variant="subtitle2"

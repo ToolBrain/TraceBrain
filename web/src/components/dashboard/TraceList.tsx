@@ -24,8 +24,10 @@ import React from "react";
 import { spanGetOutput, spanHasError } from "../utils/spanUtils";
 import StatusChip, { ALLOWED_STATUSES, type ChipStatus } from "./StatusChip";
 import {
+  traceGetDuration,
   traceGetEvaluation,
   traceGetPriority,
+  traceGetStartTime,
   traceGetStatus,
 } from "../utils/traceUtils";
 import ConfidenceIndicator from "./ConfidenceIndicator";
@@ -49,37 +51,6 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
       second: "2-digit",
       hour12: false,
     });
-  };
-
-  const getTraceStartTime = (trace: Trace): string => {
-    if (!trace.spans.length) {
-      return trace.created_at;
-    }
-    const startTimes = trace.spans
-      .map((span) => new Date(span.start_time).getTime())
-      .filter((time) => !Number.isNaN(time));
-    if (!startTimes.length) {
-      return trace.created_at;
-    }
-    return new Date(Math.min(...startTimes)).toISOString();
-  };
-
-  const getTraceDuration = (trace: Trace): number => {
-    if (!trace.spans.length) {
-      return 0;
-    }
-    const spanTimes = trace.spans
-      .map((span) => ({
-        start: new Date(span.start_time).getTime(),
-        end: new Date(span.end_time).getTime(),
-      }))
-      .filter((t) => !Number.isNaN(t.start) && !Number.isNaN(t.end));
-    if (!spanTimes.length) {
-      return 0;
-    }
-    const start = Math.min(...spanTimes.map((t) => t.start));
-    const end = Math.max(...spanTimes.map((t) => t.end));
-    return (end - start) / 1000;
   };
 
   const getTraceStatus = (trace: Trace): ChipStatus => {
@@ -163,8 +134,8 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
           ) : (
             traces.map((trace) => {
               const isExpanded = expandedTraces.has(trace.trace_id);
-              const startTime = getTraceStartTime(trace);
-              const duration = getTraceDuration(trace);
+              const startTime = traceGetStartTime(trace);
+              const duration = traceGetDuration(trace);
               const status = getTraceStatus(trace);
               const priority = traceGetPriority(trace);
 

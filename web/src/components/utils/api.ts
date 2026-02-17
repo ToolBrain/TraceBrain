@@ -35,7 +35,7 @@ export const fetchTrace = async (id: string): Promise<Trace[]> => {
 
 export const fetchEpisodeTraces = async (id: string): Promise<Trace[]> => {
   try {
-    const response = await fetch(`/api/v1/episodes/${id}`);
+    const response = await fetch(`/api/v1/episodes/${id}/traces`);
     if (!response.ok) {
       throw new Error(`Failed to fetch episode traces: ${response.status}`);
     }

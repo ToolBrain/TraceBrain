@@ -8,38 +8,49 @@ import {
   Schedule,
   ThumbUpOutlined,
   AutoAwesome,
+  AccountTree,
 } from "@mui/icons-material";
 import type { Span, Trace } from "../../types/trace";
 import TraceModal from "./TraceModal";
 import { useParams } from "react-router-dom";
-import { spanHasError } from "../utils/spanUtils";
+import { spanGetDuration, spanHasError } from "../utils/spanUtils";
 import { traceGetLatestFeedback } from "../utils/traceUtils";
 
 interface TraceTreeProps {
   traces: Trace[];
   expandedNodes: Set<string>;
-  selectedSpan: string | null;
-  onToggleExpand: (spanId: string) => void;
-  onSelectSpan: (spanId: string) => void;
+  selectedId: string | null;
+  selectedType: "trace" | "span";
+  onToggleExpand: (id: string) => void;
+  onSelect: (id: string, type: "trace" | "span") => void;
 }
 
 const TraceTree: React.FC<TraceTreeProps> = ({
   traces,
   expandedNodes,
-  selectedSpan,
+  selectedId,
+  selectedType,
   onToggleExpand,
-  onSelectSpan,
+  onSelect,
 }) => {
   const [openModal, setOpenModal] = useState<"feedback" | "evaluate" | null>(
     null,
   );
   const { id } = useParams<{ id: string }>() as { id: string };
 
-  const getDuration = (span: Span) => {
-    const ms =
-      new Date(span.end_time).getTime() - new Date(span.start_time).getTime();
-    return (ms / 1000).toFixed(2);
-  };
+  const spansByTrace = React.useMemo(() => {
+    const map = new Map<string, Map<string | null, Span[]>>();
+    traces.forEach((t) => {
+      const spansByParent = new Map<string | null, Span[]>();
+      t.spans.forEach((span) => {
+        const siblings = spansByParent.get(span.parent_id) || [];
+        siblings.push(span);
+        spansByParent.set(span.parent_id, siblings);
+      });
+      map.set(t.trace_id, spansByParent);
+    });
+    return map;
+  }, [traces]);
 
   const SpanRow = ({
     span,
@@ -54,13 +65,13 @@ const TraceTree: React.FC<TraceTreeProps> = ({
   }) => {
     const children = spansByParent.get(span.span_id) || [];
     const isExpanded = expandedNodes.has(span.span_id);
-    const isSelected = selectedSpan === span.span_id;
+    const isSelected = selectedType === "span" && selectedId === span.span_id;
     const hasError = spanHasError(span);
 
     return (
       <>
         <Box
-          onClick={() => onSelectSpan(span.span_id)}
+          onClick={() => onSelect(span.span_id, "span")}
           sx={{
             display: "flex",
             alignItems: "center",
@@ -132,7 +143,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
 
           <Schedule fontSize="small" sx={{ fontSize: "1rem", mr: 0.5 }} />
           <Typography variant="caption" color="text.secondary">
-            {getDuration(span)}
+            {spanGetDuration(span)}
           </Typography>
         </Box>
 
@@ -177,23 +188,57 @@ const TraceTree: React.FC<TraceTreeProps> = ({
 
       <Box sx={{ flex: 1, overflowY: "auto" }}>
         {traces.map((t) => {
-          const spansByParent = new Map<string | null, Span[]>();
-          t.spans.forEach((span) => {
-            const siblings = spansByParent.get(span.parent_id) || [];
-            siblings.push(span);
-            spansByParent.set(span.parent_id, siblings);
-          });
+          const spansByParent = spansByTrace.get(t.trace_id)!;
+          const isTraceExpanded = expandedNodes.has(t.trace_id);
+          const isTraceSelected =
+            selectedType === "trace" && selectedId === t.trace_id;
+          const rootSpans = spansByParent.get(null) || [];
 
           return (
             <React.Fragment key={t.trace_id}>
-              {spansByParent
-                .get(null)
-                ?.map((span, idx, arr) => (
+              <Box
+                onClick={() => onSelect(t.trace_id, "trace")}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  py: 1,
+                  px: 1.5,
+                  cursor: "pointer",
+                  bgcolor: isTraceSelected ? "primary.50" : "transparent",
+                  borderLeft: "0.125rem solid",
+                  borderLeftColor: isTraceSelected
+                    ? "primary.main"
+                    : "transparent",
+                  "&:hover": {
+                    bgcolor: isTraceSelected ? "primary.50" : "action.hover",
+                  },
+                }}
+              >
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleExpand(t.trace_id);
+                  }}
+                  sx={{ mr: 1, p: 0 }}
+                >
+                  {isTraceExpanded ? (
+                    <ExpandMore fontSize="small" />
+                  ) : (
+                    <ChevronRight fontSize="small" />
+                  )}
+                </IconButton>
+
+                <AccountTree fontSize="small" color="primary" />
+              </Box>
+
+              {isTraceExpanded &&
+                rootSpans.map((span, idx) => (
                   <SpanRow
                     key={span.span_id}
                     span={span}
-                    depth={0}
-                    isLast={idx === arr.length - 1}
+                    depth={1}
+                    isLast={idx === rootSpans.length - 1}
                     spansByParent={spansByParent}
                   />
                 ))}

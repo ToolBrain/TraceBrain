@@ -316,7 +316,9 @@ const TraceModal: React.FC<TraceModalProps> = ({
 
         if (confidence !== null) {
           return (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
+            <Box
+              sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}
+            >
               <Typography variant="h6" sx={{ fontWeight: 600 }}>
                 AI Evaluation
               </Typography>
@@ -326,14 +328,22 @@ const TraceModal: React.FC<TraceModalProps> = ({
                 </Typography>
                 <ConfidenceIndicator
                   confidence={confidence}
-                  status={(evalStatus as "pending_review" | "auto_verified" | "completed") || "pending_review"}
+                  status={
+                    (evalStatus as
+                      | "pending_review"
+                      | "auto_verified"
+                      | "completed") || "pending_review"
+                  }
                 />
                 {resolveEvalStatus(evalStatus) && (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Typography variant="caption" color="text.secondary">
                       Evaluation status:
                     </Typography>
-                    <StatusChip status={resolveEvalStatus(evalStatus) as ChipStatus} secondary />
+                    <StatusChip
+                      status={resolveEvalStatus(evalStatus) as ChipStatus}
+                      secondary
+                    />
                   </Box>
                 )}
               </Box>

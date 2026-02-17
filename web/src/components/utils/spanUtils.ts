@@ -42,6 +42,12 @@ export function spanGetOutput(span: Span) {
   }
 }
 
+export const spanGetDuration = (span: Span): string => {
+  const ms =
+    new Date(span.end_time).getTime() - new Date(span.start_time).getTime();
+  return (ms / 1000).toFixed(2);
+};
+
 export function spanGetSystemPrompt(span: Span) {
   return span?.attributes["system_prompt"];
 }
