@@ -286,6 +286,27 @@ class History(Base):
     __table_args__ = (
         Index("idx_accessed", "last_accessed"),
     )
+
+
+class AppSettings(Base):
+    """Singleton application settings storage (global config)."""
+
+    __tablename__ = "app_settings"
+
+    id = Column(Integer, primary_key=True, comment="Singleton row ID")
+    config = Column(
+        JSONBCompat,
+        nullable=False,
+        default=dict,
+        comment="Global settings JSON payload",
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+        comment="Last update timestamp",
+    )
     
 class CurriculumTask(Base):
     """Represents a generated training task for the automated curriculum."""

@@ -277,7 +277,10 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
             display: "grid",
             gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
             gap: 2,
-            alignItems: "start",
+            alignItems: "stretch",
+            maxHeight: { md: 360 },
+            height: { md: 360 },
+            overflow: "hidden",
           }}
         >
           {/* AI Assessment */}
@@ -291,6 +294,9 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
               display: "flex",
               flexDirection: "column",
               gap: 2,
+              minHeight: 0,
+              height: "100%",
+              overflow: "hidden",
             }}
           >
             <Box
@@ -316,7 +322,9 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
               />
             </Box>
 
-            {renderAIAssessment()}
+            <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", pr: 0.5 }}>
+              {renderAIAssessment()}
+            </Box>
           </Box>
 
           {/* Human Validation */}
@@ -330,6 +338,9 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
               display: "flex",
               flexDirection: "column",
               gap: 2,
+              minHeight: 0,
+              height: "100%",
+              overflow: "hidden",
             }}
           >
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
@@ -347,46 +358,59 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
               </Typography>
             )}
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                Final Rating
-              </Typography>
-              <Rating
-                value={expertRating}
-                onChange={(_, value) => setExpertRating(value)}
-                max={5}
-                precision={1}
-                size="medium"
-              />
-            </Box>
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                pr: 0.5,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Final Rating
+                </Typography>
+                <Rating
+                  value={expertRating}
+                  onChange={(_, value) => setExpertRating(value)}
+                  max={5}
+                  precision={1}
+                  size="medium"
+                />
+              </Box>
 
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Comment
-              </Typography>
-              <TextField
-                multiline
-                minRows={4}
-                fullWidth
-                value={expertComment}
-                onChange={(e) => setExpertComment(e.target.value)}
-                placeholder="Adjust the AI rationale if needed..."
-                sx={{
-                  mt: 1,
-                  "& .MuiOutlinedInput-root": {
-                    fontFamily: "monospace",
-                    fontSize: "0.875rem",
-                  },
-                }}
-              />
-            </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Comment
+                </Typography>
+                <TextField
+                  multiline
+                  minRows={4}
+                  fullWidth
+                  value={expertComment}
+                  onChange={(e) => setExpertComment(e.target.value)}
+                  placeholder="Adjust the AI rationale if needed..."
+                  sx={{
+                    mt: 1,
+                    "& .MuiOutlinedInput-root": {
+                      fontFamily: "monospace",
+                      fontSize: "0.875rem",
+                    },
+                  }}
+                />
+              </Box>
 
-            {submitError && <Alert severity="error">{submitError}</Alert>}
+              {submitError && <Alert severity="error">{submitError}</Alert>}
+            </Box>
 
             <Button
               variant="contained"
               onClick={handleSubmit}
               disabled={expertRating === null || submitting}
+              sx={{ mt: "auto" }}
             >
               {submitting ? "Submitting..." : "Verify and Submit"}
             </Button>

@@ -28,7 +28,8 @@ from tracebrain.db.base import (
     ChatMessage,
     TraceStatus,
     CurriculumTask,
-    History
+    History,
+    AppSettings,
 )
 
 logger = logging.getLogger(__name__)
@@ -616,6 +617,38 @@ class BaseStorageBackend:
         except Exception:
             session.rollback()
             logger.exception("Failed to add feedback")
+            raise
+        finally:
+            session.close()
+
+    def get_settings(self) -> Dict[str, Any]:
+        """Return global application settings (singleton row)."""
+        session = self.get_session()
+        try:
+            settings_row = session.query(AppSettings).filter(AppSettings.id == 1).first()
+            if not settings_row or not isinstance(settings_row.config, dict):
+                return {}
+            return dict(settings_row.config)
+        finally:
+            session.close()
+
+    def update_settings(self, new_settings: Dict[str, Any]) -> Dict[str, Any]:
+        """Upsert global application settings and return the updated config."""
+        session = self.get_session()
+        try:
+            settings_row = session.query(AppSettings).filter(AppSettings.id == 1).first()
+            payload = new_settings if isinstance(new_settings, dict) else {}
+            if not settings_row:
+                settings_row = AppSettings(id=1, config=dict(payload))
+                session.add(settings_row)
+            else:
+                existing = settings_row.config if isinstance(settings_row.config, dict) else {}
+                settings_row.config = {**existing, **payload}
+            session.commit()
+            return dict(settings_row.config or {})
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to update settings")
             raise
         finally:
             session.close()
