@@ -17,10 +17,10 @@ const TracePage: React.FC = () => {
 
   // Fetch episode or trace depending on type passed in
   useEffect(() => {
-    const historyType = type === "episode" ? "episode" : type === "trace" ? "trace" : null;
+    const historyType = type === "episode" ? "episode" : "trace";
 
     // Record history
-    if (historyType) addHistory(id, historyType);
+    addHistory(id, historyType);
 
     let isActive = true;
     let pollId: number | null = null;
