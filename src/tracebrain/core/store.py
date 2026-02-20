@@ -782,6 +782,16 @@ class BaseStorageBackend:
         """Add an entry for a trace/episode to users history."""
         session = self.get_session()
         try:
+            if type == "trace":
+                exists = session.query(Trace).filter(Trace.id == id).first()
+            elif type == "episode":
+                exists = session.query(Trace).filter(Trace.episode_id == id).first()
+            else:
+                return
+
+            if not exists:
+                return
+
             existing = session.query(History).filter(History.id == id).first()
             
             if existing:
