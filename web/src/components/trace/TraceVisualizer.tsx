@@ -12,10 +12,20 @@ interface TraceVisualizerProps {
 const TraceVisualizer: React.FC<TraceVisualizerProps> = ({ traces }) => {
   const [searchParams] = useSearchParams();
   const preselectedSpan = searchParams.get("span");
+  const preselectedTrace = searchParams.get("trace");
+
   const [selectedSpan, setSelectedSpan] = useState<string | null>(
     preselectedSpan,
   );
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+
+  // Select first span of preselected trace once traces load
+  useEffect(() => {
+    if (!preselectedTrace || traces.length === 0) return;
+    const trace = traces.find((t) => t.trace_id === preselectedTrace);
+    const firstSpan = trace?.spans[0]?.span_id ?? null;
+    if (firstSpan) setSelectedSpan(firstSpan);
+  }, [traces, preselectedTrace]);
 
   // Expand parent nodes of preselected span
   useEffect(() => {

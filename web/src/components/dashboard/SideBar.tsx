@@ -58,7 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           alignItems: "center",
         }}
       >
-        <FilterList fontSize="small" sx={{ mr: 1 }} />
+        <FilterList fontSize="small" sx={{ mr: 1, ml: 1 }} />
         Filters
       </Box>
 

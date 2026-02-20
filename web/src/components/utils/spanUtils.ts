@@ -12,6 +12,13 @@ export function spanHasError(span: Span) {
   return span?.attributes["otel.status_code"] === "ERROR";
 }
 
+export function spanGetDuration(span: Span) {
+  return (
+    (new Date(span.end_time).getTime() - new Date(span.start_time).getTime()) /
+    1000
+  ).toFixed(2);
+}
+
 export function spanGetUsage(span: Span) {
   return span?.attributes["tracebrain.usage"];
 }

@@ -14,8 +14,8 @@ const SpanContent: React.FC<SpanContentProps> = ({
   content,
   hasError,
 }) => {
-  const errorColour = "rgba(220, 38, 38, 0.08)";
-  const successColour = "rgba(34, 197, 94, 0.08)";
+  const errorColor = "rgba(220, 38, 38, 0.08)";
+  const successColor = "rgba(34, 197, 94, 0.08)";
   return (
     <Box sx={{ mb: 3 }}>
       <Typography
@@ -35,7 +35,7 @@ const SpanContent: React.FC<SpanContentProps> = ({
           px: 2.5,
           py: 2,
           borderRadius: 2,
-          bgcolor: hasError ? errorColour : successColour,
+          bgcolor: hasError ? errorColor : successColor,
           border: 1,
           borderColor: hasError ? "error.main" : "success.main",
         }}

@@ -141,7 +141,8 @@ docker compose -f docker/docker-compose.yml build --no-cache
 - `POST /api/v1/traces/{trace_id}/feedback` - Add feedback to a trace
 
 **Episodes**
-- `GET /api/v1/episodes/{episode_id}` - Get all traces in an episode
+- `GET /api/v1/episodes/{episode_id}` - Get episode details with trace summaries
+- `GET /api/v1/episodes/{episode_id}/traces` - Get all full traces in an episode
 
 **Analytics**
 - `GET /api/v1/stats` - Get overall statistics
@@ -171,6 +172,15 @@ docker compose -f docker/docker-compose.yml build --no-cache
 
 **Exports**
 - `GET /api/v1/export/traces` - Export raw OTLP traces as JSONL
+
+**History**
+- `GET /api/v1/history` - Retrieve history of viewed traces and episodes
+- `POST /api/v1/history` - Add or update last time trace or episode was viewed
+- `DELETE /api/v1/history` - Clear all traces and episodes in viewed history
+
+**Settings**
+- `GET /api/v1/settings` - Retrieve current TraceBrain settings
+- `POST /api/v1/settings` - Update TraceBrain settings
 
 ### Configuration (LLM + Embeddings)
 

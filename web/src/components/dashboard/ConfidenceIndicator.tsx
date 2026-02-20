@@ -1,6 +1,12 @@
 import React from "react";
-import { Box, LinearProgress, Typography, CircularProgress } from "@mui/material";
+import {
+  Box,
+  LinearProgress,
+  Typography,
+  CircularProgress,
+} from "@mui/material";
 import { CheckCircle, Schedule, VerifiedUser } from "@mui/icons-material";
+import { getConfidenceColor } from "../utils/utils";
 
 interface ConfidenceIndicatorProps {
   confidence?: number | null;
@@ -33,8 +39,7 @@ const ConfidenceIndicator: React.FC<ConfidenceIndicatorProps> = ({
   }
 
   const percentage = confidence * 100;
-  const progressColor =
-    confidence < 0.2 ? "error" : confidence < 0.8 ? "warning" : "success";
+  const progressColor = getConfidenceColor(confidence);
 
   const resolvedStatus = status ?? "pending_review";
 

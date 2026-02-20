@@ -1,4 +1,5 @@
 import type { Trace } from "../../types/trace";
+import type { HistoryList } from "../history/types";
 import type { CurriculumTask } from "../roadmap/types";
 
 export const fetchTraces = async (
@@ -35,7 +36,7 @@ export const fetchTrace = async (id: string): Promise<Trace[]> => {
 
 export const fetchEpisodeTraces = async (id: string): Promise<Trace[]> => {
   try {
-    const response = await fetch(`/api/v1/episodes/${id}`);
+    const response = await fetch(`/api/v1/episodes/${id}/traces`);
     if (!response.ok) {
       throw new Error(`Failed to fetch episode traces: ${response.status}`);
     }
@@ -147,6 +148,61 @@ export const signalTraceIssue = async (traceId: string, reason: string) => {
     const data = await response.json();
     return data;
   } catch (error) {
+    throw error;
+  }
+};
+
+export const fetchHistory = async (
+  limit: number,
+  offset: number,
+  type: "trace" | "episode",
+  query?: string,
+): Promise<HistoryList> => {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+    type,
+  });
+
+  if (query) params.set("query", query);
+
+  const response = await fetch(`/api/v1/history?${params.toString()}`);
+  if (!response.ok)
+    throw new Error(`Failed to fetch history: ${response.status}`);
+
+  return response.json();
+};
+
+export const addHistory = async (
+  id: string,
+  type: "trace" | "episode",
+): Promise<void> => {
+  try {
+    const response = await fetch("/api/v1/history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, type }),
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    await response.json();
+  } catch {}
+};
+
+export const clearHistory = async (): Promise<void> => {
+  try {
+    const response = await fetch("/api/v1/history", {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to clear history: ${response.status}`);
+    }
+  } catch (error) {
+    console.error(error);
     throw error;
   }
 };

@@ -15,7 +15,7 @@ interface TokenUsageBarProps {
 const TokenUsageBar: React.FC<TokenUsageBarProps> = ({ usage, hasError }) => {
   const [active, setActive] = useState<string>("prompt");
 
-  const borderColour = hasError ? "error.main" : "success.main";
+  const borderColor = hasError ? "error.main" : "success.main";
   const barBg = hasError ? "rgba(220, 38, 38, 0.5)" : "rgba(34, 197, 94, 0.5)";
   const chipBg = hasError
     ? "rgba(220, 38, 38, 0.15)"
@@ -95,12 +95,12 @@ const TokenUsageBar: React.FC<TokenUsageBarProps> = ({ usage, hasError }) => {
               borderRadius: 1.5,
               bgcolor: chipBg,
               border: 1,
-              borderColor: active === key ? borderColour : "transparent",
+              borderColor: active === key ? borderColor : "transparent",
               opacity: active !== key ? 0.5 : 1,
               cursor: "pointer",
               userSelect: "none",
               transition: "opacity 0.2s ease, border-color 0.2s ease",
-              "&:hover": { borderColor: borderColour },
+              "&:hover": { borderColor: borderColor },
             }}
           >
             <Box
@@ -110,7 +110,7 @@ const TokenUsageBar: React.FC<TokenUsageBarProps> = ({ usage, hasError }) => {
                 borderRadius: "50%",
                 bgcolor: chipBg,
                 border: "1 px solid",
-                borderColor: borderColour,
+                borderColor: borderColor,
               }}
             />
             <Typography

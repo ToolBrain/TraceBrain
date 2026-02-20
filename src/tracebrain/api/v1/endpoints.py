@@ -20,6 +20,7 @@ Features:
 - GET /api/v1/analytics/tool_usage: Get tool usage analytics
 - POST /api/v1/ai_evaluate/{trace_id}: Evaluate a trace with AI judge
 - POST /api/v1/natural_language_query: AI-powered natural language queries
+- GET /api/v1/episodes/{episode_id}/traces: Retrieve all traces belonging to an episode
 - GET /api/v1/librarian_sessions/{session_id}: Retrieve librarian chat history
 - POST /api/v1/curriculum/generate: Generate curriculum tasks
 - GET /api/v1/curriculum: List curriculum tasks
@@ -417,7 +418,12 @@ def root():
             "librarian_session": "GET /api/v1/librarian_sessions/{session_id}",
             "curriculum_generate": "POST /api/v1/curriculum/generate",
             "curriculum_list": "GET /api/v1/curriculum",
-            "curriculum_export": "GET /api/v1/curriculum/export"
+            "curriculum_export": "GET /api/v1/curriculum/export",
+            "get_history": "GET /api/v1/history",
+            "add_history": "POST /api/v1/history",
+            "clear_history": "DELETE api/v1/history",
+            "get_settings": "GET /api/v1/settings",
+            "save_settings": "POST /api/v1/settings"
         }
     }
 

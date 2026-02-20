@@ -271,6 +271,7 @@ class ChatMessage(Base):
 
 
 class History(Base):
+    """Represents users TraceBrain browsing history."""
     __tablename__ = "history"
 
     id = Column(String, primary_key=True, comment="Trace or episode ID")

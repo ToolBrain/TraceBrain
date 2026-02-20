@@ -37,12 +37,13 @@ services:
     environment:
       # Database Configuration
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
-      
+
       # Server Configuration
       HOST: 0.0.0.0
       PORT: 8000
       LOG_LEVEL: info
-      
+      SETTINGS_PATH: /app/data/settings.json
+
       # Optional:
       # LLM_API_KEY: your_llm_api_key_here
     ports:
@@ -62,6 +63,7 @@ services:
       # Mount for development (optional - remove in production)
       # - ../src:/app/src
       - api_logs:/app/logs
+      - api_data:/app/data
 
   # Seed sample data once (skips if DB already has traces)
   tracebrain-seed:
@@ -89,6 +91,9 @@ volumes:
   api_logs:
     driver: local
     name: tracebrain_api_logs
+  api_data:
+    driver: local
+    name: tracebrain_api_data
 
 # Networks
 networks:

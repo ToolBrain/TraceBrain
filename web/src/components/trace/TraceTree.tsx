@@ -8,7 +8,7 @@ import {
   Schedule,
 } from "@mui/icons-material";
 import type { Span, Trace } from "../../types/trace";
-import { spanHasError } from "../utils/spanUtils";
+import { spanGetDuration, spanHasError } from "../utils/spanUtils";
 
 interface TraceTreeProps {
   traces: Trace[];
@@ -25,12 +25,6 @@ const TraceTree: React.FC<TraceTreeProps> = ({
   onToggleExpand,
   onSelectSpan,
 }) => {
-  const getDuration = (span: Span) => {
-    const ms =
-      new Date(span.end_time).getTime() - new Date(span.start_time).getTime();
-    return (ms / 1000).toFixed(2);
-  };
-
   const SpanRow = ({
     span,
     depth,
@@ -122,7 +116,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
 
           <Schedule fontSize="small" sx={{ fontSize: "1rem", mr: 0.5 }} />
           <Typography variant="caption" color="text.secondary">
-            {getDuration(span)}
+            {spanGetDuration(span)}
           </Typography>
         </Box>
 
@@ -191,7 +185,6 @@ const TraceTree: React.FC<TraceTreeProps> = ({
           );
         })}
       </Box>
-
     </Box>
   );
 };

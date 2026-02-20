@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Typography, Skeleton } from "@mui/material";
-import StatusChip from "../dashboard/StatusChip";
+import StatusChip from "../shared/StatusChip";
 import type { CurriculumTask } from "./types";
 
 interface CurriculumListProps {
@@ -16,7 +16,7 @@ const CurriculumList: React.FC<CurriculumListProps> = ({
   if (isLoading) {
     return (
       <Box>
-        {[1, 2, 3, 4, 5].map((i) => (
+        {Array.from({ length: 5 }).map((_, i) => (
           <Box
             key={i}
             sx={{
@@ -82,7 +82,7 @@ const CurriculumList: React.FC<CurriculumListProps> = ({
         }}
       >
         <Typography variant="h6" color="text.secondary">
-          No tasks found
+          No tasks yet
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Generate sample tasks to get started

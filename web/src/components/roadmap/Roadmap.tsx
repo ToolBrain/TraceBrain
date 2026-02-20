@@ -11,6 +11,8 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
+  Card,
+  CardContent,
 } from "@mui/material";
 import {
   ArrowDownward,
@@ -150,36 +152,21 @@ const Roadmap: React.FC = () => {
 
   return (
     <Box
-      sx={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        bgcolor: "background.default",
-      }}
+      sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}
     >
-      <Box
-        sx={{
-          p: 3,
-          borderBottom: 1,
-          borderColor: "divider",
-          bgcolor: "background.paper",
-        }}
-      >
-        <Box sx={{ pb: 2 }}>
-          <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
-            Training Roadmap
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Browse existing tasks or generate new ones
-          </Typography>
-        </Box>
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
+          Training Roadmap
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Browse existing tasks or generate new ones
+        </Typography>
 
         <Box
           sx={{
             display: "flex",
-            gap: 2,
-            alignItems: "center",
             justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
@@ -241,20 +228,22 @@ const Roadmap: React.FC = () => {
                 height: "40px",
                 display: "flex",
                 alignItems: "center",
-                bgcolor: "action.hover",
-                borderRadius: 1,
-                border: 1,
-                borderColor: "text.secondary",
                 userSelect: "none",
+                borderLeft: 2,
+                borderColor: "divider",
               }}
             >
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {tasks.length}
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ fontWeight: 600, fontFamily: "monospace" }}
+              >
+                {tasks.length} Tasks
               </Typography>
             </Box>
           </Box>
 
-          <Box sx={{ display: "flex", gap: 2 }}>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             {/* JSON export button */}
             <Button
               variant="outlined"
@@ -294,14 +283,19 @@ const Roadmap: React.FC = () => {
         </Box>
       </Box>
 
-      <Box
-        sx={{
-          flex: 1,
-          overflow: "auto",
-        }}
-      >
-        <CurriculumList tasks={sortedTasks} isLoading={isLoading} />
-      </Box>
+      <Card sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+        <CardContent
+          sx={{
+            flexGrow: 1,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "auto",
+            p: 0,
+          }}
+        >
+          <CurriculumList tasks={sortedTasks} isLoading={isLoading} />
+        </CardContent>
+      </Card>
 
       <Snackbar
         open={snackbar.open}

@@ -38,6 +38,7 @@ dependencies = [
     "pgvector>=0.2.5",
     "openai>=1.0.0",
     "google-generativeai>=0.3.0",
+    "platformdirs",
 ]
 
 [project.optional-dependencies]
@@ -75,6 +76,7 @@ include = ["tracebrain*"]
 [tool.setuptools.package-data]
 tracebrain = [
     "static/**/*",
+    "configs/*.json",
     "../docker/docker-compose.yml",  # Include compose file in package
     "../docker/Dockerfile",
     "../docker/.dockerignore"

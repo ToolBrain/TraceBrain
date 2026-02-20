@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Literal
 
-from tracebrain.constants import SETTINGS_FILE
+from tracebrain.paths import SETTINGS_FILE
 
 router = APIRouter(
     prefix="/settings",
@@ -58,7 +58,7 @@ class Settings(BaseModel):
         }
 
 # API Endpoints
-@router.get("/")
+@router.get("")
 async def get_settings() -> Settings:
     """Load settings from the settings file."""
     try:
@@ -66,7 +66,7 @@ async def get_settings() -> Settings:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/")
+@router.post("")
 async def save_settings(settings: Settings):
     """Save the settings object to the settings file."""
     try:

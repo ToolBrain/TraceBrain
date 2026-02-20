@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import TraceVisualizer from "../components/trace/TraceVisualizer";
-import { fetchEpisodeTraces, fetchTrace } from "../components/utils/api";
+import {
+  fetchEpisodeTraces,
+  fetchTrace,
+  addHistory,
+} from "../components/utils/api";
 import type { Trace } from "../types/trace";
 import { useParams, useSearchParams } from "react-router-dom";
 import { traceGetEvaluation } from "../components/utils/traceUtils";
@@ -13,6 +17,11 @@ const TracePage: React.FC = () => {
 
   // Fetch episode or trace depending on type passed in
   useEffect(() => {
+    const historyType = type === "episode" ? "episode" : "trace";
+
+    // Record history
+    addHistory(id, historyType);
+
     let isActive = true;
     let pollId: number | null = null;
 

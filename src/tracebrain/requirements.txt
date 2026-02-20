@@ -25,6 +25,9 @@ sqlparse>=0.5.5
 # Vector search
 pgvector>=0.2.5
 
+# Mounting config files 
+platformdirs 
+
 # Optional: local embeddings (install only if EMBEDDING_PROVIDER=local)
 # sentence-transformers>=2.7.0
 

@@ -41,7 +41,9 @@ const TraceExplorer: React.FC = () => {
   const currentTotal = viewMode === "traces" ? totalTraces : totalEpisodes;
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box
+      sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}
+    >
       <Box
         sx={{
           mb: 3,
@@ -61,15 +63,29 @@ const TraceExplorer: React.FC = () => {
             </Box>
           </Typography>
         </Box>
-        <Tooltip title="Refresh">
+        <Tooltip title="Clear History">
           <IconButton onClick={() => setPage(0)}>
             <Refresh />
           </IconButton>
         </Tooltip>
       </Box>
 
-      <Card>
-        <CardContent>
+      <Card
+        sx={{
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+        }}
+      >
+        <CardContent
+          sx={{
+            flexGrow: 1,
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+          }}
+        >
           <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
             <Tabs value={viewMode} onChange={handleViewModeChange}>
               <Tab
@@ -86,7 +102,6 @@ const TraceExplorer: React.FC = () => {
               />
             </Tabs>
           </Box>
-
           <Box sx={{ mb: 3 }}>
             <TextField
               fullWidth
@@ -104,8 +119,10 @@ const TraceExplorer: React.FC = () => {
               }}
             />
           </Box>
+          <Box sx={{ flexGrow: 1, overflow: "auto", minHeight: 0 }}></Box>
 
           <TablePagination
+            sx={{ flexShrink: 0 }}
             rowsPerPageOptions={[]} // Can change this later for users to select how many items per page
             component="div"
             count={currentTotal}
