@@ -7,6 +7,7 @@
       "rating": 5,
       "confidence": 0.98,
       "status": "auto_verified",
+      "error_type": "none",
       "feedback": "Recovered from failed search and returned correct answer."
     }
   },

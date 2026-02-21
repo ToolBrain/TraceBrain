@@ -1,0 +1,26 @@
+{
+  "trace_id": "f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6",
+  "attributes": {
+    "system_prompt": "You must use JSON format for tool calls.",
+    "tracebrain.episode.id": "ep-format-error-demo",
+    "tracebrain.ai_evaluation": {
+      "rating": 1,
+      "confidence": 0.90,
+      "status": "pending_review",
+      "error_type": "format_error",
+      "feedback": "Malformed JSON in tool call. Agent failed to close the arguments bracket."
+    }
+  },
+  "spans": [
+    {
+      "span_id": "0000000000000201",
+      "parent_id": null,
+      "name": "LLM Inference",
+      "attributes": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Add 5 and 10\"}]",
+        "tracebrain.llm.completion": "{\"tool\": \"add\", \"args\": {\"a\": 5, \"b\": 10 "
+      }
+    }
+  ]
+}
