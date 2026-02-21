@@ -4,7 +4,7 @@ Curriculum curator for generating training tasks from failed traces.
 
 from __future__ import annotations
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import json
 import logging
 import re
@@ -20,6 +20,18 @@ logger = logging.getLogger(__name__)
 
 
 class CurriculumCurator:
+    VALID_ERROR_TYPES = {
+        "logic_loop",
+        "hallucination",
+        "invalid_tool_usage",
+        "tool_execution_error",
+        "format_error",
+        "misinterpretation",
+        "context_overflow",
+        "general_failure",
+        "none",
+    }
+
     def __init__(self, store):
         self.store = store
         self.provider = None
@@ -29,7 +41,12 @@ class CurriculumCurator:
         except ProviderError as exc:
             self.provider_error = str(exc)
 
-    def find_failed_traces(self, limit: int = 20) -> List[Trace]:
+    def find_failed_traces(
+        self,
+        limit: int = 20,
+        error_types: Optional[List[str]] = None,
+    ) -> List[Trace]:
+        normalized_error_types = self._normalize_error_types(error_types)
         session = self.store.get_session()
         try:
             query = session.query(Trace).options(selectinload(Trace.spans))
@@ -43,6 +60,12 @@ class CurriculumCurator:
                     | (Trace.status == TraceStatus.failed)
                     | (Trace.status == "ERROR")
                 )
+                if normalized_error_types:
+                    query = query.filter(
+                        Trace.attributes["tracebrain.ai_evaluation"]["error_type"].astext.in_(
+                            normalized_error_types
+                        )
+                    )
                 return (
                     query.order_by(Trace.created_at.desc())
                     .limit(limit)
@@ -59,11 +82,18 @@ class CurriculumCurator:
                 rating = None
                 if trace.feedback and isinstance(trace.feedback, dict):
                     rating = trace.feedback.get("rating")
+                error_type = "general_failure"
+                if isinstance(trace.attributes, dict):
+                    ai_eval = trace.attributes.get("tracebrain.ai_evaluation") or {}
+                    if isinstance(ai_eval, dict):
+                        error_type = str(ai_eval.get("error_type") or "general_failure")
                 if (
                     (isinstance(rating, int) and rating < 3)
                     or trace.status == TraceStatus.failed
                     or str(trace.status).upper() == "ERROR"
                 ):
+                    if normalized_error_types and error_type not in normalized_error_types:
+                        continue
                     results.append(trace)
             return results
         finally:
@@ -75,6 +105,12 @@ class CurriculumCurator:
             feedback_comment = ""
             if trace.feedback and isinstance(trace.feedback, dict):
                 feedback_comment = trace.feedback.get("comment") or ""
+
+            error_type = "general_failure"
+            if isinstance(trace.attributes, dict):
+                ai_eval = trace.attributes.get("tracebrain.ai_evaluation") or {}
+                if isinstance(ai_eval, dict):
+                    error_type = str(ai_eval.get("error_type") or "general_failure")
 
             error_details = []
             tool_usage = []
@@ -117,7 +153,9 @@ class CurriculumCurator:
                     error_details.append(f"Span Error: {desc}")
 
             status = trace.status.value if hasattr(trace.status, "value") else str(trace.status)
-            summary_line = f"Trace ID: {trace.id[-6:]} | Status: {status}"
+            summary_line = (
+                f"Trace ID: {trace.id[-6:]} | Status: {status} | Error Type: {error_type}"
+            )
             if feedback_comment:
                 summary_line += f" | Human Feedback: {feedback_comment}"
             if tool_usage:
@@ -143,28 +181,50 @@ class CurriculumCurator:
                 raise
             return json.loads(match.group(0))
 
-    def generate_curriculum(self) -> int:
+    def _normalize_error_types(
+        self,
+        error_types: Optional[List[str]],
+    ) -> Optional[List[str]]:
+        if not error_types:
+            return None
+        normalized = []
+        for value in error_types:
+            key = str(value).strip()
+            if key in self.VALID_ERROR_TYPES:
+                normalized.append(key)
+        return normalized or None
+
+    def generate_curriculum(
+        self,
+        error_types: Optional[List[str]] = None,
+        limit: int = 5,
+    ) -> int:
         if not self.provider:
             raise ValueError(
                 f"LLM provider not configured for curriculum generation: {self.provider_error}"
             )
-        traces = self.find_failed_traces()
+        normalized_error_types = self._normalize_error_types(error_types)
+        traces = self.find_failed_traces(limit=limit, error_types=normalized_error_types)
         if not traces:
             return 0
 
         summary = self._summarize_traces(traces)
         system_prompt = (
-            "You are an expert AI Coach for Autonomous Agents. Your goal is to design a training curriculum. "
-            "Do NOT suggest fixing the logging system or database. "
-            "Focus ONLY on the agent's behavior, reasoning, and tool usage. "
-            "Return ONLY valid JSON as a list of objects with keys: task, reasoning, priority."
+            "You are an expert AI Coach for Autonomous Agents. Your goal is to design a training curriculum based on specific failure patterns. "
+            "You must generate training tasks that directly address the specific error type found in the traces."
         )
         user_prompt = (
-            "Analyze the following failed traces. Focus on the 'ERRORS FOUND' and 'Human Feedback' sections.\n"
-            "Identify the root cause of the agent's failure (e.g., infinite loop, hallucination, bad SQL syntax, "
-            "API rate limit).\n\n"
-            "Based on this, generate 5 specific training scenarios (curriculum tasks) to teach the agent how "
-            "to handle these situations better.\n"
+            "Generate tasks based on the following Error Type mapping:\n"
+            "1. logic_loop: Task should force the agent to detect repetition and switch strategies or stop.\n"
+            "2. hallucination: Task should require strict adherence to provided facts/tools (Grounding).\n"
+            "3. invalid_tool_usage: Task should require complex tool calls with strict parameter schemas.\n"
+            "4. tool_execution_error: Task should simulate API failures (500/429) to practice Error Handling & Backoff.\n"
+            "5. format_error: Task should require generating complex valid JSON structures.\n"
+            "6. misinterpretation: Task should require reading a complex tool output and reporting it 100% accurately.\n"
+            "7. context_overflow: Task should require solving a problem in very few steps (Efficiency).\n\n"
+            "If the error is 'general_failure' or 'none', generate general reasoning improvements.\n\n"
+            "Analyze the following failed traces. Focus on the 'ERROR TYPE', 'ERRORS FOUND', and 'Human Feedback' sections.\n"
+            f"Based on this, generate {limit} specific training scenarios (curriculum tasks) to teach the agent how to handle these situations better.\n"
             "The 'task' should be a prompt or scenario description.\n"
             "The 'reasoning' should explain why this helps the agent.\n\n"
             "Return valid JSON list of objects: [{'task': '...', 'reasoning': '...', 'priority': 'high/medium'}]\n"
