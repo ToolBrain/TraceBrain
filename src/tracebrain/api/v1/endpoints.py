@@ -77,6 +77,7 @@ def _build_ai_evaluation(result: Dict[str, Any]) -> Dict[str, Any]:
         "rating": result.get("rating"),
         "feedback": result.get("feedback"),
         "confidence": confidence,
+        "error_type": result.get("error_type", "none"),
         "status": status_value,
         "timestamp": datetime.utcnow().isoformat(),
     }
@@ -291,6 +292,7 @@ class AIEvaluationOut(BaseModel):
     rating: int = Field(..., ge=0, le=5, description="Rating from 0-5")
     feedback: str = Field(..., description="AI judge feedback")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Judge confidence score")
+    error_type: Optional[str] = Field(None, description="Error classification label")
     status: Optional[str] = Field(None, description="Evaluation status")
     timestamp: Optional[str] = Field(None, description="When the evaluation was recorded")
 
@@ -327,6 +329,19 @@ class CurriculumTaskOut(BaseModel):
     @field_serializer("created_at")
     def serialize_created_at(self, dt: datetime, _info) -> str:
         return dt.isoformat()
+
+
+class GenerateCurriculumRequest(BaseModel):
+    error_types: Optional[List[str]] = Field(
+        default=None,
+        description="Filter traces by specific error types (e.g., ['logic_loop', 'hallucination'])",
+    )
+    limit: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Number of tasks to generate",
+    )
 
 
 # Request models for trace ingestion
@@ -744,12 +759,28 @@ def signal_trace_issue(trace_id: str, payload: TraceSignalIn):
 
 
 @router.post("/curriculum/generate", tags=["Curriculum"])
-def generate_curriculum():
+def generate_curriculum(request: GenerateCurriculumRequest):
     """Generate curriculum tasks from failed traces."""
     try:
         curator = CurriculumCurator(store)
-        created = curator.generate_curriculum()
-        return {"status": "success", "tasks_generated": created}
+        provided_error_types = request.error_types or []
+        valid_error_types = [
+            value for value in provided_error_types if value in curator.VALID_ERROR_TYPES
+        ]
+        invalid_error_types = [
+            value for value in provided_error_types if value not in curator.VALID_ERROR_TYPES
+        ]
+        created = curator.generate_curriculum(
+            error_types=valid_error_types or None,
+            limit=request.limit,
+        )
+        response = {"status": "success", "tasks_generated": created}
+        if invalid_error_types:
+            response["warning"] = {
+                "message": "Some error_types were not recognized and were ignored.",
+                "invalid_error_types": invalid_error_types,
+            }
+        return response
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

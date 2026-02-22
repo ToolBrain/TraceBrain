@@ -1,0 +1,26 @@
+{
+  "trace_id": "g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6",
+  "attributes": {
+    "system_prompt": "Analyze the attached 500-page document.",
+    "tracebrain.episode.id": "ep-overflow-demo",
+    "tracebrain.ai_evaluation": {
+      "rating": 2,
+      "confidence": 0.85,
+      "status": "pending_review",
+      "error_type": "context_overflow",
+      "feedback": "The trace was truncated due to context window limits. The agent could not finish the final synthesis."
+    }
+  },
+  "spans": [
+    {
+      "span_id": "0000000000000301",
+      "parent_id": null,
+      "name": "LLM Inference (Truncated)",
+      "attributes": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Summarize everything we discussed.\"}]",
+        "tracebrain.llm.completion": "Based on the extensive logs and the 500-page document provided earlier, the key findings are: 1. Financial growth was..." 
+      }
+    }
+  ]
+}

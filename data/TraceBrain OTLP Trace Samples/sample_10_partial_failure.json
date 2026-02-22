@@ -7,6 +7,7 @@
       "rating": 1,
       "confidence": 0.45,
       "status": "pending_review",
+      "error_type": "logic_loop",
       "feedback": "Potential logic loop detected."
     }
   },

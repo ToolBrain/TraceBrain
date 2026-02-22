@@ -47,6 +47,7 @@ class TraceBrainAttributes(str, Enum):
     AI_RATING = "rating"
     AI_STATUS = "status"
     AI_FEEDBACK = "feedback"
+    AI_ERROR_TYPE = "error_type"
 
 class SpanType(str, Enum):
     """Allowed values for tracebrain.span.type"""

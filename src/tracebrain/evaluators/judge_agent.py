@@ -15,6 +15,17 @@ logger = logging.getLogger(__name__)
 class AIJudge:
     """Evaluate traces using a judge LLM with prior episode feedback."""
 
+    VALID_ERROR_TYPES = {
+        "logic_loop",
+        "hallucination",
+        "invalid_tool_usage",
+        "tool_execution_error",
+        "format_error",
+        "misinterpretation",
+        "context_overflow",
+        "none",
+    }
+
     def __init__(self, store):
         self.store = store
 
@@ -132,7 +143,7 @@ class AIJudge:
             "You are a critical AI QA Engineer evaluating autonomous agents. "
             "Your primary metric is **Task Goal Completion**."
             "Return only strict JSON with keys: rating (1-5), feedback (string), "
-            "and confidence (float between 0.0 and 1.0).\n\n"
+            "confidence (float between 0.0 and 1.0), and error_type (string).\n\n"
             "When prior human feedback from the same episode is available, align "
             "your evaluation with those preferences.\n\n"
             
@@ -146,7 +157,16 @@ class AIJudge:
             "- High Confidence (>0.8): Clear success or clear failure.\n"
             "- Low Confidence (<0.5): **MANDATORY for cases where the agent calls 'request_human_intervention'**. "
             "Because the agent has admitted uncertainty or encountered a loop it cannot break, the final quality is operationally ambiguous. "
-            "In such cases, you MUST set confidence between 0.30 and 0.49 to flag this trace for human review."
+            "In such cases, you MUST set confidence between 0.30 and 0.49 to flag this trace for human review.\n\n"
+            "### ERROR CLASSIFICATION (MANDATORY):\n"
+            "- logic_loop: Repeating same actions/tools without progress.\n"
+            "- hallucination: Inventing facts or calling non-existent tools.\n"
+            "- invalid_tool_usage: Calling tools with wrong arguments/schema.\n"
+            "- tool_execution_error: External API failed (e.g., 500, 429, Timeout) and agent failed to recover.\n"
+            "- format_error: Output format violated parsing rules.\n"
+            "- misinterpretation: Agent misunderstood the tool output.\n"
+            "- context_overflow: Task failed due to token limits.\n"
+            "- none: If the task was successful."
         )
 
         # Add a warning flag if the agent requested human help.
@@ -182,6 +202,7 @@ class AIJudge:
         rating = int(parsed.get("rating"))
         feedback = str(parsed.get("feedback", "")).strip()
         confidence = float(parsed.get("confidence"))
+        error_type = str(parsed.get("error_type", "")).strip()
 
         if rating < 1 or rating > 5:
             raise ValueError("Judge rating out of range (1-5)")
@@ -190,4 +211,12 @@ class AIJudge:
         if confidence < 0.0 or confidence > 1.0:
             raise ValueError("Judge confidence out of range (0.0-1.0)")
 
-        return {"rating": rating, "feedback": feedback, "confidence": confidence}
+        if error_type not in self.VALID_ERROR_TYPES:
+            error_type = "general_failure"
+
+        return {
+            "rating": rating,
+            "feedback": feedback,
+            "confidence": confidence,
+            "error_type": error_type,
+        }

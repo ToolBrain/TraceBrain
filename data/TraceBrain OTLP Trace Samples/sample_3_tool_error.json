@@ -7,6 +7,7 @@
       "rating": 5,
       "confidence": 0.98,
       "status": "auto_verified",
+      "error_type": "tool_execution_error",
       "feedback": "Tool error handled and user notified appropriately."
     }
   },

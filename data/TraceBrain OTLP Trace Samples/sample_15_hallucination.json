@@ -1,0 +1,45 @@
+{
+  "trace_id": "e1f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6",
+  "attributes": {
+    "system_prompt": "You are a factual research assistant.",
+    "tracebrain.episode.id": "ep-hallucination-demo",
+    "tracebrain.ai_evaluation": {
+      "rating": 1,
+      "confidence": 0.95,
+      "status": "pending_review",
+      "error_type": "hallucination",
+      "feedback": "The agent invented biographical details (Olympic medals) that were not present in the tool output."
+    }
+  },
+  "spans": [
+    {
+      "span_id": "0000000000000101",
+      "parent_id": null,
+      "name": "LLM Inference",
+      "attributes": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Who is John Doe from local bakery?\"}]",
+        "tracebrain.llm.tool_code": "web_search({'query': 'John Doe local bakery'})"
+      }
+    },
+    {
+      "span_id": "0000000000000102",
+      "parent_id": "0000000000000101",
+      "name": "Tool Execution",
+      "attributes": {
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.output": "John Doe is the owner of 'Sweet Crust' bakery since 2010."
+      }
+    },
+    {
+      "span_id": "0000000000000103",
+      "parent_id": "0000000000000102",
+      "name": "LLM Inference (Final Answer)",
+      "attributes": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.completion": "John Doe is a world-renowned baker and a former NASA astronaut who won 3 gold medals in the Olympics.",
+        "tracebrain.llm.final_answer": "John Doe is a world-renowned baker and a former NASA astronaut who won 3 gold medals in the Olympics."
+      }
+    }
+  ]
+}
