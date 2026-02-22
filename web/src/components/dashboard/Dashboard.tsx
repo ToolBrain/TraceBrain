@@ -6,9 +6,9 @@ import MainContent from "./MainContent";
 import type { Trace } from "../../types/trace";
 import type { FilterOption } from "./types";
 import { fetchTraces } from "../utils/api";
-import TraceGraph from "./TraceGraph";
 import { useSettings } from "../../contexts/SettingsContext";
-import { traceGetStatus } from "../utils/traceUtils";
+import { traceGetErrorType, traceGetStatus } from "../utils/traceUtils";
+import TraceViewSwitcher from "./TraceViewSwitcher";
 
 const DRAWER_WIDTH = 240;
 const COLLAPSED_WIDTH = 60;
@@ -22,6 +22,20 @@ const FILTER_CONFIG = {
       { key: "needs_review", label: "Review" },
     ],
     getValue: (trace: Trace) => traceGetStatus(trace) || "running",
+  },
+  Error_Type: {
+    options: [
+      { key: "logic_loop", label: "Logic Loop" },
+      { key: "hallucination", label: "Hallucination" },
+      { key: "invalid_tool_usage", label: "Invalid Tool" },
+      { key: "tool_execution_error", label: "Execution Error" },
+      { key: "format_error", label: "Format Error" },
+      { key: "misinterpretation", label: "Misinterpretation" },
+      { key: "context_overflow", label: "Context Overflow" },
+      { key: "general_failure", label: "General Failure" },
+      { key: "none", label: "None" },
+    ],
+    getValue: (trace: Trace) => traceGetErrorType(trace) || "none",
   },
 } as const;
 
@@ -202,7 +216,7 @@ const Dashboard: React.FC = () => {
         <MainContent
           traces={filteredTraces}
           onFetchTraces={handleFetchTraces}
-          graph={<TraceGraph traces={traces} />}
+          view={<TraceViewSwitcher traces={filteredTraces} />}
         />
       </Box>
     </Box>

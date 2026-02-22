@@ -145,9 +145,14 @@ const Sidebar: React.FC<SidebarProps> = ({
             color="inherit"
             sx={{
               borderRadius: 1,
+              color: "text.secondary",
+              "&:hover": {
+                color: "error.main",
+                bgcolor: "error.50",
+              },
             }}
           >
-            Clear Filters
+            Clear filters
           </Button>
         </Box>
       )}

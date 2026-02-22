@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -12,7 +12,7 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
-import { Search, Timeline, ViewList, Refresh, AutoAwesome } from "@mui/icons-material";
+import { Search, Timeline, ViewList, Refresh, ManageSearch } from "@mui/icons-material";
 import { fetchTraces, fetchEpisodes } from "../utils/api";
 import TracesTable from "../shared/TracesTable";
 import EpisodesTable from "../shared/EpisodesTable";
@@ -20,7 +20,7 @@ import type { Trace, Episode } from "../../types/trace";
 
 const DEBOUNCE_MS = 300;
 
-type ViewMode = "traces" | "episodes" | "natural_language";
+type ViewMode = "traces" | "episodes" | "advanced";
 
 const TraceExplorer: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("traces");
@@ -52,7 +52,7 @@ const TraceExplorer: React.FC = () => {
 
   // Fetches paginated traces
   useEffect(() => {
-    if (viewMode === "natural_language") return;
+    if (viewMode === "advanced") return;
     setTracesLoading(true);
     fetchTraces(tracePage * rowsPerPage, rowsPerPage, debouncedQuery || undefined)
       .then((data) => {
@@ -64,7 +64,7 @@ const TraceExplorer: React.FC = () => {
 
   // Fetches paginated episodes
   useEffect(() => {
-    if (viewMode === "natural_language") return;
+    if (viewMode === "advanced") return;
     setEpisodesLoading(true);
     fetchEpisodes(episodePage * rowsPerPage, rowsPerPage, debouncedQuery || undefined)
       .then((data) => {
@@ -158,10 +158,10 @@ const TraceExplorer: React.FC = () => {
                 value="episodes"
               />
               <Tab
-                icon={<AutoAwesome />}
+                icon={<ManageSearch />}
                 iconPosition="start"
-                label="AI Search"
-                value="natural_language"
+                label="Advanced Search"
+                value="advanced"
               />
             </Tabs>
           </Box>

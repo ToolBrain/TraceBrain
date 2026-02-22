@@ -33,6 +33,7 @@ import StatusChip, {
 } from "../shared/StatusChip";
 import {
   traceGetDuration,
+  traceGetErrorType,
   traceGetEvaluation,
   traceGetPriority,
   traceGetStartTime,
@@ -42,6 +43,7 @@ import {
 import ConfidenceIndicator from "./ConfidenceIndicator";
 import { formatDateTime, getPriorityColor } from "../utils/utils";
 import TypeChip from "../shared/TypeChip";
+import ErrorTypeChip from "../shared/ErrorTypeChip";
 
 interface TraceListProps {
   traces: Trace[];
@@ -106,17 +108,20 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
             }}
           >
             <TableCell sx={{ width: "2%", fontWeight: 600 }}></TableCell>
-            <TableCell sx={{ width: "16%", fontWeight: 600 }}>
+            <TableCell sx={{ width: "10%", fontWeight: 600 }}>
               Timestamp
             </TableCell>
-            <TableCell sx={{ width: "12%", fontWeight: 600 }}>
+            <TableCell sx={{ width: "13%", fontWeight: 600 }}>
               Details
             </TableCell>
-            <TableCell sx={{ width: "15%", fontWeight: 600 }}>Status</TableCell>
-            <TableCell sx={{ width: "15%", fontWeight: 600 }}>
+            <TableCell sx={{ width: "10%", fontWeight: 600 }}>Status</TableCell>
+            <TableCell sx={{ width: "10%", fontWeight: 600 }}>
+              Error Type
+            </TableCell>
+            <TableCell sx={{ width: "10%", fontWeight: 600 }}>
               Duration
             </TableCell>
-            <TableCell sx={{ width: "25%", fontWeight: 600 }}>
+            <TableCell sx={{ width: "15%", fontWeight: 600 }}>
               Trace ID
             </TableCell>
             <TableCell sx={{ width: "15%", fontWeight: 600 }}>
@@ -128,7 +133,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
           {traces.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={7}
+                colSpan={8}
                 sx={{ textAlign: "center", py: 4, color: "text.secondary" }}
               >
                 No traces found.
@@ -142,6 +147,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
               const status = getTraceStatus(trace);
               const priority = traceGetPriority(trace);
               const totalTokens = traceGetTotalTokens(trace) ?? "N/A";
+              const errorType = traceGetErrorType(trace);
 
               const evaluation = traceGetEvaluation(trace);
               const confidence = evaluation?.confidence;
@@ -252,6 +258,18 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                       <StatusChip status={status} />
                     </TableCell>
                     <TableCell>
+                      {errorType && errorType !== "none" ? (
+                        <ErrorTypeChip errorType={errorType} />
+                      ) : (
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "text.disabled" }}
+                        >
+                          —
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <Typography
                         variant="body2"
                         sx={{ fontFamily: "monospace" }}
@@ -280,7 +298,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                     </TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell sx={{ p: 0, border: 0 }} colSpan={7}>
+                    <TableCell sx={{ p: 0, border: 0 }} colSpan={8}>
                       <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                         <Box sx={{ bgcolor: "action.hover" }}>
                           <Table
@@ -289,11 +307,12 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                           >
                             <colgroup>
                               <col style={{ width: "2%" }} />
-                              <col style={{ width: "16%" }} />
-                              <col style={{ width: "12%" }} />
+                              <col style={{ width: "10%" }} />
+                              <col style={{ width: "13%" }} />
+                              <col style={{ width: "10%" }} />
+                              <col style={{ width: "10%" }} />
+                              <col style={{ width: "10%" }} />
                               <col style={{ width: "15%" }} />
-                              <col style={{ width: "15%" }} />
-                              <col style={{ width: "25%" }} />
                               <col style={{ width: "15%" }} />
                             </colgroup>
                             <TableBody>
@@ -358,6 +377,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
                                         secondary
                                       />
                                     </TableCell>
+                                    <TableCell></TableCell>
                                     <TableCell>
                                       <Typography
                                         variant="body2"
