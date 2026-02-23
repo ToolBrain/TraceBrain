@@ -1,23 +1,23 @@
 import type { Trace } from "../../types/trace";
+import type { EpisodeList } from "../explorer/types";
 import type { HistoryList } from "../history/types";
 import type { CurriculumTask } from "../roadmap/types";
 
 export const fetchTraces = async (
   skip?: number,
   limit?: number,
-): Promise<Trace[]> => {
+  query?: string,
+): Promise<{ traces: Trace[]; total: number; skip: number; limit: number }> => {
   const params = new URLSearchParams();
   if (skip !== undefined) params.append("skip", String(skip));
   if (limit !== undefined) params.append("limit", String(limit));
+  if (query) params.append("query", query);
 
-  const url = `/api/v1/traces?${params.toString()}`;
-
-  const response = await fetch(url);
+  const response = await fetch(`/api/v1/traces?${params.toString()}`);
   if (!response.ok)
     throw new Error(`Failed to fetch traces: ${response.status}`);
 
-  const data = await response.json();
-  return data.traces;
+  return await response.json();
 };
 
 export const fetchTrace = async (id: string): Promise<Trace[]> => {
@@ -42,6 +42,28 @@ export const fetchEpisodeTraces = async (id: string): Promise<Trace[]> => {
     }
     const data: { episode_id: string; traces: Trace[] } = await response.json();
     return data.traces;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+
+export const fetchEpisodes = async (
+  skip: number = 0,
+  limit: number = 10,
+  query?: string,
+): Promise<EpisodeList> => {
+  const params = new URLSearchParams();
+  params.append("skip", String(skip));
+  params.append("limit", String(limit));
+  if (query) params.append("query", query);
+
+  try {
+    const response = await fetch(`/api/v1/episodes?${params.toString()}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch episodes: ${response.status}`);
+    }
+    return await response.json();
   } catch (error) {
     console.error(error);
     throw error;
@@ -94,12 +116,17 @@ export const evaluateTrace = async (id: string, judgeModelId: string) => {
   return response.json();
 };
 
-export const generateCurriculum = async (): Promise<{
+export const generateCurriculum = async (params: {
+  error_types: string[] | null;
+  limit: number;
+}): Promise<{
   status: string;
   tasks_generated: number;
 }> => {
   const response = await fetch("/api/v1/curriculum/generate", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
   });
   if (!response.ok)
     throw new Error(`Failed to generate curriculum: ${response.status}`);

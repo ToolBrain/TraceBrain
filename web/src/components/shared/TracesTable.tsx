@@ -200,7 +200,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ traces, loading }) => (
           <TableRow key={i}>
             {Array.from({ length: 6 }).map((_, j) => (
               <TableCell key={j}>
-                <Skeleton />
+                <Skeleton sx={{ my: 1.75 }} />
               </TableCell>
             ))}
           </TableRow>

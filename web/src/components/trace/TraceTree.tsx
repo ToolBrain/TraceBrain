@@ -10,12 +10,17 @@ import {
 import type { Span, Trace } from "../../types/trace";
 import { spanGetDuration, spanHasError } from "../utils/spanUtils";
 
+interface SelectedSpan {
+  traceId: string;
+  spanId: string;
+}
+
 interface TraceTreeProps {
   traces: Trace[];
   expandedNodes: Set<string>;
-  selectedSpan: string | null;
-  onToggleExpand: (spanId: string) => void;
-  onSelectSpan: (spanId: string) => void;
+  selectedSpan: SelectedSpan | null;
+  onToggleExpand: (traceId: string, spanId: string) => void;
+  onSelectSpan: (span: SelectedSpan) => void;
 }
 
 const TraceTree: React.FC<TraceTreeProps> = ({
@@ -27,24 +32,26 @@ const TraceTree: React.FC<TraceTreeProps> = ({
 }) => {
   const SpanRow = ({
     span,
+    traceId,
     depth,
     isLast,
     spansByParent,
   }: {
     span: Span;
+    traceId: string;
     depth: number;
     isLast?: boolean;
     spansByParent: Map<string | null, Span[]>;
   }) => {
     const children = spansByParent.get(span.span_id) || [];
-    const isExpanded = expandedNodes.has(span.span_id);
-    const isSelected = selectedSpan === span.span_id;
+    const isExpanded = expandedNodes.has(`${traceId}:${span.span_id}`);
+    const isSelected = selectedSpan?.traceId === traceId && selectedSpan?.spanId === span.span_id;
     const hasError = spanHasError(span);
 
     return (
       <>
         <Box
-          onClick={() => onSelectSpan(span.span_id)}
+          onClick={() => onSelectSpan({ traceId, spanId: span.span_id })}
           sx={{
             display: "flex",
             alignItems: "center",
@@ -90,7 +97,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
               size="small"
               onClick={(e) => {
                 e.stopPropagation();
-                onToggleExpand(span.span_id);
+                onToggleExpand(traceId, span.span_id);
               }}
               sx={{ mr: 1, p: 0 }}
             >
@@ -125,6 +132,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
             <SpanRow
               key={child.span_id}
               span={child}
+              traceId={traceId}
               depth={depth + 1}
               isLast={idx === children.length - 1}
               spansByParent={spansByParent}
@@ -176,6 +184,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
                   <SpanRow
                     key={span.span_id}
                     span={span}
+                    traceId={t.trace_id}
                     depth={0}
                     isLast={idx === arr.length - 1}
                     spansByParent={spansByParent}

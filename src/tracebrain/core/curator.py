@@ -74,7 +74,6 @@ class CurriculumCurator:
 
             traces = (
                 query.order_by(Trace.created_at.desc())
-                .limit(limit)
                 .all()
             )
             results: List[Trace] = []
@@ -95,7 +94,7 @@ class CurriculumCurator:
                     if normalized_error_types and error_type not in normalized_error_types:
                         continue
                     results.append(trace)
-            return results
+            return results[:limit]
         finally:
             session.close()
 

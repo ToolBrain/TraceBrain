@@ -86,6 +86,7 @@ class Trace(Base):
     system_prompt = Column(Text, nullable=True, comment="System prompt for the agent")
     episode_id = Column(
         String,
+        ForeignKey("episodes.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
         comment="Episode identifier grouping multiple traces"
@@ -139,6 +140,7 @@ class Trace(Base):
         cascade="all, delete-orphan",
         lazy="select"
     )
+    episode = relationship("Episode", back_populates="traces")
 
     __table_args__ = (
         Index("idx_trace_created_at", "created_at"),
@@ -154,6 +156,33 @@ class Trace(Base):
             f"status='{self.status}', spans={len(self.spans)})>"
         )
 
+class Episode(Base):
+    """
+    Represents a group of related traces.
+    
+    Attributes:
+        id (int): episode_id from the OTLP trace (primary key).
+        created_at (datetime): Timestamp of the earliest trace associated with this episode.
+    """
+
+    __tablename__ = "episodes"
+
+    id = Column(String, primary_key=True, comment="Episode ID from OTLP trace")
+    created_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+        comment="Timestamp of the earliest trace in this episode",
+    )
+
+    traces = relationship("Trace", back_populates="episode", lazy="select")
+
+    __table_args__ = (
+        Index("idx_episode_created_at", "created_at"),
+    )
+
+    def __repr__(self):
+        return f"<Episode(id='{self.id}', created_at='{self.created_at}')>"
 
 class Span(Base):
     """

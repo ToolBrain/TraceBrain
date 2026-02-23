@@ -141,6 +141,7 @@ docker compose -f docker/docker-compose.yml build --no-cache
 - `POST /api/v1/traces/{trace_id}/feedback` - Add feedback to a trace
 
 **Episodes**
+- `GET /api/v1/episodes` - List all episodes along with their full traces
 - `GET /api/v1/episodes/{episode_id}` - Get episode details with trace summaries
 - `GET /api/v1/episodes/{episode_id}/traces` - Get all full traces in an episode
 

@@ -146,7 +146,7 @@ const TraceGraph: React.FC<TraceGraphProps> = ({ traces }) => {
   };
 
   return (
-    <Box>
+    <Box sx={{ height: "100%" }}>
       <Box
         sx={{
           display: "flex",

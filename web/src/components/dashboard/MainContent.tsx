@@ -29,7 +29,7 @@ import { batchEvaluateTraces } from "../utils/api";
 interface MainContentProps {
   traces: Trace[];
   onFetchTraces: () => void;
-  graph: React.ReactElement;
+  view: React.ReactElement;
 }
 
 const sortOptions = [
@@ -42,7 +42,7 @@ const sortOptions = [
 const MainContent: React.FC<MainContentProps> = ({
   traces,
   onFetchTraces,
-  graph,
+  view,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("datetime");
@@ -122,7 +122,7 @@ const MainContent: React.FC<MainContentProps> = ({
     <Box
       sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}
     >
-      {graph}
+      {view}
       <Box
         sx={{
           display: "flex",

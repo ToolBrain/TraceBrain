@@ -46,7 +46,7 @@ def get_history(
     limit: int = Query(10, ge=1, le=100, description="Number of entries to return"),
     offset: int = Query(0, ge=0, description="Number of entries to skip"),
     type: str = Query(..., description="Filter by type 'trace' or 'episode'"),
-    query: Optional[str] = Query(None),
+    query: Optional[str] = Query(None, description="Filter by ID"),
 ):
     """Get paginated history of traces and episodes with full trace data."""
     try:

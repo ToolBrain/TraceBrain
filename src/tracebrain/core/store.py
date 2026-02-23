@@ -22,6 +22,7 @@ from tracebrain.config import settings
 from tracebrain.core.services.embedding import EmbeddingFactory
 from tracebrain.db.base import (
     Base,
+    Episode,
     Trace,
     Span,
     ChatSession,
@@ -164,6 +165,10 @@ class BaseStorageBackend:
 
         session = self.get_session()
         try:
+            if episode_id:
+                existing_episode = session.query(Episode).filter(Episode.id == episode_id).first()
+                if not existing_episode:
+                    session.add(Episode(id=episode_id, created_at=datetime.utcnow()))
             session.add(trace)
             session.commit()
             logger.info("Successfully added trace %s with %s spans", trace_id, len(trace.spans))
@@ -477,14 +482,17 @@ class BaseStorageBackend:
             "spans": span_payloads,
         }
 
-    def list_traces(self, limit: int = 100, skip: int = 0, include_spans: bool = False) -> List[Trace]:
+    def list_traces(self, limit: int = 100, skip: int = 0, query: str = None, include_spans: bool = False) -> List[Trace]:
         """List traces in the database with pagination."""
         session = self.get_session()
         try:
-            query = session.query(Trace).order_by(Trace.created_at.desc()).offset(skip).limit(limit)
+            q = session.query(Trace)
+            if query:
+                q = q.filter(Trace.id.ilike(f"%{query}%"))
+            q = q.order_by(Trace.created_at.desc()).offset(skip).limit(limit)
             if include_spans:
-                query = query.options(selectinload(Trace.spans))
-            return query.all()
+                q = q.options(selectinload(Trace.spans))
+            return q.all()
         finally:
             session.close()
 
@@ -875,6 +883,39 @@ class BaseStorageBackend:
             return count
         finally:
             session.close()
+
+    def list_episodes(self, skip: int = 0, limit: int = 10, query: str = None, include_spans: bool = False):
+            """List episodes ordered by creation time."""
+            session = self.get_session()
+            try:
+                q = session.query(Episode)
+                if query:
+                    q = q.filter(Episode.id.ilike(f"%{query}%"))
+
+                total = q.count()
+
+                episodes = (
+                    q.
+                    order_by(Episode.created_at.desc())
+                    .offset(skip)
+                    .limit(limit)
+                    .all()
+                )
+
+                result = []
+                for episode in episodes:
+                    trace_query = (
+                        session.query(Trace)
+                        .filter(Trace.episode_id == episode.id)
+                        .order_by(Trace.created_at.asc())
+                    )
+                    if include_spans:
+                        trace_query = trace_query.options(selectinload(Trace.spans))
+                    result.append((episode.id, trace_query.all()))
+
+                return result, total
+            finally:
+                session.close()
 
 class SQLiteBackend(BaseStorageBackend):
     """SQLite storage backend for development and testing."""

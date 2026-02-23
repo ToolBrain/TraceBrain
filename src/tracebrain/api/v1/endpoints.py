@@ -15,6 +15,7 @@ Features:
 - POST /api/v1/traces/{trace_id}/signal: Mark a trace as needs review
 - GET /api/v1/traces/search: Semantic experience search
 - GET /api/v1/export/traces: Export traces
+- GET /api/v1/episodes: List all episodes with pagination
 - GET /api/v1/episodes/{episode_id}: Retrieve episode summary
 - GET /api/v1/stats: Get database statistics
 - GET /api/v1/analytics/tool_usage: Get tool usage analytics
@@ -42,7 +43,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from ...core.store import TraceStore
 from ...core.curator import CurriculumCurator
-from ...db.base import TraceStatus, CurriculumTask, Trace
+from ...db.base import Episode, TraceStatus, CurriculumTask, Trace
 from ...evaluators.judge_agent import AIJudge
 from ...core.librarian import LibrarianAgent, LIBRARIAN_AVAILABLE
 from ...config import settings
@@ -276,6 +277,12 @@ class EpisodeTracesOut(BaseModel):
     episode_id: str
     traces: List[TraceOut]
 
+class EpisodeListOut(BaseModel):
+    """Response model for paginated episode list."""
+    total: int
+    skip: int
+    limit: int
+    episodes: List[EpisodeTracesOut]
 
 class AIEvaluationIn(BaseModel):
     judge_model_id: str
@@ -425,7 +432,9 @@ def root():
             "signal_trace": "POST /api/v1/traces/{trace_id}/signal",
             "search_traces": "GET /api/v1/traces/search",
             "export_traces": "GET /api/v1/export/traces",
+            "list_episodes": "GET /api/v1/episodes",
             "get_episode": "GET /api/v1/episodes/{episode_id}",
+            "get_episode_traces": "GET /api/v1/episodes/{episode_id}/traces",
             "stats": "GET /api/v1/stats",
             "tool_usage": "GET /api/v1/analytics/tool_usage",
             "ai_evaluate": "POST /api/v1/ai_evaluate/{trace_id}",
@@ -467,7 +476,8 @@ def health_check():
 @router.get("/traces", response_model=TraceListOut, tags=["Traces"])
 def list_traces(
     skip: int = Query(0, ge=0, description="Number of traces to skip"),
-    limit: int = Query(20, ge=1, le=100, description="Maximum number of traces to return")
+    limit: int = Query(20, ge=1, le=100, description="Maximum number of traces to return"),
+    query: Optional[str] = Query(None, description="Filter traces by ID"),
 ):
     """
     List all traces with pagination.
@@ -476,7 +486,7 @@ def list_traces(
     """
     try:
         # Get traces from store with pagination
-        traces = store.list_traces(limit=limit, skip=skip, include_spans=True)
+        traces = store.list_traces(limit=limit, skip=skip, query=query, include_spans=True)
         total = store.count_traces()
 
         trace_outs = [_trace_to_out(trace) for trace in traces]
@@ -825,6 +835,25 @@ def export_curriculum(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/episodes", response_model=EpisodeListOut, tags=["Episodes"])
+def list_episodes(
+    skip: int = Query(0, ge=0, description="Number of episodes to skip"),
+    limit: int = Query(10, ge=1, le=100, description="Maximum number of episodes to return"),
+    query: Optional[str] = Query(None, description="Filter episodes by ID"),
+):
+    """List all episodes ordered by creation time, each with their traces."""
+    try:
+        episodes, total = store.list_episodes(skip=skip, limit=limit, query=query, include_spans=True)
+
+        episode_outs = []
+        for episode_id, traces in episodes:
+            trace_outs = [_trace_to_out(trace) for trace in traces]
+            episode_outs.append(EpisodeTracesOut(episode_id=episode_id, traces=trace_outs))
+
+        return EpisodeListOut(total=total, skip=skip, limit=limit, episodes=episode_outs)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list episodes: {str(e)}")
 
 @router.get("/episodes/{episode_id}", response_model=EpisodeOut, tags=["Episodes"])
 def get_episode_details(episode_id: str):

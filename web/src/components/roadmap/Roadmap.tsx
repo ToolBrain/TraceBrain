@@ -20,8 +20,10 @@ import {
   AutoAwesome,
   FileDownloadOutlined,
   Refresh,
+  Tune,
 } from "@mui/icons-material";
 import CurriculumList from "./CurriculumList";
+import CurriculumConfiguration from "./CurriculumConfiguration";
 import {
   generateCurriculum,
   fetchCurriculumTasks,
@@ -65,8 +67,14 @@ const Roadmap: React.FC = () => {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
-    severity: "success" as "success" | "error",
+    severity: "success" as "success" | "error" | "warning",
   });
+
+  const [generateAnchorEl, setGenerateAnchorEl] =
+    useState<HTMLButtonElement | null>(null);
+
+  const [selectedErrorTypes, setSelectedErrorTypes] = useState<string[]>([]);
+  const [taskLimit, setTaskLimit] = useState<number>(5);
 
   // initial fetch of tasks
   useEffect(() => {
@@ -97,8 +105,19 @@ const Roadmap: React.FC = () => {
     });
 
     try {
-      await generateCurriculum();
+      const result = await generateCurriculum({
+        error_types: selectedErrorTypes.length > 0 ? selectedErrorTypes : null,
+        limit: taskLimit,
+      });
       await handleRefresh();
+      setSnackbar({
+        open: true,
+        message:
+          result.tasks_generated === 0
+            ? "No tasks generated"
+            : `${result.tasks_generated} task${result.tasks_generated === 1 ? "" : "s"} generated`,
+        severity: result.tasks_generated === 0 ? "warning" : "success",
+      });
     } catch (error) {
       console.error("Error generating curriculum:", error);
       setSnackbar({
@@ -279,6 +298,25 @@ const Roadmap: React.FC = () => {
             >
               {isGenerating ? "Generating..." : "Generate"}
             </Button>
+
+            {/* Configuration menu button*/}
+            <IconButton
+              onClick={(e) => setGenerateAnchorEl(e.currentTarget)}
+              disabled={isLoading || isGenerating}
+              size="small"
+            >
+              <Tune fontSize="small" />
+            </IconButton>
+
+            <CurriculumConfiguration
+              anchorEl={generateAnchorEl}
+              onClose={() => setGenerateAnchorEl(null)}
+              onConfirm={(errorTypes, limit) => {
+                setSelectedErrorTypes(errorTypes);
+                setTaskLimit(limit);
+                setGenerateAnchorEl(null);
+              }}
+            />
           </Box>
         </Box>
       </Box>
