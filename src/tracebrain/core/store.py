@@ -6,14 +6,14 @@ supporting both SQLite (for development) and PostgreSQL (for production).
 """
 
 from contextlib import contextmanager
-from datetime import datetime
-from typing import Dict, Any, Optional, List, Iterator
+from datetime import datetime, timedelta
+from typing import Dict, Any, Optional, List, Iterator, Union
 import logging
 import re
 import json
 
 import sqlparse
-from sqlalchemy import create_engine, func, cast, text, Integer, case
+from sqlalchemy import create_engine, func, cast, text, Integer, Float, case
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError, ProgrammingError, TimeoutError
 from sqlalchemy.orm import sessionmaker, Session, selectinload
@@ -482,19 +482,163 @@ class BaseStorageBackend:
             "spans": span_payloads,
         }
 
-    def list_traces(self, limit: int = 100, skip: int = 0, query: str = None, include_spans: bool = False) -> List[Trace]:
-        """List traces in the database with pagination."""
+    def list_traces(
+        self,
+        limit: int = 100,
+        skip: int = 0,
+        query: Optional[str] = None,
+        include_spans: bool = False,
+        status: Optional[str] = None,
+        min_rating: Optional[int] = None,
+        error_type: Optional[str] = None,
+        min_confidence: Optional[float] = None,
+        max_confidence: Optional[float] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> List[Trace]:
+        """List traces in the database with pagination and optional filters."""
         session = self.get_session()
         try:
-            q = session.query(Trace)
-            if query:
-                q = q.filter(Trace.id.ilike(f"%{query}%"))
-            q = q.order_by(Trace.created_at.desc()).offset(skip).limit(limit)
+            q = self._build_traces_query(
+                session=session,
+                query=query,
+                status=status,
+                min_rating=min_rating,
+                error_type=error_type,
+                min_confidence=min_confidence,
+                max_confidence=max_confidence,
+                start_time=start_time,
+                end_time=end_time,
+            )
+
+            if not self.is_sqlite:
+                q = q.order_by(Trace.created_at.desc()).offset(skip).limit(limit)
+                if include_spans:
+                    q = q.options(selectinload(Trace.spans))
+                return q.all()
+
+            q = q.order_by(Trace.created_at.desc())
             if include_spans:
                 q = q.options(selectinload(Trace.spans))
-            return q.all()
+            traces = q.all()
+            return traces[skip: skip + limit]
         finally:
             session.close()
+
+    def count_traces_filtered(
+        self,
+        query: Optional[str] = None,
+        status: Optional[str] = None,
+        min_rating: Optional[int] = None,
+        error_type: Optional[str] = None,
+        min_confidence: Optional[float] = None,
+        max_confidence: Optional[float] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> int:
+        """Return trace count for the given filters."""
+        session = self.get_session()
+        try:
+            q = self._build_traces_query(
+                session=session,
+                query=query,
+                status=status,
+                min_rating=min_rating,
+                error_type=error_type,
+                min_confidence=min_confidence,
+                max_confidence=max_confidence,
+                start_time=start_time,
+                end_time=end_time,
+            )
+
+            if not self.is_sqlite:
+                return int(q.count())
+
+            return len(q.all())
+        finally:
+            session.close()
+
+    def _build_traces_query(
+        self,
+        session: Session,
+        query: Optional[str],
+        status: Optional[str],
+        min_rating: Optional[int],
+        error_type: Optional[str],
+        min_confidence: Optional[float],
+        max_confidence: Optional[float],
+        start_time: Optional[datetime],
+        end_time: Optional[datetime],
+    ):
+        q = session.query(Trace)
+        if query:
+            q = q.filter(Trace.id.ilike(f"%{query}%"))
+        if status:
+            q = q.filter(Trace.status == status)
+        if start_time:
+            q = q.filter(Trace.created_at >= start_time)
+        if end_time:
+            q = q.filter(Trace.created_at <= end_time)
+
+        if not self.is_sqlite:
+            if min_rating is not None:
+                rating_value = Trace.feedback["rating"].astext.cast(Integer)
+                q = q.filter(rating_value >= min_rating)
+            if error_type:
+                error_value = (
+                    Trace.attributes["tracebrain.ai_evaluation"]["error_type"].astext
+                )
+                q = q.filter(error_value == error_type)
+            if min_confidence is not None or max_confidence is not None:
+                conf_value = (
+                    Trace.attributes["tracebrain.ai_evaluation"]["confidence"].astext
+                    .cast(Float)
+                )
+                if min_confidence is not None:
+                    q = q.filter(conf_value >= min_confidence)
+                if max_confidence is not None:
+                    q = q.filter(conf_value <= max_confidence)
+            return q
+
+        traces = q.all()
+        if min_rating is None and error_type is None and min_confidence is None and max_confidence is None:
+            return session.query(Trace).filter(Trace.id.in_([t.id for t in traces]))
+
+        filtered_ids: List[str] = []
+        for trace in traces:
+            rating_value = None
+            if trace.feedback and isinstance(trace.feedback, dict):
+                rating_value = trace.feedback.get("rating")
+
+            ai_eval = None
+            if trace.attributes and isinstance(trace.attributes, dict):
+                ai_eval = trace.attributes.get("tracebrain.ai_evaluation")
+
+            eval_error_type = None
+            eval_confidence = None
+            if isinstance(ai_eval, dict):
+                eval_error_type = ai_eval.get("error_type")
+                eval_confidence = ai_eval.get("confidence")
+
+            if min_rating is not None:
+                if not isinstance(rating_value, int) or rating_value < min_rating:
+                    continue
+            if error_type is not None:
+                if eval_error_type != error_type:
+                    continue
+            if min_confidence is not None:
+                if not isinstance(eval_confidence, (int, float)) or eval_confidence < min_confidence:
+                    continue
+            if max_confidence is not None:
+                if not isinstance(eval_confidence, (int, float)) or eval_confidence > max_confidence:
+                    continue
+
+            filtered_ids.append(trace.id)
+
+        if not filtered_ids:
+            return session.query(Trace).filter(text("1=0"))
+
+        return session.query(Trace).filter(Trace.id.in_(filtered_ids))
 
     def get_traces_by_ids(self, trace_ids: List[str], include_spans: bool = False) -> List[Trace]:
         """Get traces by a list of trace IDs."""        
@@ -564,18 +708,28 @@ class BaseStorageBackend:
                 .order_by(ChatMessage.created_at.asc())
                 .all()
             )
-            return [
-                {
-                    "role": message.role,
-                    "content": message.content,
-                    "created_at": message.created_at,
-                }
-                for message in messages
-            ]
+            results = []
+            for message in messages:
+                content = message.content
+                if not isinstance(content, dict):
+                    content = {"answer": str(content)}
+                results.append(
+                    {
+                        "role": message.role,
+                        "content": content,
+                        "created_at": message.created_at,
+                    }
+                )
+            return results
         finally:
             session.close()
 
-    def save_chat_message(self, session_id: str, role: str, content: str) -> None:
+    def save_chat_message(
+        self,
+        session_id: str,
+        role: str,
+        content: Union[str, Dict[str, Any]],
+    ) -> None:
         """Save a new chat message, creating the session if needed."""
         session = self.get_session()
         try:
@@ -584,10 +738,18 @@ class BaseStorageBackend:
                 chat_session = ChatSession(id=session_id)
                 session.add(chat_session)
 
+            payload: Dict[str, Any]
+            if isinstance(content, dict):
+                payload = content
+            elif role == "user":
+                payload = {"answer": str(content)}
+            else:
+                payload = {"answer": str(content)}
+
             message = ChatMessage(
                 session_id=session_id,
                 role=role,
-                content=content,
+                content=payload,
             )
             session.add(message)
             session.commit()
@@ -603,6 +765,33 @@ class BaseStorageBackend:
         session = self.get_session()
         try:
             return int(session.query(func.count(Trace.id)).scalar() or 0)
+        finally:
+            session.close()
+
+    def cleanup_traces(
+        self,
+        older_than_hours: Optional[int] = None,
+        status: Optional[str] = None,
+    ) -> int:
+        """Delete traces matching cleanup filters and return count."""
+        session = self.get_session()
+        try:
+            q = session.query(Trace)
+            if older_than_hours is not None:
+                cutoff = datetime.utcnow() - timedelta(hours=older_than_hours)
+                q = q.filter(Trace.created_at < cutoff)
+            if status:
+                q = q.filter(Trace.status == status)
+
+            deleted = q.count()
+            if deleted:
+                q.delete(synchronize_session=False)
+                session.commit()
+            return int(deleted)
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to cleanup traces")
+            raise
         finally:
             session.close()
 
@@ -884,38 +1073,143 @@ class BaseStorageBackend:
         finally:
             session.close()
 
-    def list_episodes(self, skip: int = 0, limit: int = 10, query: str = None, include_spans: bool = False):
-            """List episodes ordered by creation time."""
-            session = self.get_session()
-            try:
-                q = session.query(Episode)
+    def list_episodes(
+        self,
+        skip: int = 0,
+        limit: int = 10,
+        query: Optional[str] = None,
+        include_spans: bool = False,
+    ):
+        """List episodes ordered by creation time with their traces."""
+        session = self.get_session()
+        try:
+            q = session.query(Episode)
+            if query:
+                q = q.filter(Episode.id.ilike(f"%{query}%"))
+
+            total = q.count()
+
+            episodes = (
+                q.order_by(Episode.created_at.desc())
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
+
+            result = []
+            for episode in episodes:
+                trace_query = (
+                    session.query(Trace)
+                    .filter(Trace.episode_id == episode.id)
+                    .order_by(Trace.created_at.asc())
+                )
+                if include_spans:
+                    trace_query = trace_query.options(selectinload(Trace.spans))
+                result.append((episode.id, trace_query.all()))
+
+            return result, total
+        finally:
+            session.close()
+
+    def list_episode_summaries(
+        self,
+        skip: int = 0,
+        limit: int = 10,
+        query: Optional[str] = None,
+        min_confidence_lt: Optional[float] = None,
+    ):
+        """List episodes with aggregated metrics (start_time, trace_count, min_confidence)."""
+        session = self.get_session()
+        try:
+            if not self.is_sqlite:
+                conf_value = (
+                    Trace.attributes["tracebrain.ai_evaluation"]["confidence"].astext
+                    .cast(Float)
+                )
+                base_query = (
+                    session.query(
+                        Trace.episode_id.label("episode_id"),
+                        func.min(Trace.created_at).label("start_time"),
+                        func.count(Trace.id).label("trace_count"),
+                        func.min(conf_value).label("min_confidence"),
+                    )
+                    .filter(Trace.episode_id.isnot(None))
+                    .group_by(Trace.episode_id)
+                )
                 if query:
-                    q = q.filter(Episode.id.ilike(f"%{query}%"))
+                    base_query = base_query.filter(Trace.episode_id.ilike(f"%{query}%"))
+                if min_confidence_lt is not None:
+                    base_query = base_query.having(func.min(conf_value) < min_confidence_lt)
 
-                total = q.count()
+                total = base_query.count()
 
-                episodes = (
-                    q.
-                    order_by(Episode.created_at.desc())
+                rows = (
+                    base_query
+                    .order_by(func.min(Trace.created_at).desc())
                     .offset(skip)
                     .limit(limit)
                     .all()
                 )
 
-                result = []
-                for episode in episodes:
-                    trace_query = (
-                        session.query(Trace)
-                        .filter(Trace.episode_id == episode.id)
-                        .order_by(Trace.created_at.asc())
-                    )
-                    if include_spans:
-                        trace_query = trace_query.options(selectinload(Trace.spans))
-                    result.append((episode.id, trace_query.all()))
+                episodes = [
+                    {
+                        "episode_id": row.episode_id,
+                        "start_time": row.start_time,
+                        "trace_count": int(row.trace_count or 0),
+                        "min_confidence": (float(row.min_confidence)
+                                           if row.min_confidence is not None else None),
+                    }
+                    for row in rows
+                ]
+                return episodes, total
 
-                return result, total
-            finally:
-                session.close()
+            traces_query = session.query(Trace).filter(Trace.episode_id.isnot(None))
+            if query:
+                traces_query = traces_query.filter(Trace.episode_id.ilike(f"%{query}%"))
+            traces = traces_query.all()
+
+            episodes_map: Dict[str, Dict[str, Any]] = {}
+            for trace in traces:
+                episode_id = trace.episode_id
+                if not episode_id:
+                    continue
+                entry = episodes_map.get(episode_id)
+                if not entry:
+                    entry = {
+                        "episode_id": episode_id,
+                        "start_time": trace.created_at,
+                        "trace_count": 0,
+                        "min_confidence": None,
+                    }
+                    episodes_map[episode_id] = entry
+
+                entry["trace_count"] += 1
+                if trace.created_at and trace.created_at < entry["start_time"]:
+                    entry["start_time"] = trace.created_at
+
+                ai_eval = None
+                if isinstance(trace.attributes, dict):
+                    ai_eval = trace.attributes.get("tracebrain.ai_evaluation")
+                if isinstance(ai_eval, dict):
+                    conf = ai_eval.get("confidence")
+                    if isinstance(conf, (int, float)):
+                        if entry["min_confidence"] is None or conf < entry["min_confidence"]:
+                            entry["min_confidence"] = float(conf)
+
+            episodes = list(episodes_map.values())
+            if min_confidence_lt is not None:
+                episodes = [
+                    ep
+                    for ep in episodes
+                    if ep["min_confidence"] is not None
+                    and ep["min_confidence"] < min_confidence_lt
+                ]
+
+            episodes.sort(key=lambda item: item["start_time"], reverse=True)
+            total = len(episodes)
+            return episodes[skip: skip + limit], total
+        finally:
+            session.close()
 
 class SQLiteBackend(BaseStorageBackend):
     """SQLite storage backend for development and testing."""

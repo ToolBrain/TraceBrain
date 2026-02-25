@@ -136,12 +136,14 @@ docker compose -f docker/docker-compose.yml build --no-cache
 
 **Traces**
 - `POST /api/v1/traces` - Create a new trace
+- `POST /api/v1/traces/init` - Initialize a trace before spans are available
 - `GET /api/v1/traces` - List all traces
 - `GET /api/v1/traces/{trace_id}` - Get trace details
 - `POST /api/v1/traces/{trace_id}/feedback` - Add feedback to a trace
 
 **Episodes**
 - `GET /api/v1/episodes` - List all episodes along with their full traces
+- `GET /api/v1/episodes/summary` - List episodes with aggregated metrics
 - `GET /api/v1/episodes/{episode_id}` - Get episode details with trace summaries
 - `GET /api/v1/episodes/{episode_id}/traces` - Get all full traces in an episode
 
@@ -159,6 +161,9 @@ docker compose -f docker/docker-compose.yml build --no-cache
 - `POST /api/v1/ai_evaluate/{trace_id}` - Evaluate a trace with a judge model
 - `POST /api/v1/ops/batch_evaluate` - Run AI judge over recent traces missing `tracebrain.ai_evaluation`
 - `POST /api/v1/traces` triggers background evaluation when no AI draft exists
+
+**Operations**
+- `DELETE /api/v1/ops/traces/cleanup` - Delete traces that match cleanup filters
 
 **Semantic Search**
 - `GET /api/v1/traces/search` - Find similar traces using vector similarity
@@ -301,6 +306,31 @@ trace_items = [json.loads(line) for line in jsonl_payload.splitlines() if line.s
 # Reconstruct messages or turns from OTLP
 trace_data = client.get_trace("my-trace-001")
 messages = TraceClient.to_messages(trace_data)
+turns = TraceClient.to_turns(trace_data)
+tracebrain_turns = TraceClient.to_tracebrain_turns(trace_data)
+```
+
+### Trace Init and trace_scope (for Active Help Request)
+
+Use `trace_scope` when your agent might call `request_human_intervention` during
+execution. It pre-registers a trace via `/api/v1/traces/init` and sets
+`TRACEBRAIN_TRACE_ID` so the help signal attaches to the right trace.
+
+```python
+from tracebrain import TraceClient
+from tracebrain.sdk import request_human_intervention
+
+client = TraceClient(base_url="http://localhost:8000")
+
+with client.trace_scope(system_prompt="You are a helpful assistant"):
+    # Run your agent logic here
+    request_human_intervention("Need clarification on user requirements")
+```
+
+If you do not use Active Help Request, you can skip `trace_scope` and log the
+trace at the end as usual.
+e Init and trace_scope (for Active Help Request)
+ges = TraceClient.to_messages(trace_data)
 turns = TraceClient.to_turns(trace_data)
 tracebrain_turns = TraceClient.to_tracebrain_turns(trace_data)
 ```

@@ -11,12 +11,14 @@ Features:
 - POST /api/v1/traces: Ingest a trace
 - POST /api/v1/traces/init: Initialize a trace before spans are available
 - POST /api/v1/ops/batch_evaluate: Batch AI evaluation
+- DELETE /api/v1/ops/traces/cleanup: Delete traces using cleanup filters
 - POST /api/v1/traces/{trace_id}/feedback: Add user feedback to a trace
 - POST /api/v1/traces/{trace_id}/signal: Mark a trace as needs review
 - GET /api/v1/traces/search: Semantic experience search
 - GET /api/v1/export/traces: Export traces
 - GET /api/v1/episodes: List all episodes with pagination
 - GET /api/v1/episodes/{episode_id}: Retrieve episode summary
+- GET /api/v1/episodes/summary: Retrieve aggregated episode metrics
 - GET /api/v1/stats: Get database statistics
 - GET /api/v1/analytics/tool_usage: Get tool usage analytics
 - POST /api/v1/ai_evaluate/{trace_id}: Evaluate a trace with AI judge
@@ -241,7 +243,7 @@ class NaturalLanguageResponse(BaseModel):
 
 class ChatMessageOut(BaseModel):
     role: str
-    content: str
+    content: Dict[str, Any]
     created_at: datetime
 
     @field_serializer("created_at")
@@ -277,12 +279,32 @@ class EpisodeTracesOut(BaseModel):
     episode_id: str
     traces: List[TraceOut]
 
+
+class EpisodeAggregateOut(BaseModel):
+    """Aggregated episode metrics."""
+    episode_id: str
+    start_time: datetime
+    trace_count: int
+    min_confidence: Optional[float] = None
+
+    @field_serializer("start_time")
+    def serialize_start_time(self, dt: datetime, _info) -> str:
+        return dt.isoformat()
+
 class EpisodeListOut(BaseModel):
     """Response model for paginated episode list."""
     total: int
     skip: int
     limit: int
     episodes: List[EpisodeTracesOut]
+
+
+class EpisodeSummaryListOut(BaseModel):
+    """Response model for paginated episode summaries."""
+    total: int
+    skip: int
+    limit: int
+    episodes: List[EpisodeAggregateOut]
 
 class AIEvaluationIn(BaseModel):
     judge_model_id: str
@@ -427,12 +449,14 @@ def root():
             "get_trace": "GET /api/v1/traces/{trace_id}",
             "ingest_trace": "POST /api/v1/traces",
             "batch_evaluate": "POST /api/v1/ops/batch_evaluate",
+            "cleanup_traces": "DELETE /api/v1/ops/traces/cleanup",
             "init_trace": "POST /api/v1/traces/init",
             "add_feedback": "POST /api/v1/traces/{trace_id}/feedback",
             "signal_trace": "POST /api/v1/traces/{trace_id}/signal",
             "search_traces": "GET /api/v1/traces/search",
             "export_traces": "GET /api/v1/export/traces",
             "list_episodes": "GET /api/v1/episodes",
+            "list_episode_summaries": "GET /api/v1/episodes/summary",
             "get_episode": "GET /api/v1/episodes/{episode_id}",
             "get_episode_traces": "GET /api/v1/episodes/{episode_id}/traces",
             "stats": "GET /api/v1/stats",
@@ -445,7 +469,7 @@ def root():
             "curriculum_export": "GET /api/v1/curriculum/export",
             "get_history": "GET /api/v1/history",
             "add_history": "POST /api/v1/history",
-            "clear_history": "DELETE api/v1/history",
+            "clear_history": "DELETE /api/v1/history",
             "get_settings": "GET /api/v1/settings",
             "save_settings": "POST /api/v1/settings"
         }
@@ -478,6 +502,40 @@ def list_traces(
     skip: int = Query(0, ge=0, description="Number of traces to skip"),
     limit: int = Query(20, ge=1, le=100, description="Maximum number of traces to return"),
     query: Optional[str] = Query(None, description="Filter traces by ID"),
+    status: Optional[str] = Query(
+        None,
+        description="Filter by trace status (e.g., 'completed', 'failed', 'needs_review')",
+    ),
+    min_rating: Optional[int] = Query(
+        None,
+        ge=1,
+        le=5,
+        description="Filter by minimum feedback rating",
+    ),
+    error_type: Optional[str] = Query(
+        None,
+        description="Filter by a specific error classification (e.g., 'logic_loop')",
+    ),
+    min_confidence: Optional[float] = Query(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Filter by minimum AI evaluation confidence",
+    ),
+    max_confidence: Optional[float] = Query(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Filter by maximum AI evaluation confidence",
+    ),
+    start_time: Optional[datetime] = Query(
+        None,
+        description="Filter traces created after this timestamp (ISO 8601)",
+    ),
+    end_time: Optional[datetime] = Query(
+        None,
+        description="Filter traces created before this timestamp (ISO 8601)",
+    ),
 ):
     """
     List all traces with pagination.
@@ -486,8 +544,29 @@ def list_traces(
     """
     try:
         # Get traces from store with pagination
-        traces = store.list_traces(limit=limit, skip=skip, query=query, include_spans=True)
-        total = store.count_traces()
+        traces = store.list_traces(
+            limit=limit,
+            skip=skip,
+            query=query,
+            include_spans=True,
+            status=status,
+            min_rating=min_rating,
+            error_type=error_type,
+            min_confidence=min_confidence,
+            max_confidence=max_confidence,
+            start_time=start_time,
+            end_time=end_time,
+        )
+        total = store.count_traces_filtered(
+            query=query,
+            status=status,
+            min_rating=min_rating,
+            error_type=error_type,
+            min_confidence=min_confidence,
+            max_confidence=max_confidence,
+            start_time=start_time,
+            end_time=end_time,
+        )
 
         trace_outs = [_trace_to_out(trace) for trace in traces]
 
@@ -741,6 +820,47 @@ def batch_evaluate_traces(
         session.close()
 
 
+@router.delete("/ops/traces/cleanup", tags=["Operations"])
+def cleanup_traces(
+    older_than_hours: Optional[int] = Query(
+        None,
+        ge=1,
+        description="Delete traces older than this many hours",
+    ),
+    status: Optional[str] = Query(
+        None,
+        description="Delete traces by status (e.g., completed, failed, needs_review)",
+    ),
+):
+    """Delete traces that match cleanup filters."""
+    if older_than_hours is None and status is None:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one cleanup condition must be provided.",
+        )
+
+    deleted = store.cleanup_traces(
+        older_than_hours=older_than_hours,
+        status=status,
+    )
+    timestamp = datetime.utcnow().isoformat()
+    filters = {
+        "older_than_hours": older_than_hours,
+        "status": status,
+    }
+    logger.info(
+        "Cleanup traces deleted=%s filters=%s timestamp=%s",
+        deleted,
+        filters,
+        timestamp,
+    )
+    return {
+        "deleted": deleted,
+        "filters": filters,
+        "timestamp": timestamp,
+    }
+
+
 @router.post("/traces/{trace_id}/signal", response_model=FeedbackResponse, tags=["Governance"])
 def signal_trace_issue(trace_id: str, payload: TraceSignalIn):
     """Mark a trace as needing review based on an agent signal."""
@@ -843,7 +963,12 @@ def list_episodes(
 ):
     """List all episodes ordered by creation time, each with their traces."""
     try:
-        episodes, total = store.list_episodes(skip=skip, limit=limit, query=query, include_spans=True)
+        episodes, total = store.list_episodes(
+            skip=skip,
+            limit=limit,
+            query=query,
+            include_spans=True,
+        )
 
         episode_outs = []
         for episode_id, traces in episodes:
@@ -854,6 +979,35 @@ def list_episodes(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list episodes: {str(e)}")
+
+
+@router.get("/episodes/summary", response_model=EpisodeSummaryListOut, tags=["Episodes"])
+def list_episode_summaries(
+    skip: int = Query(0, ge=0, description="Number of episodes to skip"),
+    limit: int = Query(10, ge=1, le=100, description="Maximum number of episodes to return"),
+    query: Optional[str] = Query(None, description="Filter episodes by ID"),
+    min_confidence_lt: Optional[float] = Query(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Filter episodes where minimum confidence is below this value",
+    ),
+):
+    """List episodes with aggregated metrics."""
+    try:
+        episodes, total = store.list_episode_summaries(
+            skip=skip,
+            limit=limit,
+            query=query,
+            min_confidence_lt=min_confidence_lt,
+        )
+
+        episode_outs = [EpisodeAggregateOut(**episode) for episode in episodes]
+
+        return EpisodeSummaryListOut(total=total, skip=skip, limit=limit, episodes=episode_outs)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list episode summaries: {str(e)}")
 
 @router.get("/episodes/{episode_id}", response_model=EpisodeOut, tags=["Episodes"])
 def get_episode_details(episode_id: str):

@@ -360,7 +360,7 @@ class LibrarianAgent:
                     continue
                 if tool_result.startswith("EMPTY_RESULT"):
                     result = self._abstain_response_from_llm(user_query, history_text, provider)
-                    self.store.save_chat_message(session_id, "assistant", result["answer"])
+                    self.store.save_chat_message(session_id, "assistant", result)
                     return result
 
                 prompt = (
@@ -379,11 +379,11 @@ class LibrarianAgent:
                 suggestions = self._normalize_suggestions(parsed.get("suggestions"))
                 sources = self._normalize_sources(parsed.get("sources"), answer)
                 result = {"answer": answer, "suggestions": suggestions, "sources": sources}
-                self.store.save_chat_message(session_id, "assistant", answer)
+                self.store.save_chat_message(session_id, "assistant", result)
                 return result
 
             fallback = "Unable to generate a valid SQL query. Please refine the question."
-            self.store.save_chat_message(session_id, "assistant", fallback)
+            self.store.save_chat_message(session_id, "assistant", {"answer": fallback})
             return {"answer": fallback, "suggestions": [], "sources": []}
 
         session = provider.start_chat(system_prompt, self.tools)
@@ -442,7 +442,7 @@ class LibrarianAgent:
                     break
                 if tool_name == "run_sql_query" and tool_result.startswith("EMPTY_RESULT"):
                     result = self._abstain_response_from_llm(user_query, history_text, provider)
-                    self.store.save_chat_message(session_id, "assistant", result["answer"])
+                    self.store.save_chat_message(session_id, "assistant", result)
                     return result
 
         if saw_sql_result and last_sql_result:
@@ -482,5 +482,5 @@ class LibrarianAgent:
             "sources": sources,
         }
 
-        self.store.save_chat_message(session_id, "assistant", answer)
+        self.store.save_chat_message(session_id, "assistant", result)
         return result

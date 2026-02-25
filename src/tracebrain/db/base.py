@@ -288,7 +288,11 @@ class ChatMessage(Base):
         comment="Parent chat session ID",
     )
     role = Column(String, nullable=False, comment="Message role: user|assistant|tool")
-    content = Column(Text, nullable=False, comment="Message content")
+    content = Column(
+        JSONBCompat,
+        nullable=False,
+        comment="Full message payload containing text and structured data (SQL, sources, etc.)",
+    )
     created_at = Column(
         DateTime(timezone=True),
         default=datetime.utcnow,
