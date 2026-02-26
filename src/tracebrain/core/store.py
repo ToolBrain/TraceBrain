@@ -662,7 +662,7 @@ class BaseStorageBackend:
                 session.query(Trace)
                 .options(selectinload(Trace.spans))
                 .filter(Trace.episode_id == episode_id)
-                .order_by(Trace.created_at.asc())
+                .order_by(Trace.created_at.desc())
                 .all()
             )
         finally:
@@ -1090,27 +1090,51 @@ class BaseStorageBackend:
         limit: int = 10,
         query: Optional[str] = None,
         include_spans: bool = False,
+        min_confidence_lt: Optional[float] = None,
     ):
         """List episodes ordered by creation time with their traces."""
         session = self.get_session()
         try:
+            if not self.is_sqlite:
+                conf_value = (
+                    Trace.attributes["tracebrain.ai_evaluation"]["confidence"].astext
+                    .cast(Float)
+                )
+
             q = (
                 session.query(
                     Trace.episode_id.label("id"),
                     func.min(Trace.created_at).label("created_at"),
                 )
+                .filter(Trace.episode_id.isnot(None))
                 .filter(Trace.episode_id.ilike(f"%{query}%") if query else True)
                 .group_by(Trace.episode_id)
             )
 
-            total = q.count()
+            if not self.is_sqlite and min_confidence_lt is not None:
+                q = q.having(func.min(conf_value) < min_confidence_lt)
 
-            episodes = (
-                q.order_by(text("created_at desc"))
-                .offset(skip)
-                .limit(limit)
-                .all()
-            )
+            if not self.is_sqlite:
+                total = q.count()
+                episodes = (
+                    q.order_by(text("created_at desc"))
+                    .offset(skip)
+                    .limit(limit)
+                    .all()
+                )
+                result = []
+                for episode in episodes:
+                    trace_query = (
+                        session.query(Trace)
+                        .filter(Trace.episode_id == episode.id)
+                        .order_by(Trace.created_at.asc())
+                    )
+                    if include_spans:
+                        trace_query = trace_query.options(selectinload(Trace.spans))
+                    result.append((episode.id, trace_query.all()))
+                return result, total
+
+            episodes = q.order_by(text("created_at desc")).all()
 
             result = []
             for episode in episodes:
@@ -1123,7 +1147,25 @@ class BaseStorageBackend:
                     trace_query = trace_query.options(selectinload(Trace.spans))
                 result.append((episode.id, trace_query.all()))
 
-            return result, total
+            if min_confidence_lt is not None:
+                filtered = []
+                for episode_id, traces in result:
+                    min_conf = None
+                    for trace in traces:
+                        ai_eval = None
+                        if isinstance(trace.attributes, dict):
+                            ai_eval = trace.attributes.get("tracebrain.ai_evaluation")
+                        if isinstance(ai_eval, dict):
+                            conf = ai_eval.get("confidence")
+                            if isinstance(conf, (int, float)):
+                                if min_conf is None or conf < min_conf:
+                                    min_conf = float(conf)
+                    if min_conf is not None and min_conf < min_confidence_lt:
+                        filtered.append((episode_id, traces))
+                result = filtered
+
+            total = len(result)
+            return result[skip: skip + limit], total
         finally:
             session.close()
 

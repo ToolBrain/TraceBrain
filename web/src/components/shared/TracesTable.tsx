@@ -23,6 +23,8 @@ import type { Trace } from "../../types/trace";
 import SpanRows from "./SpanRows";
 import {
   traceGetDuration,
+  traceGetErrorType,
+  traceGetEvaluation,
   traceGetPriority,
   traceGetStartTime,
   traceGetStatus,
@@ -31,6 +33,8 @@ import {
 import { formatDateTime, getPriorityColor } from "../utils/utils";
 import StatusChip from "./StatusChip";
 import TypeChip from "./TypeChip";
+import ErrorTypeChip from "./ErrorTypeChip";
+import ConfidenceIndicator from "./ConfidenceIndicator";
 
 const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
   const [open, setOpen] = useState(false);
@@ -40,6 +44,11 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
   const status = traceGetStatus(trace);
   const priority = traceGetPriority(trace);
   const totalTokens = traceGetTotalTokens(trace) ?? "N/A";
+  const errorType = traceGetErrorType(trace);
+  const evaluation = traceGetEvaluation(trace);
+  const confidence = evaluation?.confidence;
+  const suggestion_status = evaluation?.status;
+  const isAnalyzing = !evaluation;
 
   return (
     <React.Fragment>
@@ -131,6 +140,15 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
           <StatusChip status={status} />
         </TableCell>
         <TableCell>
+          {errorType && errorType !== "none" ? (
+            <ErrorTypeChip errorType={errorType} />
+          ) : (
+            <Typography variant="body2" sx={{ color: "text.disabled" }}>
+              —
+            </Typography>
+          )}
+        </TableCell>
+        <TableCell>
           <Typography
             variant="body2"
             sx={{
@@ -153,9 +171,16 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
             {trace.trace_id}
           </Typography>
         </TableCell>
+        <TableCell>
+          <ConfidenceIndicator
+            confidence={confidence}
+            status={suggestion_status}
+            isAnalyzing={isAnalyzing}
+          />
+        </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell sx={{ p: 0, border: 0 }} colSpan={6}>
+        <TableCell sx={{ p: 0, border: 0 }} colSpan={8}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ bgcolor: "action.hover" }}>
               <SpanRows spans={trace.spans} traceId={trace.trace_id} />
@@ -187,18 +212,20 @@ const TracesTable: React.FC<TracesTableProps> = ({ traces, loading }) => (
         }}
       >
         <TableCell sx={{ width: "5%" }} />
-        <TableCell sx={{ width: "19%" }}>Timestamp</TableCell>
-        <TableCell sx={{ width: "19%" }}>Details</TableCell>
-        <TableCell sx={{ width: "19%" }}>Status</TableCell>
-        <TableCell sx={{ width: "19%" }}>Duration</TableCell>
-        <TableCell sx={{ width: "19%" }}>Trace ID</TableCell>
+        <TableCell sx={{ width: "15%" }}>Timestamp</TableCell>
+        <TableCell sx={{ width: "15%" }}>Details</TableCell>
+        <TableCell sx={{ width: "13%" }}>Status</TableCell>
+        <TableCell sx={{ width: "13%" }}>Error Type</TableCell>
+        <TableCell sx={{ width: "10%" }}>Duration</TableCell>
+        <TableCell sx={{ width: "15%" }}>Trace ID</TableCell>
+        <TableCell sx={{ width: "14%" }}>AI Confidence</TableCell>
       </TableRow>
     </TableHead>
     <TableBody>
       {loading ? (
         Array.from({ length: 10 }).map((_, i) => (
           <TableRow key={i}>
-            {Array.from({ length: 6 }).map((_, j) => (
+            {Array.from({ length: 8 }).map((_, j) => (
               <TableCell key={j}>
                 <Skeleton sx={{ my: 1.75 }} />
               </TableCell>
@@ -207,7 +234,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ traces, loading }) => (
         ))
       ) : traces.length === 0 ? (
         <TableRow>
-          <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+          <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
             <Typography variant="body2" color="text.disabled">
               No recent activity.
             </Typography>

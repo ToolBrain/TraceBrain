@@ -21,6 +21,10 @@ export function traceGetErrorType(trace: Trace) {
   return trace?.attributes?.["tracebrain.ai_evaluation"]?.error_type ?? "none";
 }
 
+export function traceGetConfidence(trace: Trace) {
+  return trace?.attributes?.["tracebrain.ai_evaluation"]?.confidence;
+}
+
 export function traceGetLatestFeedback(trace: Trace) {
   if (!trace?.feedbacks?.length) {
     return null;

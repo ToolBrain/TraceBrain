@@ -40,7 +40,7 @@ import {
   traceGetStatus,
   traceGetTotalTokens,
 } from "../utils/traceUtils";
-import ConfidenceIndicator from "./ConfidenceIndicator";
+import ConfidenceIndicator from "../shared/ConfidenceIndicator";
 import { formatDateTime, getPriorityColor } from "../utils/utils";
 import TypeChip from "../shared/TypeChip";
 import ErrorTypeChip from "../shared/ErrorTypeChip";

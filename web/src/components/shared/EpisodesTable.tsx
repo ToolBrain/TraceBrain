@@ -11,17 +11,12 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import {
-  Flag,
-  KeyboardArrowDown,
-  KeyboardArrowRight,
-  Layers,
-  Token,
-} from "@mui/icons-material";
+import { Flag, KeyboardArrowDown, KeyboardArrowRight, Layers, Token } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import type { Episode } from "../../types/trace";
 import TraceRows from "./TraceRows";
 import {
+  episodeGetAverageConfidence,
   episodeGetDuration,
   episodeGetPriority,
   episodeGetStartTime,
@@ -31,6 +26,7 @@ import {
 import { formatDateTime, getPriorityColor } from "../utils/utils";
 import TypeChip from "./TypeChip";
 import StatusChip from "./StatusChip";
+import ConfidenceIndicator from "./ConfidenceIndicator";
 
 const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
   const [open, setOpen] = useState(false);
@@ -40,6 +36,7 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
   const priority = episodeGetPriority(episode);
   const duration = episodeGetDuration(episode);
   const status = episodeGetStatus(episode);
+  const avgConfidence = episodeGetAverageConfidence(episode);
 
   return (
     <React.Fragment>
@@ -125,6 +122,11 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
           <StatusChip status={status} />
         </TableCell>
         <TableCell>
+          <Typography variant="body2" sx={{ color: "text.disabled" }}>
+            —
+          </Typography>
+        </TableCell>
+        <TableCell>
           <Typography
             variant="body2"
             sx={{
@@ -147,15 +149,18 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
             {episode.episode_id}
           </Typography>
         </TableCell>
+        <TableCell>
+          <ConfidenceIndicator
+            confidence={avgConfidence}
+            isAnalyzing={avgConfidence === undefined}
+          />
+        </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell sx={{ p: 0, border: 0 }} colSpan={6}>
+        <TableCell sx={{ p: 0, border: 0 }} colSpan={8}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ bgcolor: "action.hover" }}>
-              <TraceRows
-                traces={episode.traces}
-                episodeId={episode.episode_id}
-              />
+              <TraceRows traces={episode.traces} episodeId={episode.episode_id} />
             </Box>
           </Collapse>
         </TableCell>
@@ -184,18 +189,20 @@ const EpisodesTable: React.FC<EpisodesTableProps> = ({ episodes, loading }) => (
         }}
       >
         <TableCell sx={{ width: "5%" }} />
-        <TableCell sx={{ width: "19%" }}>Timestamp</TableCell>
-        <TableCell sx={{ width: "19%" }}>Details</TableCell>
-        <TableCell sx={{ width: "19%" }}>Status</TableCell>
-        <TableCell sx={{ width: "19%" }}>Duration</TableCell>
-        <TableCell sx={{ width: "19%" }}>Episode ID</TableCell>
+        <TableCell sx={{ width: "15%" }}>Timestamp</TableCell>
+        <TableCell sx={{ width: "15%" }}>Details</TableCell>
+        <TableCell sx={{ width: "13%" }}>Status</TableCell>
+        <TableCell sx={{ width: "13%" }}>Error Type</TableCell>
+        <TableCell sx={{ width: "10%" }}>Duration</TableCell>
+        <TableCell sx={{ width: "15%" }}>Episode ID</TableCell>
+        <TableCell sx={{ width: "14%" }}>Average Confidence</TableCell>
       </TableRow>
     </TableHead>
     <TableBody>
       {loading ? (
         Array.from({ length: 10 }).map((_, i) => (
           <TableRow key={i}>
-            {Array.from({ length: 6 }).map((_, j) => (
+            {Array.from({ length: 8 }).map((_, j) => (
               <TableCell key={j}>
                 <Skeleton sx={{ my: 1.75 }} />
               </TableCell>
@@ -204,7 +211,7 @@ const EpisodesTable: React.FC<EpisodesTableProps> = ({ episodes, loading }) => (
         ))
       ) : episodes.length === 0 ? (
         <TableRow>
-          <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+          <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
             <Typography variant="body2" color="text.disabled">
               No recent activity.
             </Typography>

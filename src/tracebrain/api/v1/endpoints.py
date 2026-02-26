@@ -960,6 +960,12 @@ def list_episodes(
     skip: int = Query(0, ge=0, description="Number of episodes to skip"),
     limit: int = Query(10, ge=1, le=100, description="Maximum number of episodes to return"),
     query: Optional[str] = Query(None, description="Filter episodes by ID"),
+    min_confidence_lt: Optional[float] = Query(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Filter episodes where minimum confidence is below this value",
+    ),
 ):
     """List all episodes ordered by creation time, each with their traces."""
     try:
@@ -968,6 +974,7 @@ def list_episodes(
             limit=limit,
             query=query,
             include_spans=True,
+            min_confidence_lt=min_confidence_lt,
         )
 
         episode_outs = []
