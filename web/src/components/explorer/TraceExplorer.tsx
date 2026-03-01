@@ -12,18 +12,26 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
-import { Search, Timeline, ViewList, Refresh, ManageSearch } from "@mui/icons-material";
+import { Search, Timeline, ViewList, Refresh } from "@mui/icons-material";
+import { useSearchParams } from "react-router-dom";
 import { fetchTraces, fetchEpisodes } from "../utils/api";
 import TracesTable from "../shared/TracesTable";
 import EpisodesTable from "../shared/EpisodesTable";
 import type { Trace, Episode } from "../../types/trace";
+import FiltersPanel, { DEFAULT_EPISODE_FILTERS, DEFAULT_TRACE_FILTERS } from "./FiltersPanel";
+import type { EpisodeFilters, TraceFilters } from "./types";
 
 const DEBOUNCE_MS = 300;
 
-type ViewMode = "traces" | "episodes" | "advanced";
+type ViewMode = "traces" | "episodes";
 
 const TraceExplorer: React.FC = () => {
-  const [viewMode, setViewMode] = useState<ViewMode>("traces");
+  const [searchParams] = useSearchParams();
+
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const tab = searchParams.get("tab");
+    return tab === "episodes" ? "episodes" : "traces";
+  });
   const [tracePage, setTracePage] = useState(0);
   const [episodePage, setEpisodePage] = useState(0);
   const currentPage = viewMode === "traces" ? tracePage : episodePage;
@@ -31,6 +39,16 @@ const TraceExplorer: React.FC = () => {
   const [rowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  const [traceFilters, setTraceFilters] = useState<TraceFilters>(() => ({
+    ...DEFAULT_TRACE_FILTERS,
+    ...Object.fromEntries(searchParams.entries()),
+  }));
+
+  const [episodeFilters, setEpisodeFilters] = useState<EpisodeFilters>(() => ({
+    ...DEFAULT_EPISODE_FILTERS,
+    ...Object.fromEntries(searchParams.entries()),
+  }));
 
   const [traces, setTraces] = useState<Trace[]>([]);
   const [totalTraces, setTotalTraces] = useState(0);
@@ -52,44 +70,36 @@ const TraceExplorer: React.FC = () => {
 
   // Fetches paginated traces
   useEffect(() => {
-    if (viewMode === "advanced") return;
     setTracesLoading(true);
-    fetchTraces(tracePage * rowsPerPage, rowsPerPage, debouncedQuery || undefined)
+    fetchTraces(tracePage * rowsPerPage, rowsPerPage, debouncedQuery || undefined, traceFilters)
       .then((data) => {
         setTraces(data.traces);
         setTotalTraces(data.total);
       })
       .finally(() => setTracesLoading(false));
-  }, [tracePage, rowsPerPage, debouncedQuery]);
+  }, [tracePage, rowsPerPage, debouncedQuery, traceFilters]);
 
   // Fetches paginated episodes
   useEffect(() => {
-    if (viewMode === "advanced") return;
     setEpisodesLoading(true);
-    fetchEpisodes(episodePage * rowsPerPage, rowsPerPage, debouncedQuery || undefined)
+    fetchEpisodes(episodePage * rowsPerPage, rowsPerPage, debouncedQuery || undefined, episodeFilters)
       .then((data) => {
         setEpisodes(data.episodes);
         setTotalEpisodes(data.total);
       })
       .finally(() => setEpisodesLoading(false));
-  }, [episodePage, rowsPerPage, debouncedQuery]);
+  }, [episodePage, rowsPerPage, debouncedQuery, episodeFilters]);
 
   const loading = viewMode === "traces" ? tracesLoading : episodesLoading;
   const currentTotal = viewMode === "traces" ? totalTraces : totalEpisodes;
 
   // Switches between different views
-  const handleViewModeChange = (
-    _: React.SyntheticEvent,
-    newValue: ViewMode,
-  ) => {
+  const handleViewModeChange = (_: React.SyntheticEvent, newValue: ViewMode) => {
     setViewMode(newValue);
   };
 
   // Handles page change
-  const handleChangePage = (
-    _: React.MouseEvent<HTMLButtonElement> | null,
-    newPage: number,
-  ) => {
+  const handleChangePage = (_: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
     setCurrentPage(newPage);
   };
 
@@ -100,10 +110,16 @@ const TraceExplorer: React.FC = () => {
     setSearchQuery("");
   };
 
+  useEffect(() => {
+    setTracePage(0);
+  }, [traceFilters]);
+
+  useEffect(() => {
+    setEpisodePage(0);
+  }, [episodeFilters]);
+
   return (
-    <Box
-      sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}
-    >
+    <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}>
       <Box
         sx={{
           mb: 3,
@@ -145,24 +161,8 @@ const TraceExplorer: React.FC = () => {
         >
           <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
             <Tabs value={viewMode} onChange={handleViewModeChange}>
-              <Tab
-                icon={<Timeline />}
-                iconPosition="start"
-                label="Traces"
-                value="traces"
-              />
-              <Tab
-                icon={<ViewList />}
-                iconPosition="start"
-                label="Episodes"
-                value="episodes"
-              />
-              <Tab
-                icon={<ManageSearch />}
-                iconPosition="start"
-                label="Advanced Search"
-                value="advanced"
-              />
+              <Tab icon={<Timeline />} iconPosition="start" label="Traces" value="traces" />
+              <Tab icon={<ViewList />} iconPosition="start" label="Episodes" value="episodes" />
             </Tabs>
           </Box>
           <Box sx={{ mb: 3 }}>
@@ -182,6 +182,15 @@ const TraceExplorer: React.FC = () => {
               }}
             />
           </Box>
+
+          <FiltersPanel
+            mode={viewMode}
+            traceFilters={traceFilters}
+            episodeFilters={episodeFilters}
+            onTraceFiltersChange={setTraceFilters}
+            onEpisodeFiltersChange={setEpisodeFilters}
+          />
+
           <Box sx={{ flexGrow: 1, overflow: "auto", minHeight: 0 }}>
             {viewMode === "traces" ? (
               <TracesTable traces={traces} loading={loading} />

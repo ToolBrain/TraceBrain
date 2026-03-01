@@ -1,7 +1,12 @@
+export interface MessageContent {
+  answer: string;
+  suggestions?: Suggestion[];
+  sources?: string[];
+}
+
 export interface Message {
   role: "user" | "assistant";
-  content: string;
-  sources?: string[];
+  content: MessageContent;
 }
 
 export interface Suggestion {
@@ -99,5 +104,23 @@ export class ChatEngine {
 
   clearSessionStorage(): void {
     this.storage.removeItem(this.SESSION_KEY);
+  }
+
+  buildUserMessage(content: string): Message {
+    return {
+      role: "user",
+      content: { answer: content },
+    };
+  }
+
+  buildAssistantMessage(response: SendMessageResponse): Message {
+    return {
+      role: "assistant",
+      content: {
+        answer: response.answer,
+        suggestions: response.suggestions,
+        sources: response.sources,
+      },
+    };
   }
 }

@@ -1,7 +1,20 @@
 import { Chip } from "@mui/material";
 
+export const ALLOWED_ERROR_TYPES = [
+  "logic_loop",
+  "hallucination",
+  "invalid_tool_usage",
+  "tool_execution_error",
+  "format_error",
+  "misinterpretation",
+  "context_overflow",
+  "general_failure",
+] as const;
+
+export type ErrorType = (typeof ALLOWED_ERROR_TYPES)[number];
+
 export const ERROR_TYPE_STYLES: Record<
-  string,
+  ErrorType,
   { color: string; bg: string; border: string; label: string }
 > = {
   logic_loop: {
@@ -55,19 +68,12 @@ export const ERROR_TYPE_STYLES: Record<
 };
 
 interface ErrorTypeChipProps {
-  errorType: string;
+  errorType: ErrorType;
   secondary?: boolean;
 }
 
-const ErrorTypeChip: React.FC<ErrorTypeChipProps> = ({
-  errorType,
-  secondary = false,
-}) => {
-  if (!errorType || errorType === "none") return null;
-
+const ErrorTypeChip: React.FC<ErrorTypeChipProps> = ({ errorType, secondary = false }) => {
   const styles = ERROR_TYPE_STYLES[errorType];
-
-  if (!styles) return null;
 
   return (
     <Chip

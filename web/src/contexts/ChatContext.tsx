@@ -1,16 +1,6 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { useSettings } from "./SettingsContext";
-import {
-  ChatEngine,
-  type Message,
-  type Suggestion,
-} from "../components/chat/engine/chatEngine";
+import { ChatEngine, type Message, type Suggestion } from "../components/chat/engine/chatEngine";
 
 interface ChatContextType {
   messages: Message[];
@@ -26,9 +16,7 @@ const chatEngine = new ChatEngine("/api/v1");
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
-  const [sessionId, setSessionId] = useState<string | null>(() =>
-    chatEngine.getSessionId(),
-  );
+  const [sessionId, setSessionId] = useState<string | null>(() => chatEngine.getSessionId());
   const [messages, setMessages] = useState<Message[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,26 +54,28 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setSessionId(result.sessionId);
       setMessages((prev) => [
         ...prev,
-        { role: "user", content },
-        { role: "assistant", content: result.answer, sources: result.sources },
+        chatEngine.buildUserMessage(content),
+        chatEngine.buildAssistantMessage(result),
       ]);
       setSuggestions(result.suggestions ?? []);
     } catch (err) {
       console.error("Chat error:", err);
       setMessages((prev) => [
         ...prev,
-        { role: "user", content },
-        {
-          role: "assistant",
-          content: "Something went wrong. Please try again.",
-        },
+        chatEngine.buildUserMessage(content),
+        chatEngine.buildAssistantMessage({
+          sessionId: "",
+          answer: "Something went wrong. Please try again.",
+          suggestions: [],
+          sources: undefined,
+        }),
       ]);
       setSuggestions([]);
     } finally {
       setIsLoading(false);
     }
   }
-
+  
   function clearMessages() {
     setSessionId(null);
     setMessages([]);
