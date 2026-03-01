@@ -13,7 +13,7 @@ import re
 import json
 
 import sqlparse
-from sqlalchemy import create_engine, func, cast, text, Integer, Float, case
+from sqlalchemy import create_engine, event, func, cast, text, Integer, Float, case
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError, ProgrammingError, TimeoutError
 from sqlalchemy.orm import sessionmaker, Session, selectinload
@@ -22,7 +22,6 @@ from tracebrain.config import settings
 from tracebrain.core.services.embedding import EmbeddingFactory
 from tracebrain.db.base import (
     Base,
-    Episode,
     Trace,
     Span,
     ChatSession,
@@ -68,6 +67,14 @@ class BaseStorageBackend:
             engine_kwargs["max_overflow"] = settings.DB_MAX_OVERFLOW
 
         self.engine = create_engine(db_url, **engine_kwargs)
+
+        if self.is_sqlite:
+            @event.listens_for(self.engine, "connect")
+            def set_sqlite_pragma(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.close()
+                
         self.SessionLocal = sessionmaker(
             bind=self.engine,
             autocommit=False,
@@ -165,10 +172,6 @@ class BaseStorageBackend:
 
         session = self.get_session()
         try:
-            if episode_id:
-                existing_episode = session.query(Episode).filter(Episode.id == episode_id).first()
-                if not existing_episode:
-                    session.add(Episode(id=episode_id, created_at=datetime.utcnow()))
             session.add(trace)
             session.commit()
             logger.info("Successfully added trace %s with %s spans", trace_id, len(trace.spans))
@@ -659,7 +662,7 @@ class BaseStorageBackend:
                 session.query(Trace)
                 .options(selectinload(Trace.spans))
                 .filter(Trace.episode_id == episode_id)
-                .order_by(Trace.created_at.asc())
+                .order_by(Trace.created_at.desc())
                 .all()
             )
         finally:
@@ -783,8 +786,16 @@ class BaseStorageBackend:
             if status:
                 q = q.filter(Trace.status == status)
 
-            deleted = q.count()
+            # History table cleanup
+            traces_to_delete = q.all()
+            trace_ids = [t.id for t in traces_to_delete]
+            episode_ids = list({t.episode_id for t in traces_to_delete if t.episode_id})
+
+            deleted = len(trace_ids)
             if deleted:
+                session.query(History).filter(History.id.in_(trace_ids)).delete(synchronize_session=False)
+                if episode_ids:
+                    session.query(History).filter(History.id.in_(episode_ids)).delete(synchronize_session=False)
                 q.delete(synchronize_session=False)
                 session.commit()
             return int(deleted)
@@ -1079,22 +1090,51 @@ class BaseStorageBackend:
         limit: int = 10,
         query: Optional[str] = None,
         include_spans: bool = False,
+        min_confidence_lt: Optional[float] = None,
     ):
         """List episodes ordered by creation time with their traces."""
         session = self.get_session()
         try:
-            q = session.query(Episode)
-            if query:
-                q = q.filter(Episode.id.ilike(f"%{query}%"))
+            if not self.is_sqlite:
+                conf_value = (
+                    Trace.attributes["tracebrain.ai_evaluation"]["confidence"].astext
+                    .cast(Float)
+                )
 
-            total = q.count()
-
-            episodes = (
-                q.order_by(Episode.created_at.desc())
-                .offset(skip)
-                .limit(limit)
-                .all()
+            q = (
+                session.query(
+                    Trace.episode_id.label("id"),
+                    func.min(Trace.created_at).label("created_at"),
+                )
+                .filter(Trace.episode_id.isnot(None))
+                .filter(Trace.episode_id.ilike(f"%{query}%") if query else True)
+                .group_by(Trace.episode_id)
             )
+
+            if not self.is_sqlite and min_confidence_lt is not None:
+                q = q.having(func.min(conf_value) < min_confidence_lt)
+
+            if not self.is_sqlite:
+                total = q.count()
+                episodes = (
+                    q.order_by(text("created_at desc"))
+                    .offset(skip)
+                    .limit(limit)
+                    .all()
+                )
+                result = []
+                for episode in episodes:
+                    trace_query = (
+                        session.query(Trace)
+                        .filter(Trace.episode_id == episode.id)
+                        .order_by(Trace.created_at.asc())
+                    )
+                    if include_spans:
+                        trace_query = trace_query.options(selectinload(Trace.spans))
+                    result.append((episode.id, trace_query.all()))
+                return result, total
+
+            episodes = q.order_by(text("created_at desc")).all()
 
             result = []
             for episode in episodes:
@@ -1107,7 +1147,25 @@ class BaseStorageBackend:
                     trace_query = trace_query.options(selectinload(Trace.spans))
                 result.append((episode.id, trace_query.all()))
 
-            return result, total
+            if min_confidence_lt is not None:
+                filtered = []
+                for episode_id, traces in result:
+                    min_conf = None
+                    for trace in traces:
+                        ai_eval = None
+                        if isinstance(trace.attributes, dict):
+                            ai_eval = trace.attributes.get("tracebrain.ai_evaluation")
+                        if isinstance(ai_eval, dict):
+                            conf = ai_eval.get("confidence")
+                            if isinstance(conf, (int, float)):
+                                if min_conf is None or conf < min_conf:
+                                    min_conf = float(conf)
+                    if min_conf is not None and min_conf < min_confidence_lt:
+                        filtered.append((episode_id, traces))
+                result = filtered
+
+            total = len(result)
+            return result[skip: skip + limit], total
         finally:
             session.close()
 

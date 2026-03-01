@@ -11,6 +11,8 @@ import { Flag, Layers, Token } from "@mui/icons-material";
 import type { Trace } from "../../types/trace";
 import {
   traceGetDuration,
+  traceGetErrorType,
+  traceGetEvaluation,
   traceGetPriority,
   traceGetStartTime,
   traceGetStatus,
@@ -19,6 +21,8 @@ import {
 import { formatDateTime, getPriorityColor } from "../utils/utils";
 import StatusChip from "./StatusChip";
 import TypeChip from "./TypeChip";
+import ErrorTypeChip from "./ErrorTypeChip";
+import ConfidenceIndicator from "./ConfidenceIndicator";
 import { useNavigate } from "react-router-dom";
 
 interface TraceRowsProps {
@@ -37,11 +41,13 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
     <Table size="small" sx={{ width: "100%", tableLayout: "fixed" }}>
       <colgroup>
         <col style={{ width: "5%" }} />
-        <col style={{ width: "19%" }} />
-        <col style={{ width: "19%" }} />
-        <col style={{ width: "19%" }} />
-        <col style={{ width: "19%" }} />
-        <col style={{ width: "19%" }} />
+        <col style={{ width: "15%" }} />
+        <col style={{ width: "15%" }} />
+        <col style={{ width: "13%" }} />
+        <col style={{ width: "13%" }} />
+        <col style={{ width: "10%" }} />
+        <col style={{ width: "15%" }} />
+        <col style={{ width: "14%" }} />
       </colgroup>
       <TableBody>
         {traces.map((trace) => {
@@ -50,6 +56,11 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
           const status = traceGetStatus(trace);
           const priority = traceGetPriority(trace);
           const totalTokens = traceGetTotalTokens(trace) ?? "N/A";
+          const errorType = traceGetErrorType(trace);
+          const evaluation = traceGetEvaluation(trace);
+          const confidence = evaluation?.confidence;
+          const suggestion_status = evaluation?.status;
+          const isAnalyzing = !evaluation;
 
           return (
             <TableRow
@@ -123,6 +134,15 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                 <StatusChip status={status} secondary />
               </TableCell>
               <TableCell>
+                {errorType && errorType !== "none" ? (
+                  <ErrorTypeChip errorType={errorType} />
+                ) : (
+                  <Typography variant="body2" sx={{ color: "text.disabled" }}>
+                    —
+                  </Typography>
+                )}
+              </TableCell>
+              <TableCell>
                 <Typography
                   variant="body2"
                   sx={{
@@ -147,6 +167,13 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                 >
                   {trace.trace_id}
                 </Typography>
+              </TableCell>
+              <TableCell>
+                <ConfidenceIndicator
+                  confidence={confidence}
+                  status={suggestion_status}
+                  isAnalyzing={isAnalyzing}
+                />
               </TableCell>
             </TableRow>
           );

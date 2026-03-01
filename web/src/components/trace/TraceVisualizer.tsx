@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import TraceTree from "./TraceTree";
 import SpanDetails from "./SpanDetails";
 import type { Trace } from "../../types/trace";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 
 interface TraceVisualizerProps {
   traces: Trace[];
@@ -15,9 +15,10 @@ interface SelectedSpan {
 }
 
 const TraceVisualizer: React.FC<TraceVisualizerProps> = ({ traces }) => {
+  const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const preselectedSpan = searchParams.get("span");
-  const preselectedTrace = searchParams.get("trace");
+  const preselectedTrace = searchParams.get("type") === "episode" ? searchParams.get("trace") : preselectedSpan ? id : null;
 
   const [selectedSpan, setSelectedSpan] = useState<SelectedSpan | null>(
     preselectedSpan && preselectedTrace
@@ -28,7 +29,7 @@ const TraceVisualizer: React.FC<TraceVisualizerProps> = ({ traces }) => {
 
   // Select first span of preselected trace once traces load
   useEffect(() => {
-    if (!preselectedTrace || traces.length === 0) return;
+    if (!preselectedTrace || preselectedSpan || traces.length === 0) return;
     const trace = traces.find((t) => t.trace_id === preselectedTrace);
     const firstSpan = trace?.spans[0]?.span_id ?? null;
     if (firstSpan)

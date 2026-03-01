@@ -2,6 +2,7 @@ import type { Episode } from "../../types/trace";
 import type { ChipStatus } from "../shared/StatusChip";
 import {
   TRACE_STATUS_PRIORITY,
+  traceGetConfidence,
   traceGetDuration,
   traceGetPriority,
   traceGetStartTime,
@@ -51,4 +52,14 @@ export function episodeGetStatus(episode: Episode): ChipStatus {
   }
 
   return "running";
+}
+
+export function episodeGetAverageConfidence(episode: Episode): number | undefined {
+  const confidences = episode.traces
+    .map((trace) => traceGetConfidence(trace))
+    .filter((c): c is number => c !== undefined);
+
+  if (confidences.length === 0) return undefined;
+
+  return confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
 }

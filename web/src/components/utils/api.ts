@@ -1,5 +1,5 @@
 import type { Trace } from "../../types/trace";
-import type { EpisodeList } from "../explorer/types";
+import type { EpisodeFilters, EpisodeList, TraceFilters } from "../explorer/types";
 import type { HistoryList } from "../history/types";
 import type { CurriculumTask } from "../roadmap/types";
 
@@ -7,11 +7,19 @@ export const fetchTraces = async (
   skip?: number,
   limit?: number,
   query?: string,
+  filters?: TraceFilters,
 ): Promise<{ traces: Trace[]; total: number; skip: number; limit: number }> => {
   const params = new URLSearchParams();
   if (skip !== undefined) params.append("skip", String(skip));
   if (limit !== undefined) params.append("limit", String(limit));
   if (query) params.append("query", query);
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.minRating !== null && filters?.minRating !== undefined) params.append("min_rating", String(filters.minRating));
+  if (filters?.errorType) params.append("error_type", filters.errorType);
+  if (filters?.minConfidence !== null && filters?.minConfidence !== undefined) params.append("min_confidence", String(filters.minConfidence));
+  if (filters?.maxConfidence !== null && filters?.maxConfidence !== undefined) params.append("max_confidence", String(filters.maxConfidence));
+  if (filters?.startTime) params.append("start_time", filters.startTime);
+  if (filters?.endTime) params.append("end_time", filters.endTime);
 
   const response = await fetch(`/api/v1/traces?${params.toString()}`);
   if (!response.ok)
@@ -52,11 +60,13 @@ export const fetchEpisodes = async (
   skip: number = 0,
   limit: number = 10,
   query?: string,
+  filters?: EpisodeFilters,
 ): Promise<EpisodeList> => {
   const params = new URLSearchParams();
   params.append("skip", String(skip));
   params.append("limit", String(limit));
   if (query) params.append("query", query);
+  if (filters?.minConfidenceLt != null) params.append("min_confidence_lt", String(filters.minConfidenceLt));
 
   try {
     const response = await fetch(`/api/v1/episodes?${params.toString()}`);
@@ -69,7 +79,6 @@ export const fetchEpisodes = async (
     throw error;
   }
 };
-
 export const submitTraceFeedback = async (
   id: string,
   rating: number,
@@ -253,4 +262,22 @@ export const batchEvaluateTraces = async () => {
   } catch (error) {
     throw error;
   }
+};
+
+export const deleteTraces = async (period: string) => {
+  const hoursMap: Record<string, number> = {
+    "1h": 1,
+    "12h": 12,
+    "24h": 24,
+    "7d": 168,
+    "30d": 720,
+  };
+
+  const params = new URLSearchParams();
+  if (period !== "all") {
+    params.set("older_than_hours", String(hoursMap[period]));
+  }
+
+  const res = await fetch(`/api/v1/ops/traces/cleanup?${params}`, { method: "DELETE" });
+  return res.json();
 };

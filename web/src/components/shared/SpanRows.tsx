@@ -33,11 +33,13 @@ const SpanRows: React.FC<SpanRowsProps> = ({ spans, traceId }) => {
     <Table size="small" sx={{ width: "100%", tableLayout: "fixed" }}>
       <colgroup>
         <col style={{ width: "5%" }} />
-        <col style={{ width: "19%" }} />
-        <col style={{ width: "19%" }} />
-        <col style={{ width: "19%" }} />
-        <col style={{ width: "19%" }} />
-        <col style={{ width: "19%" }} />
+        <col style={{ width: "15%" }} />
+        <col style={{ width: "15%" }} />
+        <col style={{ width: "13%" }} />
+        <col style={{ width: "13%" }} />
+        <col style={{ width: "10%" }} />
+        <col style={{ width: "15%" }} />
+        <col style={{ width: "14%" }} />
       </colgroup>
       <TableBody>
         {spans.map((span) => {
@@ -85,6 +87,7 @@ const SpanRows: React.FC<SpanRowsProps> = ({ spans, traceId }) => {
               <TableCell>
                 <StatusChip status={spanStatus} secondary />
               </TableCell>
+              <TableCell />
               <TableCell>
                 <Typography
                   variant="body2"
@@ -111,6 +114,7 @@ const SpanRows: React.FC<SpanRowsProps> = ({ spans, traceId }) => {
                   {span.span_id}
                 </Typography>
               </TableCell>
+              <TableCell />
             </TableRow>
           );
         })}

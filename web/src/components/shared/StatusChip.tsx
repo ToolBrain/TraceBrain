@@ -18,7 +18,7 @@ export const ALLOWED_STATUSES = [
 
 export type ChipStatus = (typeof ALLOWED_STATUSES)[number];
 
-const STATUS_STYLES: Record<
+export const STATUS_STYLES: Record<
   ChipStatus,
   { color: string; bg: string; border: string; label: string }
 > = {

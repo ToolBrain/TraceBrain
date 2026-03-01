@@ -7,8 +7,9 @@ import {
 } from "@mui/material";
 import PreferencesSection from "./sections/PreferencesSection";
 import AdvancedSection from "./sections/AdvancedSection";
+import DataManagementSection from "./sections/DataManagementSection";
 
-type SectionKey = "preferences" | "advanced";
+type SectionKey = "preferences" | "advanced" | "data";
 
 type Section = {
   label: string;
@@ -24,9 +25,13 @@ const SECTIONS: Record<SectionKey, Section> = {
     label: "Advanced",
     component: AdvancedSection,
   },
+  data: {
+    label: "Data Management",
+    component: DataManagementSection
+  }
 };
 
-const SECTION_KEYS: SectionKey[] = ["preferences", "advanced"];
+const SECTION_KEYS: SectionKey[] = ["preferences", "advanced", "data"];
 
 const Settings: React.FC = () => {
   const [selectedSection, setSelectedSection] = useState<SectionKey>("preferences");

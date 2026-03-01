@@ -45,7 +45,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from ...core.store import TraceStore
 from ...core.curator import CurriculumCurator
-from ...db.base import Episode, TraceStatus, CurriculumTask, Trace
+from ...db.base import TraceStatus, CurriculumTask, Trace
 from ...evaluators.judge_agent import AIJudge
 from ...core.librarian import LibrarianAgent, LIBRARIAN_AVAILABLE
 from ...config import settings
@@ -833,11 +833,11 @@ def cleanup_traces(
     ),
 ):
     """Delete traces that match cleanup filters."""
-    if older_than_hours is None and status is None:
-        raise HTTPException(
-            status_code=400,
-            detail="At least one cleanup condition must be provided.",
-        )
+    # if older_than_hours is None and status is None:
+    #     raise HTTPException(
+    #         status_code=400,
+    #         detail="At least one cleanup condition must be provided.",
+    #     )
 
     deleted = store.cleanup_traces(
         older_than_hours=older_than_hours,
@@ -960,6 +960,12 @@ def list_episodes(
     skip: int = Query(0, ge=0, description="Number of episodes to skip"),
     limit: int = Query(10, ge=1, le=100, description="Maximum number of episodes to return"),
     query: Optional[str] = Query(None, description="Filter episodes by ID"),
+    min_confidence_lt: Optional[float] = Query(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Filter episodes where minimum confidence is below this value",
+    ),
 ):
     """List all episodes ordered by creation time, each with their traces."""
     try:
@@ -968,6 +974,7 @@ def list_episodes(
             limit=limit,
             query=query,
             include_spans=True,
+            min_confidence_lt=min_confidence_lt,
         )
 
         episode_outs = []

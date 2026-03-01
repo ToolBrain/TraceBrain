@@ -45,8 +45,8 @@ const TraceErrorChart: React.FC<TraceErrorChartProps> = ({ traces }) => {
     const pieData = Object.entries(errorCounts).map(([key, value], id) => ({
       id,
       value,
-      label: ERROR_TYPE_STYLES[key].label,
-      color: ERROR_TYPE_STYLES[key].border,
+      label: ERROR_TYPE_STYLES[key as keyof typeof ERROR_TYPE_STYLES].label,
+      color: ERROR_TYPE_STYLES[key as keyof typeof ERROR_TYPE_STYLES].border,
     }));
 
     return {
