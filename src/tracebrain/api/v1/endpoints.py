@@ -417,8 +417,11 @@ def _trace_to_out(trace) -> TraceOut:
         )
     if trace.priority is not None:
         trace_attributes["tracebrain.trace.priority"] = trace.priority
-    if trace.ai_evaluation:
-        trace_attributes["tracebrain.ai_evaluation"] = trace.ai_evaluation
+    ai_eval = trace.ai_evaluation
+    if not ai_eval and isinstance(trace.attributes, dict):
+        ai_eval = trace.attributes.get("tracebrain.ai_evaluation")
+    if ai_eval:
+        trace_attributes["tracebrain.ai_evaluation"] = ai_eval
 
     return TraceOut(
         trace_id=trace.id,
@@ -813,7 +816,18 @@ def batch_evaluate_traces(
                 logger.exception("Batch evaluate failed for trace %s", trace.id)
                 errors.append({"trace_id": trace.id, "error": str(exc)})
 
-        return {"success": True, "processed": processed, "failed": failed, "errors": errors}
+        message = (
+            "No traces pending evaluation."
+            if processed == 0
+            else f"Batch evaluation started for {processed} traces."
+        )
+        return {
+            "success": True,
+            "processed": processed,
+            "failed": failed,
+            "errors": errors,
+            "message": message,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to batch evaluate traces: {str(e)}")
     finally:
