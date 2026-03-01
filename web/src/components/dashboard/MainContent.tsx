@@ -51,18 +51,29 @@ const MainContent: React.FC<MainContentProps> = ({
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
-    severity: "success" as "success" | "error",
+    severity: "success" as "success" | "error" | "info",
   });
 
   const handleEvaluateTraces = async () => {
     setIsEvaluating(true);
     try {
-      await batchEvaluateTraces();
+      const result = await batchEvaluateTraces();
+      const processed = Number(result?.processed ?? 0);
+      const message =
+        typeof result?.message === "string" && result.message.trim()
+          ? result.message
+          : processed === 0
+            ? "No traces pending evaluation."
+            : `Batch evaluation started for ${processed} traces.`;
       setSnackbar({
         open: true,
-        message: "Batch evaluation started in background",
-        severity: "success",
+        message,
+        severity: processed === 0 ? "info" : "success",
       });
+      if (processed > 0) {
+        setTimeout(() => onFetchTraces(), 3500);
+        setTimeout(() => onFetchTraces(), 8000);
+      }
     } catch (error: any) {
       console.error("Failed to start batch evaluation:", error);
       setSnackbar({
@@ -231,7 +242,7 @@ const MainContent: React.FC<MainContentProps> = ({
         />
       </Box>
 
-      <TraceList traces={sortedTraces} />
+      <TraceList traces={sortedTraces} loading={isEvaluating} />
 
       <Snackbar
         open={snackbar.open}

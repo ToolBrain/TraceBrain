@@ -18,7 +18,8 @@ const TraceVisualizer: React.FC<TraceVisualizerProps> = ({ traces }) => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const preselectedSpan = searchParams.get("span");
-  const preselectedTrace = searchParams.get("type") === "episode" ? searchParams.get("trace") : preselectedSpan ? id : null;
+  const isEpisodeView = searchParams.get("type") === "episode";
+  const preselectedTrace = isEpisodeView ? searchParams.get("trace") : id;
 
   const [selectedSpan, setSelectedSpan] = useState<SelectedSpan | null>(
     preselectedSpan && preselectedTrace

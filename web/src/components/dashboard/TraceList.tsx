@@ -10,6 +10,7 @@ import {
   Typography,
   Paper,
   Collapse,
+  LinearProgress,
 } from "@mui/material";
 import {
   Flag,
@@ -47,9 +48,10 @@ import ErrorTypeChip from "../shared/ErrorTypeChip";
 
 interface TraceListProps {
   traces: Trace[];
+  loading?: boolean;
 }
 
-const TraceList: React.FC<TraceListProps> = ({ traces }) => {
+const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
   const nav = useNavigate();
   const [expandedTraces, setExpandedTraces] = useState<Set<string>>(new Set());
 
@@ -130,6 +132,13 @@ const TraceList: React.FC<TraceListProps> = ({ traces }) => {
           </TableRow>
         </TableHead>
         <TableBody>
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={8} sx={{ p: 0 }}>
+                <LinearProgress />
+              </TableCell>
+            </TableRow>
+          ) : null}
           {traces.length === 0 ? (
             <TableRow>
               <TableCell
