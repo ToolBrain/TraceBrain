@@ -40,6 +40,11 @@ export const createAppTheme = (themeMode: "light" | "dark") => {
   return createTheme({
     ...theme,
     components: {
+      MuiTextField: {
+        defaultProps: {
+          size: "small",
+        },
+      },
       MuiButton: {
         styleOverrides: {
           root: { textTransform: "none" },

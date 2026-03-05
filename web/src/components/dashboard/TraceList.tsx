@@ -99,7 +99,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
         height: "100%",
       }}
     >
-      <Table>
+      <Table sx={{ tableLayout: "fixed" }}>
         <TableHead>
           <TableRow
             sx={{
@@ -170,7 +170,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                     sx={{
                       cursor: "pointer",
                       "&:hover": { bgcolor: "action.hover" },
-                      "& > td": { p: 2 },
+                      "& > td": { p: 1.75 },
                       "& > td:first-of-type": { p: 1 },
                     }}
                     onClick={() => handleTraceClick(trace.trace_id)}
@@ -293,6 +293,9 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                           fontFamily: "monospace",
                           fontSize: "0.75rem",
                           color: "text.secondary",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
                         }}
                       >
                         {trace.trace_id}
@@ -343,7 +346,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                                     sx={{
                                       cursor: "pointer",
                                       "&:hover": { bgcolor: "action.hover" },
-                                      "& > td": { p: 2 },
+                                      "& > td": { py: 1.5, px: 1.75 },
                                       "& > td:first-of-type": { p: 1 },
                                     }}
                                   >

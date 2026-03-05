@@ -52,7 +52,7 @@ const SpanRows: React.FC<SpanRowsProps> = ({ spans, traceId }) => {
               key={span.span_id}
               hover
               onClick={(e) => handleSpanClick(span.span_id, e)}
-              sx={{ cursor: "pointer", "& td": { py: 2 } }}
+              sx={{ cursor: "pointer", "& > td": { py: 1.5, px: 1.75 } }}
             >
               <TableCell />
               <TableCell sx={{ fontFamily: "monospace" }}>

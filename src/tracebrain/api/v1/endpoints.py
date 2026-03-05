@@ -28,6 +28,10 @@ Features:
 - POST /api/v1/curriculum/generate: Generate curriculum tasks
 - GET /api/v1/curriculum: List curriculum tasks
 - GET /api/v1/curriculum/export: Export curriculum tasks
+- DELETE /api/v1/curriculum/{task_id}: Delete a curriculum task
+- DELETE /api/v1/curriculum: Delete all curriculum tasks
+- PATCH /api/v1/curriculum/{task_id}/complete: Mark a curriculum task as complete
+- PATCH /api/v1/curriculum/complete: Mark all curriculum tasks as complete
 """
 
 from typing import List, Optional, Dict, Any
@@ -200,6 +204,7 @@ class FeedbackIn(BaseModel):
     comment: Optional[str] = Field(None, description="Text comment or feedback")
     tags: Optional[List[str]] = Field(None, description="Tags for categorizing feedback")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    priority: Optional[int] = Field(None, description="The priority of the trace from 1-5")
     
     model_config = ConfigDict(
         json_schema_extra={
@@ -239,6 +244,7 @@ class NaturalLanguageResponse(BaseModel):
     session_id: str = Field(..., description="Conversation session ID")
     suggestions: Optional[List[Suggestion]] = Field(default_factory=list)
     sources: List[str] = Field(default_factory=list, description="Trace IDs referenced in the answer")
+    filters: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Filters extracted from the query")
 
 
 class ChatMessageOut(BaseModel):
@@ -474,7 +480,11 @@ def root():
             "add_history": "POST /api/v1/history",
             "clear_history": "DELETE /api/v1/history",
             "get_settings": "GET /api/v1/settings",
-            "save_settings": "POST /api/v1/settings"
+            "save_settings": "POST /api/v1/settings",
+            "curriculum_delete_task": "DELETE /api/v1/curriculum/{task_id}",
+            "curriculum_delete_all": "DELETE /api/v1/curriculum",
+            "curriculum_complete_task": "PATCH /api/v1/curriculum/{task_id}/complete",
+            "curriculum_complete_all": "PATCH /api/v1/curriculum/complete",
         }
     }
 
@@ -499,6 +509,9 @@ def health_check():
             detail=f"Database connection failed: {str(e)}"
         )
 
+# ============================================================================
+# Trace Endpoints
+# ============================================================================
 
 @router.get("/traces", response_model=TraceListOut, tags=["Traces"])
 def list_traces(
@@ -891,6 +904,9 @@ def signal_trace_issue(trace_id: str, payload: TraceSignalIn):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to signal trace: {str(e)}")
 
+# ============================================================================
+# Curriculum Endpoints
+# ============================================================================
 
 @router.post("/curriculum/generate", tags=["Curriculum"])
 def generate_curriculum(request: GenerateCurriculumRequest):
@@ -968,6 +984,54 @@ def export_curriculum(
         return export_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.delete("/curriculum/{task_id}", tags=["Curriculum"])
+def delete_curriculum_task(task_id: int):
+    """Delete a single curriculum task by ID."""
+    try:
+        deleted = store.delete_curriculum_task(task_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return Response(status_code=204)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/curriculum", tags=["Curriculum"])
+def delete_all_curriculum_tasks():
+    """Delete all curriculum tasks."""
+    try:
+        store.delete_all_curriculum_tasks()
+        return Response(status_code=204)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/curriculum/{task_id}/complete", response_model=CurriculumTaskOut, tags=["Curriculum"])
+def mark_curriculum_task_complete(task_id: int):
+    """Mark a single curriculum task as complete."""
+    try:
+        task = store.mark_curriculum_task_complete(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return task
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/curriculum/complete", tags=["Curriculum"])
+def mark_all_curriculum_tasks_complete():
+    """Mark all curriculum tasks as complete."""
+    try:
+        store.mark_all_curriculum_tasks_complete()
+        return Response(status_code=204)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================================================
+# Episode Endpoints
+# ============================================================================
 
 @router.get("/episodes", response_model=EpisodeListOut, tags=["Episodes"])
 def list_episodes(
@@ -1092,8 +1156,7 @@ def get_episode_traces(episode_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
+    
 # ============================================================================
 # Analytics Endpoints
 # ============================================================================
@@ -1210,6 +1273,7 @@ def natural_language_query(query: NaturalLanguageQuery):
             session_id=session_id,
             suggestions=result.get("suggestions", []),
             sources=normalized_sources,
+            filters=result.get("filters", {}),
         )
         
     except Exception as e:

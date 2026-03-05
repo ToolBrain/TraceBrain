@@ -25,6 +25,9 @@ interface TypeChipProps {
 const TypeChip: React.FC<TypeChipProps> = ({ type, secondary = false }) => {
   const styles = TYPE_STYLES[type];
 
+  if (!styles) {
+    return null;
+  }
   return (
     <Chip
       label={styles.label}

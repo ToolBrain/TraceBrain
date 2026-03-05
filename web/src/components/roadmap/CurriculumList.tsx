@@ -1,16 +1,21 @@
 import React from "react";
-import { Box, Typography, Skeleton } from "@mui/material";
+import { Box, Typography, Skeleton, IconButton, Tooltip } from "@mui/material";
+import { DeleteOutline, TaskAlt } from "@mui/icons-material";
 import StatusChip from "../shared/StatusChip";
 import type { CurriculumTask } from "./types";
 
 interface CurriculumListProps {
   tasks: CurriculumTask[];
   isLoading?: boolean;
+  onMarkComplete: (id: number) => void;
+  onDelete: (id: number) => void;
 }
 
 const CurriculumList: React.FC<CurriculumListProps> = ({
   tasks,
   isLoading = false,
+  onMarkComplete,
+  onDelete,
 }) => {
   // Loading state
   if (isLoading) {
@@ -20,7 +25,7 @@ const CurriculumList: React.FC<CurriculumListProps> = ({
           <Box
             key={i}
             sx={{
-              p: 3,
+              p: 2,
               borderBottom: 2,
               borderColor: "divider",
               bgcolor: "background.paper",
@@ -98,13 +103,16 @@ const CurriculumList: React.FC<CurriculumListProps> = ({
         <Box
           key={task.id}
           sx={{
-            p: 3,
+            p: 2,
             borderBottom: 2,
             borderColor: "divider",
             bgcolor: "background.paper",
             transition: "background-color 0.2s ease",
             "&:hover": {
               bgcolor: "action.hover",
+            },
+            "&:hover .row-actions": {
+              opacity: 1,
             },
           }}
         >
@@ -113,7 +121,7 @@ const CurriculumList: React.FC<CurriculumListProps> = ({
               display: "flex",
               justifyContent: "space-between",
               alignItems: "flex-start",
-              mb: 2,
+              mb: 1.5,
             }}
           >
             <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
@@ -125,29 +133,59 @@ const CurriculumList: React.FC<CurriculumListProps> = ({
                 #{task.id}
               </Typography>
               <StatusChip status={task.priority} />
-              <StatusChip status={task.status} secondary />
+              <StatusChip status={task.status} secondary={task.status === "completed"} />
             </Box>
-            <Typography variant="caption" color="text.secondary">
-              {new Date(task.created_at).toLocaleString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}
-            </Typography>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box
+                className="row-actions"
+                sx={{ display: "flex", gap: 0.5, opacity: 0, transition: "opacity 0.15s ease" }}
+              >
+                <Tooltip title="Mark as complete">
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={() => onMarkComplete(task.id)}
+                      disabled={task.status === "completed"}
+                      color="success"
+                    >
+                      <TaskAlt fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Delete">
+                  <IconButton
+                    size="small"
+                    onClick={() => onDelete(task.id)}
+                    color="error"
+                  >
+                    <DeleteOutline fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+
+              <Typography variant="caption" color="text.secondary">
+                {new Date(task.created_at).toLocaleString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </Typography>
+            </Box>
           </Box>
 
           {/* Description */}
           <Box
             sx={{
               bgcolor: "action.hover",
-              p: 2,
+              p: 1.5,
               borderRadius: 1,
               borderLeft: 3,
               borderColor: "primary.main",
-              mb: 2,
+              mb: 1.5,
             }}
           >
             <Typography
@@ -172,7 +210,7 @@ const CurriculumList: React.FC<CurriculumListProps> = ({
           <Box
             sx={{
               bgcolor: "action.hover",
-              p: 2,
+              p: 1.5,
               borderRadius: 1,
               borderLeft: 3,
               borderColor: "primary.main",

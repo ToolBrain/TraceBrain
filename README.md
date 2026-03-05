@@ -175,6 +175,10 @@ docker compose -f docker/docker-compose.yml build --no-cache
 - `POST /api/v1/curriculum/generate` - Generate tasks from failed/low-rated traces
 - `GET /api/v1/curriculum` - List pending curriculum tasks
 - `GET /api/v1/curriculum/export` - Export curriculum tasks as JSONL
+- `DELETE /api/v1/curriculum/{task_id}` - Delete a curriculum task
+- `DELETE /api/v1/curriculum` - Delete all curriculum tasks
+- `PATCH /api/v1/curriculum/{task_id}/complete` - Mark a curriculum task as complete
+- `PATCH /api/v1/curriculum/complete` - Mark all curriculum tasks as complete
 
 **Exports**
 - `GET /api/v1/export/traces` - Export raw OTLP traces as JSONL

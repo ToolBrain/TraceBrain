@@ -83,11 +83,13 @@ export const submitTraceFeedback = async (
   id: string,
   rating: number,
   comment: string,
+  priority?: number,
   tags?: string[],
   metadata?: Record<string, any>,
 ): Promise<void> => {
   try {
     const body = { rating, comment } as Record<string, any>;
+    if (priority !== undefined) body.priority = priority;
     if (tags) body.tags = tags;
     if (metadata) body.metadata = metadata;
 
@@ -280,4 +282,37 @@ export const deleteTraces = async (period: string) => {
 
   const res = await fetch(`/api/v1/ops/traces/cleanup?${params}`, { method: "DELETE" });
   return res.json();
+};
+
+export const deleteCurriculumTask = async (id: number): Promise<void> => {
+  const response = await fetch(`/api/v1/curriculum/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok)
+    throw new Error(`Failed to delete curriculum task: ${response.status}`);
+};
+
+export const deleteAllCurriculumTasks = async (): Promise<void> => {
+  const response = await fetch("/api/v1/curriculum", {
+    method: "DELETE",
+  });
+  if (!response.ok)
+    throw new Error(`Failed to delete all curriculum tasks: ${response.status}`);
+};
+
+export const markCurriculumTaskComplete = async (id: number): Promise<CurriculumTask> => {
+  const response = await fetch(`/api/v1/curriculum/${id}/complete`, {
+    method: "PATCH",
+  });
+  if (!response.ok)
+    throw new Error(`Failed to mark curriculum task as complete: ${response.status}`);
+  return response.json();
+};
+
+export const markAllCurriculumTasksComplete = async (): Promise<void> => {
+  const response = await fetch("/api/v1/curriculum/complete", {
+    method: "PATCH",
+  });
+  if (!response.ok)
+    throw new Error(`Failed to mark all curriculum tasks as complete: ${response.status}`);
 };

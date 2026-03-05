@@ -115,6 +115,10 @@ const StatusChip: React.FC<StatusChipProps> = ({
   const styles = STATUS_STYLES[status];
   const shouldPulse = PULSE_LIST.includes(status);
 
+  if (!styles) {
+    return null;
+  }
+
   return (
     <Chip
       label={styles.label}

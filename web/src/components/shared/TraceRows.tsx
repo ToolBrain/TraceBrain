@@ -67,7 +67,7 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
               key={trace.trace_id}
               hover
               onClick={(e) => handleTraceClick(trace.trace_id, e)}
-              sx={{ cursor: "pointer", "& td": { py: 2 } }}
+              sx={{ cursor: "pointer", "& > td": { py: 1.5, px: 1.75 } }}
             >
               <TableCell />
               <TableCell>

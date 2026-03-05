@@ -112,9 +112,62 @@ def _build_tool_specs() -> List[Dict[str, Any]]:
                 },
                 "required": ["query"],
             },
-        }
+        },
+        {
+            "name": "set_api_filters",
+            "description": (
+                "Call this ONLY if ALL WHERE conditions in your SQL query map exactly to the available fields below. "
+                "If even one WHERE condition cannot be represented by these fields, do NOT call this tool at all. "
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "description": "Execution status of the trace"
+                    },
+                    "min_rating": {
+                        "type": "integer", 
+                        "minimum": 1, 
+                        "maximum": 5,
+                        "description": "Minimum human feedback rating to include"
+                    },
+                    "error_type": {
+                        "type": "string",
+                        "description": "Category of error encountered during agent execution",
+                    },
+                    "min_confidence": {
+                        "type": "number", 
+                        "minimum": 0.0, 
+                        "maximum": 1.0,
+                        "description": "Lower bound AI confidence score from trace evaluation"
+                    },
+                    "max_confidence": {
+                        "type": "number", 
+                        "minimum": 0.0, 
+                        "maximum": 1.0,
+                        "description": "Upper bound AI confidence score from trace evaluation"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "description": "Filter traces that started at or after this ISO 8601 timestamp (e.g. '2020-01-01T00:00:00Z')",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "description": "Filter traces that started at or before this ISO 8601 timestamp (e.g. '2025-01-01T23:59:59Z')",
+                    },
+                },
+                "additionalProperties": False,
+            },
+        },
     ]
 
+def _validate_filters(filters: dict) -> dict | None:
+    if not filters:
+        return None
+    if not all(key in {"status", "min_rating", "error_type", "min_confidence", "max_confidence", "start_time", "end_time"} for key in filters):
+        return None
+    return filters
 
 LIBRARIAN_AVAILABLE = is_provider_available()
 
@@ -131,7 +184,7 @@ class LibrarianAgent:
             "You are the TraceBrain AI Librarian, an expert in Agent Operations (AgentOps). "
             "Your task is to analyze agent execution traces to help human experts diagnose issues.\n\n"
             "NEVER show raw SQL queries or technical tool outputs to the end-user in the 'answer' field. "
-            "Your final response MUST ALWAYS be a valid JSON object with 'answer', 'suggestions', and 'sources' keys. "
+            "Your final response MUST ALWAYS be a valid JSON object with 'answer', 'suggestions', 'sources' and 'filters' keys. "
             "The 'answer' should be a natural language summary of what you found in the database.\n\n"
             
             "### CORE TOOLS:\n"
@@ -148,7 +201,9 @@ class LibrarianAgent:
             "{"
             "\"answer\": \"A concise summary of findings. Mention specific errors or patterns found.\", "
             "\"suggestions\": [{\"label\": \"Follow-up question\", \"value\": \"Exact query text\"}], "
-            "\"sources\": [\"list of trace_ids discovered\"]"
+            "\"sources\": [\"list of trace_ids discovered\"],"
+            "\"filters\": \"the filter conditions applied in the SQL query if used - only include this key if ALL filters in the user's query map to these exact keys: status, min_rating, start_time, end_time, error_type, min_confidence, max_confidence. If any filter criteria falls outside these keys, omit the filters key entirely. "
+            "Example: {\\\"status\\\": \\\"completed\\\", \\\"min_rating\\\": 4, \\\"start_time\\\": \\\"2022-01-01T00:00:00Z\\\", \\\"end_time\\\": \\\"2026-01-02T00:00:00Z\\\", \\\"error_type\\\": \\\"logic_loop\\\", \\\"min_confidence\\\": 0.4, \\\"max_confidence\\\": 0.9}\""
             "}\n\n"
             f"{SCHEMA_CONTEXT}"
         )
@@ -206,6 +261,7 @@ class LibrarianAgent:
                 {"label": "Search by tool", "value": "Filter by tracebrain.tool.name"},
             ],
             "sources": [],
+            "filters": {},
         }
 
     def _abstain_response_from_llm(self, user_query: str, history_text: str, provider: BaseProvider) -> Dict[str, Any]:
@@ -274,6 +330,11 @@ class LibrarianAgent:
             return list(dict.fromkeys(cleaned))
         extracted = self._extract_sources(answer)
         return extracted if extracted else []
+    
+    def _normalize_filters(self, filters: Any) -> Dict[str, Any]:
+        if not isinstance(filters, dict) or not filters:
+            return {}
+        return {str(k).strip(): v for k, v in filters.items() if k and v is not None}
 
     def _extract_sql(self, text: str) -> Optional[str]:
         if not text:
@@ -373,25 +434,27 @@ class LibrarianAgent:
                 try:
                     parsed = self._extract_json(answer_text)
                 except Exception:
-                    parsed = {"answer": answer_text, "suggestions": [], "sources": None}
+                    parsed = {"answer": answer_text, "suggestions": [], "sources": None, "filters": {}}
 
                 answer = str(parsed.get("answer", "")).strip() or "No response."
                 suggestions = self._normalize_suggestions(parsed.get("suggestions"))
                 sources = self._normalize_sources(parsed.get("sources"), answer)
-                result = {"answer": answer, "suggestions": suggestions, "sources": sources}
+                filters = self._normalize_filters(_validate_filters(parsed.get("filters") or {}) or {})
+                result = {"answer": answer, "suggestions": suggestions, "sources": sources, "filters": filters}
                 self.store.save_chat_message(session_id, "assistant", result)
                 return result
 
             fallback = "Unable to generate a valid SQL query. Please refine the question."
             self.store.save_chat_message(session_id, "assistant", {"answer": fallback})
-            return {"answer": fallback, "suggestions": [], "sources": []}
+            return {"answer": fallback, "suggestions": [], "sources": [], "filters": {}}
 
         session = provider.start_chat(system_prompt, self.tools)
         response = provider.send_user_message(session, user_content)
         last_sql_result: Optional[str] = None
         saw_sql_result = False
+        extracted_filters = {}
 
-        for _ in range(3):
+        for _ in range(5):
             tool_calls = provider.extract_tool_calls(response)
             if not tool_calls:
                 break
@@ -420,6 +483,9 @@ class LibrarianAgent:
                         "tool",
                         f"SEARCH: {query}\nRESULT: {tool_result}",
                     )
+                elif tool_name == "set_api_filters":
+                    extracted_filters = args
+                    tool_result = "FILTERS_SET"
                 else:
                     tool_result = "UNKNOWN_TOOL"
 
@@ -450,7 +516,7 @@ class LibrarianAgent:
                 session,
                 (
                     "Using the SQL results below, return ONLY a JSON object with keys "
-                    "answer, suggestions, sources. The answer must be a natural language summary.\n"
+                    "answer, suggestions, sources, filters. The answer must be a natural language summary.\n"
                     f"SQL_RESULTS: {last_sql_result}"
                 ),
             )
@@ -459,7 +525,7 @@ class LibrarianAgent:
         try:
             parsed = self._extract_json(answer_text)
         except Exception:
-            parsed = {"answer": answer_text, "suggestions": [], "sources": None}
+            parsed = {"answer": answer_text, "suggestions": [], "sources": None, "filters": {}}
 
         if self._extract_sql(str(parsed.get("answer", "")) or answer_text):
             response = provider.send_user_message(
@@ -470,16 +536,18 @@ class LibrarianAgent:
             try:
                 parsed = self._extract_json(answer_text)
             except Exception:
-                parsed = {"answer": answer_text, "suggestions": [], "sources": None}
+                parsed = {"answer": answer_text, "suggestions": [], "sources": None, "filters": {}}
 
         answer = str(parsed.get("answer", "")).strip() or "No response."
         suggestions = self._normalize_suggestions(parsed.get("suggestions"))
         sources = self._normalize_sources(parsed.get("sources"), answer)
+        filters = self._normalize_filters(extracted_filters)
 
         result = {
             "answer": answer,
             "suggestions": suggestions,
             "sources": sources,
+            "filters": filters,
         }
 
         self.store.save_chat_message(session_id, "assistant", result)

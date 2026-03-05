@@ -32,14 +32,10 @@ const TraceErrorChart: React.FC<TraceErrorChartProps> = ({ traces }) => {
     });
 
     const total = traces.length;
-    const failureRate =
-      total > 0 ? ((failedCount / total) * 100).toFixed(0) : "0";
-    const successRate =
-      total > 0 ? (((total - failedCount) / total) * 100).toFixed(0) : "100";
+    const failureRate = total > 0 ? ((failedCount / total) * 100).toFixed(0) : "0";
+    const successRate = total > 0 ? (((total - failedCount) / total) * 100).toFixed(0) : "100";
     const avgConfidence =
-      confidenceCount > 0
-        ? ((totalConfidence / confidenceCount) * 100).toFixed(0)
-        : "N/A";
+      confidenceCount > 0 ? ((totalConfidence / confidenceCount) * 100).toFixed(0) : "N/A";
     const errorTypeCount = Object.keys(errorCounts).length;
 
     const pieData = Object.entries(errorCounts).map(([key, value], id) => ({
@@ -63,15 +59,16 @@ const TraceErrorChart: React.FC<TraceErrorChartProps> = ({ traces }) => {
   }, [traces]);
 
   const traceSummary = [
-    { label: "Total Traces", value: stats.total },
-    { label: "Failed Traces", value: stats.failedCount },
-    { label: "Success Rate", value: `${stats.successRate}%` },
-    { label: "Failure Rate", value: `${stats.failureRate}%` },
+    { label: "Total Traces", value: stats.total, color: "text.primary" },
+    { label: "Failed Traces", value: stats.failedCount, color: "text.primary" },
+    { label: "Success Rate", value: `${stats.successRate}%`, color: "success.light" },
+    { label: "Failure Rate", value: `${stats.failureRate}%`, color: "error.light" },
     {
       label: "Average Confidence",
       value: stats.avgConfidence !== "N/A" ? `${stats.avgConfidence}%` : "N/A",
+      color: "text.primary",
     },
-    { label: "Error Types", value: stats.errorTypeCount },
+    { label: "Error Types", value: stats.errorTypeCount, color: "text.primary" },
   ];
 
   return (
@@ -178,7 +175,7 @@ const TraceErrorChart: React.FC<TraceErrorChartProps> = ({ traces }) => {
           flex: 1,
         }}
       >
-        {traceSummary.map(({ label, value }) => (
+        {traceSummary.map(({ label, value, color }) => (
           <Box
             key={label}
             sx={{
@@ -195,7 +192,7 @@ const TraceErrorChart: React.FC<TraceErrorChartProps> = ({ traces }) => {
             <Typography variant="caption" color="text.secondary">
               {label}
             </Typography>
-            <Typography variant="h6" fontWeight={600} lineHeight={1}>
+            <Typography variant="h6" fontWeight={600} lineHeight={1} color={color}>
               {value}
             </Typography>
           </Box>

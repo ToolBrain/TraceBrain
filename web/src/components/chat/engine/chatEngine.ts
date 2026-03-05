@@ -2,6 +2,7 @@ export interface MessageContent {
   answer: string;
   suggestions?: Suggestion[];
   sources?: string[];
+  filters?: Record<string, any>;
 }
 
 export interface Message {

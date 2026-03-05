@@ -81,7 +81,7 @@ export const Librarian: React.FC = () => {
             spacing={2}
             sx={{
               p: 2,
-              bgcolor: "primary.main",
+              bgcolor: "primary.dark",
               color: "primary.contrastText",
             }}
           >
@@ -136,7 +136,6 @@ export const Librarian: React.FC = () => {
               fullWidth
               placeholder="Type your message..."
               variant="outlined"
-              size="small"
               multiline
               maxRows={3}
               value={input}

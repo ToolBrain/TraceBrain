@@ -55,7 +55,7 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
       <TableRow
         hover
         onClick={() => nav(`/trace/${trace.trace_id}`)}
-        sx={{ cursor: "pointer" }}
+        sx={{ cursor: "pointer", "& > td": { p: 1.75 } }}
       >
         <TableCell>
           <IconButton
