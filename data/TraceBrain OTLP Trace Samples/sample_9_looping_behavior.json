@@ -16,6 +16,8 @@
       "span_id": "9001a2b3c4d5e6f7",
       "parent_id": null,
       "name": "LLM Inference (Tool Call 1)",
+      "start_time": "2025-11-24T16:20:00.500Z",
+      "end_time": "2025-11-24T16:20:02.200Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Check the status of my orders: ORD-001, ORD-002, ORD-003.\"}]",
@@ -33,6 +35,8 @@
       "span_id": "9002b3c4d5e6f7a8",
       "parent_id": "9001a2b3c4d5e6f7",
       "name": "Tool Execution: check_order_status",
+      "start_time": "2025-11-24T16:20:02.250Z",
+      "end_time": "2025-11-24T16:20:02.450Z",
       "attributes": {
         "tracebrain.span.type": "tool_execution",
         "tracebrain.tool.name": "check_order_status",
@@ -44,6 +48,8 @@
       "span_id": "9003c4d5e6f7a8b9",
       "parent_id": "9002b3c4d5e6f7a8",
       "name": "LLM Inference (Tool Call 2)",
+      "start_time": "2025-11-24T16:20:02.650Z",
+      "end_time": "2025-11-24T16:20:04.100Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-001\"}, \"id\": \"call_ord1\"}]}, {\"role\": \"tool\", \"content\": \"Shipped\", \"tool_call_id\": \"call_ord1\"}]",
@@ -61,6 +67,8 @@
       "span_id": "9004d5e6f7a8b9c0",
       "parent_id": "9003c4d5e6f7a8b9",
       "name": "Tool Execution: check_order_status",
+      "start_time": "2025-11-24T16:20:04.150Z",
+      "end_time": "2025-11-24T16:20:04.400Z",
       "attributes": {
         "tracebrain.span.type": "tool_execution",
         "tracebrain.tool.name": "check_order_status",
@@ -72,6 +80,8 @@
       "span_id": "9005e6f7a8b9c0d1",
       "parent_id": "9004d5e6f7a8b9c0",
       "name": "LLM Inference (Tool Call 3)",
+      "start_time": "2025-11-24T16:20:04.600Z",
+      "end_time": "2025-11-24T16:20:06.000Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-002\"}, \"id\": \"call_ord2\"}]}, {\"role\": \"tool\", \"content\": \"Processing\", \"tool_call_id\": \"call_ord2\"}]",
@@ -89,6 +99,8 @@
       "span_id": "9006f7a8b9c0d1e2",
       "parent_id": "9005e6f7a8b9c0d1",
       "name": "Tool Execution: check_order_status",
+      "start_time": "2025-11-24T16:20:06.050Z",
+      "end_time": "2025-11-24T16:20:06.300Z",
       "attributes": {
         "tracebrain.span.type": "tool_execution",
         "tracebrain.tool.name": "check_order_status",
@@ -100,6 +112,8 @@
       "span_id": "9007a8b9c0d1e2f3",
       "parent_id": "9006f7a8b9c0d1e2",
       "name": "LLM Inference (Final Answer)",
+      "start_time": "2025-11-24T16:20:06.500Z",
+      "end_time": "2025-11-24T16:20:07.500Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"check_order_status\", \"arguments\": {\"order_id\": \"ORD-003\"}, \"id\": \"call_ord3\"}]}, {\"role\": \"tool\", \"content\": \"Delivered\", \"tool_call_id\": \"call_ord3\"}]",

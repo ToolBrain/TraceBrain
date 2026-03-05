@@ -16,6 +16,8 @@
       "span_id": "0000000000000101",
       "parent_id": null,
       "name": "LLM Inference",
+      "start_time": "2025-11-25T10:10:05.000Z",
+      "end_time": "2025-11-25T10:10:06.500Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Who is John Doe from local bakery?\"}]",
@@ -26,6 +28,8 @@
       "span_id": "0000000000000102",
       "parent_id": "0000000000000101",
       "name": "Tool Execution",
+      "start_time": "2025-11-25T10:10:06.550Z",
+      "end_time": "2025-11-25T10:10:06.900Z",
       "attributes": {
         "tracebrain.span.type": "tool_execution",
         "tracebrain.tool.output": "John Doe is the owner of 'Sweet Crust' bakery since 2010."
@@ -35,6 +39,8 @@
       "span_id": "0000000000000103",
       "parent_id": "0000000000000102",
       "name": "LLM Inference (Final Answer)",
+      "start_time": "2025-11-25T10:10:07.050Z",
+      "end_time": "2025-11-25T10:10:08.000Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.completion": "John Doe is a world-renowned baker and a former NASA astronaut who won 3 gold medals in the Olympics.",

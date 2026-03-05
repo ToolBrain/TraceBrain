@@ -16,6 +16,8 @@
       "span_id": "5001a2b3c4d5e6f7",
       "parent_id": null,
       "name": "LLM Inference (Tool Call)",
+      "start_time": "2025-11-23T08:42:01.000Z",
+      "end_time": "2025-11-23T08:42:02.600Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"If I have 10 shares of NVDA stock, what is their total value?\"}]",
@@ -33,6 +35,8 @@
       "span_id": "5002b3c4d5e6f7a8",
       "parent_id": "5001a2b3c4d5e6f7",
       "name": "Tool Execution: get_stock_price",
+      "start_time": "2025-11-23T08:42:02.650Z",
+      "end_time": "2025-11-23T08:42:02.900Z",
       "attributes": {
         "tracebrain.span.type": "tool_execution",
         "tracebrain.tool.name": "get_stock_price",
@@ -44,6 +48,8 @@
       "span_id": "5003c4d5e6f7a8b9",
       "parent_id": "5002b3c4d5e6f7a8",
       "name": "LLM Inference (Tool Call)",
+      "start_time": "2025-11-23T08:42:03.050Z",
+      "end_time": "2025-11-23T08:42:04.400Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_stock_price\", \"arguments\": {\"ticker\": \"NVDA\"}, \"id\": \"call_price1\"}]}, {\"role\": \"tool\", \"content\": \"125.50\", \"tool_call_id\": \"call_price1\"}]",
@@ -61,6 +67,8 @@
       "span_id": "5004d5e6f7a8b9c0",
       "parent_id": "5003c4d5e6f7a8b9",
       "name": "Tool Execution: multiply",
+      "start_time": "2025-11-23T08:42:04.450Z",
+      "end_time": "2025-11-23T08:42:04.700Z",
       "attributes": {
         "tracebrain.span.type": "tool_execution",
         "tracebrain.tool.name": "multiply",
@@ -72,6 +80,8 @@
       "span_id": "5005e6f7a8b9c0d1",
       "parent_id": "5004d5e6f7a8b9c0",
       "name": "LLM Inference (Final Answer)",
+      "start_time": "2025-11-23T08:42:04.850Z",
+      "end_time": "2025-11-23T08:42:05.600Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"multiply\", \"arguments\": {\"a\": 125.50, \"b\": 10}, \"id\": \"call_calc2\"}]}, {\"role\": \"tool\", \"content\": \"1255.0\", \"tool_call_id\": \"call_calc2\"}]",

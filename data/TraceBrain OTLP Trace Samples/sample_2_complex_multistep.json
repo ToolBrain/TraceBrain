@@ -16,6 +16,8 @@
       "span_id": "2001a2b3c4d5e6f7",
       "parent_id": null,
       "name": "LLM Inference (Tool Call)",
+      "start_time": "2025-11-21T09:15:01.000Z",
+      "end_time": "2025-11-21T09:15:02.400Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the P/E ratio of Apple and what was their last quarter revenue?\"}]",
@@ -33,6 +35,8 @@
       "span_id": "2002b3c4d5e6f7a8",
       "parent_id": "2001a2b3c4d5e6f7",
       "name": "Tool Execution: get_stock_pe_ratio",
+      "start_time": "2025-11-21T09:15:02.450Z",
+      "end_time": "2025-11-21T09:15:02.650Z",
       "attributes": {
         "tracebrain.span.type": "tool_execution",
         "tracebrain.tool.name": "get_stock_pe_ratio",
@@ -44,6 +48,8 @@
       "span_id": "2003c4d5e6f7a8b9",
       "parent_id": "2002b3c4d5e6f7a8",
       "name": "LLM Inference (Tool Call)",
+      "start_time": "2025-11-21T09:15:02.800Z",
+      "end_time": "2025-11-21T09:15:04.000Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_stock_pe_ratio\", \"arguments\": {\"ticker\": \"AAPL\"}, \"id\": \"call_def456\"}]}, {\"role\": \"tool\", \"content\": \"29.5\", \"tool_call_id\": \"call_def456\"}]",
@@ -61,6 +67,8 @@
       "span_id": "2004d5e6f7a8b9c0",
       "parent_id": "2003c4d5e6f7a8b9",
       "name": "Tool Execution: get_quarterly_revenue",
+      "start_time": "2025-11-21T09:15:04.050Z",
+      "end_time": "2025-11-21T09:15:04.300Z",
       "attributes": {
         "tracebrain.span.type": "tool_execution",
         "tracebrain.tool.name": "get_quarterly_revenue",
@@ -72,6 +80,8 @@
       "span_id": "2005e6f7a8b9c0d1",
       "parent_id": "2004d5e6f7a8b9c0",
       "name": "LLM Inference (Final Answer)",
+      "start_time": "2025-11-21T09:15:04.450Z",
+      "end_time": "2025-11-21T09:15:05.300Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_quarterly_revenue\", \"arguments\": {\"ticker\": \"AAPL\", \"quarter\": \"Q3 2025\"}, \"id\": \"call_ghi789\"}]}, {\"role\": \"tool\", \"content\": \"89.5 billion USD\", \"tool_call_id\": \"call_ghi789\"}]",
