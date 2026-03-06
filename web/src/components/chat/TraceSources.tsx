@@ -27,7 +27,7 @@ const TraceSources: React.FC<TraceSourcesDialogProps> = ({ sources }) => {
   };
 
   return (
-    <Box sx={{ mt: 1 }}>
+    <Box>
       <Chip
         icon={<Source sx={{ fontSize: 12 }} />}
         label={`${sources.length} Sources`}
@@ -39,8 +39,10 @@ const TraceSources: React.FC<TraceSourcesDialogProps> = ({ sources }) => {
           fontSize: "0.625rem",
           borderColor: "divider",
           bgcolor: "background.paper",
+          color: "text.secondary",
           cursor: "pointer",
-          "& .MuiChip-icon": { fontSize: 12 },
+          borderRadius: 2,
+          "& .MuiChip-icon": { fontSize: 12, color: "text.secondary" },
           p: 0.5,
         }}
       />

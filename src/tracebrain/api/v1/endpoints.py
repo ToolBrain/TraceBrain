@@ -1284,6 +1284,7 @@ def natural_language_query(query: NaturalLanguageQuery):
             session_id=session_id,
             suggestions=[],
             sources=[],
+            filters={},
         )
 
 

@@ -20,16 +20,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       }}
     >
       <Paper
-        elevation={isUser ? 1 : 0}
+        elevation={1}
         sx={{
           maxWidth: "80%",
           px: 1.5,
           py: 1,
-          bgcolor: isUser ? "primary.main" : "transparent",
+          backgroundColor: isUser ? "primary.main" : "background.default",
           color: isUser ? "primary.contrastText" : "text.primary",
           borderRadius: 2,
           fontSize: "0.875rem",
-          background: isUser ? undefined : "none",
         }}
       >
         <Typography
@@ -43,12 +42,18 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         >
           {message.content.answer}
         </Typography>
-        {!isUser && message.content.sources && message.content.sources.length > 0 && (
-          <TraceSources sources={message.content.sources} />
-        )}
-        {!isUser && message.content.filters && Object.keys(message.content.filters).length > 0 && (
-          <TraceFilters filters={message.content.filters} />
-        )}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
+          {!isUser && message.content.sources && message.content.sources.length > 0 && (
+            <TraceSources sources={message.content.sources} />
+          )}
+          {!isUser &&
+            message.content.filters &&
+            Object.keys(message.content.filters).length > 0 && (
+              <Box sx={{ ml: "auto" }}>
+                <TraceFilters filters={message.content.filters} />
+              </Box>
+            )}
+        </Box>
       </Paper>
     </Box>
   );

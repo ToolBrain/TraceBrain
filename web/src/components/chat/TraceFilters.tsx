@@ -1,4 +1,5 @@
-import { Box, Link } from "@mui/material";
+import { OpenInNew } from "@mui/icons-material";
+import { Link } from "@mui/material";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -22,11 +23,23 @@ const TraceFiltersLink: React.FC<TraceFiltersLinkProps> = ({ filters }) => {
   };
 
   return (
-    <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
-      <Link onClick={handleClick} sx={{ cursor: "pointer" }}>
-        View in Explorer
-      </Link>
-    </Box>
+    <Link
+      onClick={handleClick}
+      sx={{
+        cursor: "pointer",
+        fontSize: "0.625rem",
+        textDecoration: "none",
+        color: "text.secondary",
+        display: "flex",
+        alignItems: "center",
+        gap: 0.5,
+        "&:hover": { color: "text.primary" },
+        transition: "color 0.2s ease",
+      }}
+    >
+      View in Explorer
+      <OpenInNew sx={{ fontSize: 10 }} />
+    </Link>
   );
 };
 
