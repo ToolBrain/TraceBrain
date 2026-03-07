@@ -278,7 +278,10 @@ EMBEDDING_BASE_URL=https://your-endpoint/v1
 
 ## 🔌 Integration with Your Agent
 
-### Using the TraceStore Client
+### Using the TraceStore Client (read/query)
+
+This section focuses on read/query operations. For logging traces, see the
+`trace_scope` section below.
 
 ```python
 import json
@@ -286,13 +289,6 @@ import json
 from tracebrain.sdk.client import TraceClient
 
 client = TraceClient(base_url="http://localhost:8000")
-
-# Submit a trace
-client.log_trace({
-    "trace_id": "my-trace-001",
-    "spans": [...],  # Your OTLP spans
-    "feedback": {}
-})
 
 # Query traces
 traces = client.list_traces()
@@ -305,30 +301,61 @@ trace_items = [json.loads(line) for line in jsonl_payload.splitlines() if line.s
 
 # Reconstruct messages or turns from OTLP
 trace_data = client.get_trace("my-trace-001")
+
+# to_messages: rebuilds chat message list (role/content) from spans
 messages = TraceClient.to_messages(trace_data)
+# Example: messages[:2] -> [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
+
+# to_turns: groups messages into conversation turns for UI/analysis
 turns = TraceClient.to_turns(trace_data)
+# Example: turns[0] -> {"user": "...", "assistant": "..."}
+
+# to_tracebrain_turns: returns TraceBrain-native turn objects with metadata
 tracebrain_turns = TraceClient.to_tracebrain_turns(trace_data)
+# Example: tracebrain_turns[0] -> {"turn_id": "...", "messages": [...], "span_ids": [...]} 
 ```
 
-### Trace Init and trace_scope (for Active Help Request)
+### Trace Init and trace_scope (recommended for all runs)
 
-Use `trace_scope` when your agent might call `request_human_intervention` during
-execution. It pre-registers a trace via `/api/v1/traces/init` and sets
-`TRACEBRAIN_TRACE_ID` so the help signal attaches to the right trace.
+Use `trace_scope` for every agent run you plan to log. It pre-registers a trace
+via `/api/v1/traces/init`, sets the trace ID in a context-local store (safe for
+async and multi-thread usage), and uploads the trace when the scope exits. This
+is required if your agent might call `request_human_intervention` (Active Help
+Request) so the help signal is attached to the correct trace.
+
+**Recommended: use `trace_scope` (auto init + auto log)**
 
 ```python
 from tracebrain import TraceClient
-from tracebrain.sdk import request_human_intervention
+from my_converters import convert_smolagent_to_otlp
 
 client = TraceClient(base_url="http://localhost:8000")
 
-with client.trace_scope(system_prompt="You are a helpful assistant"):
-    # Run your agent logic here
-    request_human_intervention("Need clarification on user requirements")
+with client.trace_scope(system_prompt="You are a helpful assistant") as trace:
+    agent = MyAgent(system_prompt="You are a helpful assistant")
+    agent.run("Summarize this report")
+
+    otlp_trace = convert_smolagent_to_otlp(agent)
+    trace["spans"] = otlp_trace.get("spans", [])
 ```
 
-If you do not use Active Help Request, you can skip `trace_scope` and log the
-trace at the end as usual.
+**Advanced: manual trace ID + manual log**
+
+```python
+from tracebrain import TraceClient
+from tracebrain.sdk.trace_context import set_trace_id, get_trace_id
+from my_converters import convert_smolagent_to_otlp
+
+client = TraceClient(base_url="http://localhost:8000")
+set_trace_id("trace_123")
+
+agent = MyAgent(system_prompt="You are a helpful assistant")
+agent.run("Summarize this report")
+
+otlp_trace = convert_smolagent_to_otlp(agent)
+otlp_trace["trace_id"] = get_trace_id() or "trace_123"
+client.log_trace(otlp_trace)
+```
 
 ### Agent Tools (Experience Retrieval + Active Help Request)
 
