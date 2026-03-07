@@ -25,9 +25,21 @@ export function spanGetUsage(span: Span) {
 
 export function spanGetInput(span: Span) {
   const type = spanGetType(span);
-  return type === "llm_inference"
-    ? span?.attributes["tracebrain.llm.new_content"]
-    : span?.attributes["tracebrain.tool.input"];
+  const value =
+    type === "llm_inference"
+      ? span?.attributes["tracebrain.llm.new_content"]
+      : span?.attributes["tracebrain.tool.input"];
+  if (value === null || value === undefined) {
+    return value;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 export function spanGetOutput(span: Span) {
