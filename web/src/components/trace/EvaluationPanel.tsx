@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { ExpandLess, ExpandMore, ErrorOutline } from "@mui/icons-material";
 import type { Trace } from "../../types/trace";
-import { traceGetEvaluation, traceGetPriority } from "../utils/traceUtils";
+import { traceGetEvaluation, traceGetLatestFeedback, traceGetPriority } from "../utils/traceUtils";
 import { evaluateTrace, submitTraceFeedback } from "../utils/api";
 import StatusChip from "../shared/StatusChip";
 import { useSettings } from "../../contexts/SettingsContext";
@@ -41,6 +41,8 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
   const [evalError, setEvalError] = useState<string>("");
   const [showEvalError, setShowEvalError] = useState(false);
 
+  const feedback = traceGetLatestFeedback(trace!);
+
   const { settings } = useSettings();
 
   const evaluation = useMemo(() => {
@@ -51,15 +53,18 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
   const aiRating = typeof evaluation?.rating === "number" ? evaluation.rating : null;
   const aiFeedback = typeof evaluation?.feedback === "string" ? evaluation.feedback : "";
   const aiConfidence = typeof evaluation?.confidence === "number" ? evaluation.confidence : null;
-  const aiStatus = typeof evaluation?.status === "string" ? evaluation.status : null;
+  const [localStatus, setLocalStatus] = useState<string | null>(null);
+  const aiStatus =
+    localStatus ?? (typeof evaluation?.status === "string" ? evaluation.status : null);
 
   useEffect(() => {
     setSubmitError("");
     setSuccessOpen(false);
-    setExpertRating(aiRating);
-    setPriority(trace ? traceGetPriority(trace) : 3)
-    setExpertComment(aiFeedback);
+    setExpertRating(feedback ? feedback.rating : aiRating);
+    setPriority(trace ? traceGetPriority(trace) : 3);
+    setExpertComment(feedback ? feedback.comment : aiFeedback);
     setEvalError("");
+    setLocalStatus(null)
     setShowEvalError(false);
   }, [trace?.trace_id]);
 
@@ -84,6 +89,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     try {
       await submitTraceFeedback(trace.trace_id, expertRating, expertComment, priority);
       setSuccessOpen(true);
+      setLocalStatus("completed");
     } catch (error: any) {
       setSubmitError(error?.message || "Failed to submit validation.");
     } finally {

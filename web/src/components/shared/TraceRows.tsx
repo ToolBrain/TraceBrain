@@ -1,19 +1,13 @@
 import React from "react";
-import {
-  Box,
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-  Typography,
-} from "@mui/material";
-import { Flag, Layers, Token } from "@mui/icons-material";
+import { Box, Table, TableBody, TableCell, TableRow, Typography } from "@mui/material";
+import { Flag, Layers, Star, Token } from "@mui/icons-material";
 import type { Trace } from "../../types/trace";
 import {
   traceGetDuration,
   traceGetErrorType,
   traceGetEvaluation,
   traceGetPriority,
+  traceGetRating,
   traceGetStartTime,
   traceGetStatus,
   traceGetTotalTokens,
@@ -58,6 +52,7 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
           const totalTokens = traceGetTotalTokens(trace) ?? "N/A";
           const errorType = traceGetErrorType(trace);
           const evaluation = traceGetEvaluation(trace);
+          const rating = traceGetRating(trace);
           const confidence = evaluation?.confidence;
           const suggestion_status = evaluation?.status;
           const isAnalyzing = !evaluation;
@@ -83,9 +78,7 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                 </Typography>
               </TableCell>
               <TableCell>
-                <Box
-                  sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}
-                >
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                   <TypeChip type="trace" secondary />
 
                   <Typography
@@ -94,20 +87,13 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                     sx={{ display: "flex", alignItems: "center", gap: 1 }}
                   >
                     {/* Span Count */}
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 0.25 }}
-                    >
-                      <Layers
-                        fontSize="inherit"
-                        sx={{ color: "text.disabled" }}
-                      />
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
+                      <Layers fontSize="inherit" sx={{ color: "text.disabled" }} />
                       {trace.spans.length}
                     </Box>
 
                     {/* Priority */}
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 0.25 }}
-                    >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
                       <Flag
                         fontSize="inherit"
                         sx={{
@@ -117,14 +103,27 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                       {priority}
                     </Box>
 
+                    {/* Rating */}
+                    {rating > 0 ? (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.25,
+                        }}
+                      >
+                        <Star fontSize="inherit" sx={{ color: "warning.light" }} />
+                        {rating}
+                      </Box>
+                    ) : (
+                      <Typography variant="caption" color="text.disabled">
+                        -
+                      </Typography>
+                    )}
+
                     {/* Token Usage */}
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 0.25 }}
-                    >
-                      <Token
-                        fontSize="inherit"
-                        sx={{ color: "text.disabled" }}
-                      />
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
+                      <Token fontSize="inherit" sx={{ color: "text.disabled" }} />
                       {totalTokens}
                     </Box>
                   </Typography>

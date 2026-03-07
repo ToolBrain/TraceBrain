@@ -515,12 +515,11 @@ class BaseStorageBackend:
             )
 
             if not self.is_sqlite:
-                q = q.order_by(Trace.created_at.desc()).offset(skip).limit(limit)
+                q = q.offset(skip).limit(limit)
                 if include_spans:
                     q = q.options(selectinload(Trace.spans))
                 return q.all()
 
-            q = q.order_by(Trace.created_at.desc())
             if include_spans:
                 q = q.options(selectinload(Trace.spans))
             traces = q.all()
@@ -573,15 +572,30 @@ class BaseStorageBackend:
         start_time: Optional[datetime],
         end_time: Optional[datetime],
     ):
-        q = session.query(Trace)
+        root_span_times = (
+            session.query(
+                Span.trace_id.label("trace_id"),
+                func.min(Span.start_time).label("root_start_time"),
+            )
+            .filter(Span.parent_id.is_(None))
+            .group_by(Span.trace_id)
+            .subquery()
+        )
+
+        event_time = func.coalesce(root_span_times.c.root_start_time, Trace.created_at)
+
+        q = (
+            session.query(Trace)
+            .outerjoin(root_span_times, root_span_times.c.trace_id == Trace.id)
+        )
         if query:
             q = q.filter(Trace.id.ilike(f"%{query}%"))
         if status:
             q = q.filter(Trace.status == status)
         if start_time:
-            q = q.filter(Trace.created_at >= start_time)
+            q = q.filter(event_time >= start_time)
         if end_time:
-            q = q.filter(Trace.created_at <= end_time)
+            q = q.filter(event_time <= end_time)
 
         if not self.is_sqlite:
             if min_rating is not None:
@@ -596,11 +610,16 @@ class BaseStorageBackend:
                     q = q.filter(conf_value >= min_confidence)
                 if max_confidence is not None:
                     q = q.filter(conf_value <= max_confidence)
-            return q
+            return q.order_by(event_time.desc())
 
         traces = q.all()
         if min_rating is None and error_type is None and min_confidence is None and max_confidence is None:
-            return session.query(Trace).filter(Trace.id.in_([t.id for t in traces]))
+            return (
+                session.query(Trace)
+                .outerjoin(root_span_times, root_span_times.c.trace_id == Trace.id)
+                .filter(Trace.id.in_([t.id for t in traces]))
+                .order_by(event_time.desc())
+            )
 
         filtered_ids: List[str] = []
         for trace in traces:
@@ -636,7 +655,12 @@ class BaseStorageBackend:
         if not filtered_ids:
             return session.query(Trace).filter(text("1=0"))
 
-        return session.query(Trace).filter(Trace.id.in_(filtered_ids))
+        return (
+            session.query(Trace)
+            .outerjoin(root_span_times, root_span_times.c.trace_id == Trace.id)
+            .filter(Trace.id.in_(filtered_ids))
+            .order_by(event_time.desc())
+        )
 
     def get_traces_by_ids(self, trace_ids: List[str], include_spans: bool = False) -> List[Trace]:
         """Get traces by a list of trace IDs."""        

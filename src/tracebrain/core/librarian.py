@@ -310,7 +310,7 @@ class LibrarianAgent:
             "### YOUR TASK:\n"
             "1. Analyze the User Question and explain politely that no traces currently match those specific criteria.\n"
             "2. Identify potential reasons for the empty result (e.g., a time range that is too narrow, a specific error code that hasn't occurred, or a tool name typo).\n"
-            "3. Provide 3-4 ACTIONABLE suggestions to help the user find what they need. These should be formatted as direct questions or commands the user can click.\n\n"
+            "3. Provide 2-3 ACTIONABLE suggestions to help the user find what they need. These should be formatted as direct questions or commands the user can click.\n\n"
             "### SUGGESTION GUIDELINES:\n"
             "- 'Broaden Time': Suggest looking back further (e.g., last 7 days).\n"
             "- 'Relax Filters': If they asked for errors, suggest looking for all traces of that tool.\n"

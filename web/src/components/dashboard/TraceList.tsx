@@ -17,26 +17,21 @@ import {
   KeyboardArrowDown,
   KeyboardArrowRight,
   Layers,
+  Star,
   Token,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import type { Trace } from "../../types/trace";
 import React from "react";
-import {
-  spanGetDuration,
-  spanGetOutput,
-  spanHasError,
-} from "../utils/spanUtils";
-import StatusChip, {
-  ALLOWED_STATUSES,
-  type ChipStatus,
-} from "../shared/StatusChip";
+import { spanGetDuration, spanGetOutput, spanHasError } from "../utils/spanUtils";
+import StatusChip, { ALLOWED_STATUSES, type ChipStatus } from "../shared/StatusChip";
 import {
   traceGetDuration,
   traceGetErrorType,
   traceGetEvaluation,
   traceGetPriority,
+  traceGetRating,
   traceGetStartTime,
   traceGetStatus,
   traceGetTotalTokens,
@@ -77,11 +72,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
     });
   };
 
-  const handleSpanClick = (
-    traceId: string,
-    spanId: string,
-    e: React.MouseEvent,
-  ) => {
+  const handleSpanClick = (traceId: string, spanId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     nav(`/trace/${traceId}?span=${spanId}`);
   };
@@ -110,25 +101,13 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
             }}
           >
             <TableCell sx={{ width: "2%", fontWeight: 600 }}></TableCell>
-            <TableCell sx={{ width: "10%", fontWeight: 600 }}>
-              Timestamp
-            </TableCell>
-            <TableCell sx={{ width: "13%", fontWeight: 600 }}>
-              Details
-            </TableCell>
+            <TableCell sx={{ width: "10%", fontWeight: 600 }}>Timestamp</TableCell>
+            <TableCell sx={{ width: "13%", fontWeight: 600 }}>Details</TableCell>
             <TableCell sx={{ width: "10%", fontWeight: 600 }}>Status</TableCell>
-            <TableCell sx={{ width: "10%", fontWeight: 600 }}>
-              Error Type
-            </TableCell>
-            <TableCell sx={{ width: "10%", fontWeight: 600 }}>
-              Duration
-            </TableCell>
-            <TableCell sx={{ width: "15%", fontWeight: 600 }}>
-              Trace ID
-            </TableCell>
-            <TableCell sx={{ width: "15%", fontWeight: 600 }}>
-              AI Confidence
-            </TableCell>
+            <TableCell sx={{ width: "10%", fontWeight: 600 }}>Error Type</TableCell>
+            <TableCell sx={{ width: "10%", fontWeight: 600 }}>Duration</TableCell>
+            <TableCell sx={{ width: "15%", fontWeight: 600 }}>Trace ID</TableCell>
+            <TableCell sx={{ width: "15%", fontWeight: 600 }}>AI Confidence</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -141,10 +120,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
           ) : null}
           {traces.length === 0 ? (
             <TableRow>
-              <TableCell
-                colSpan={8}
-                sx={{ textAlign: "center", py: 4, color: "text.secondary" }}
-              >
+              <TableCell colSpan={8} sx={{ textAlign: "center", py: 4, color: "text.secondary" }}>
                 No traces found.
               </TableCell>
             </TableRow>
@@ -157,6 +133,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
               const priority = traceGetPriority(trace);
               const totalTokens = traceGetTotalTokens(trace) ?? "N/A";
               const errorType = traceGetErrorType(trace);
+              const rating = traceGetRating(trace);
 
               const evaluation = traceGetEvaluation(trace);
               const confidence = evaluation?.confidence;
@@ -183,11 +160,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                           toggleTrace(trace.trace_id);
                         }}
                       >
-                        {isExpanded ? (
-                          <KeyboardArrowDown />
-                        ) : (
-                          <KeyboardArrowRight />
-                        )}
+                        {isExpanded ? <KeyboardArrowDown /> : <KeyboardArrowRight />}
                       </IconButton>
                     </TableCell>
                     <TableCell>
@@ -221,10 +194,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                               gap: 0.25,
                             }}
                           >
-                            <Layers
-                              fontSize="inherit"
-                              sx={{ color: "text.disabled" }}
-                            />
+                            <Layers fontSize="inherit" sx={{ color: "text.disabled" }} />
                             {trace.spans.length}
                           </Box>
 
@@ -245,6 +215,24 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                             {priority}
                           </Box>
 
+                          {/* Rating */}
+                          {rating > 0 ? (
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.25,
+                              }}
+                            >
+                              <Star fontSize="inherit" sx={{ color: "warning.light" }} />
+                              {rating}
+                            </Box>
+                          ) : (
+                            <Typography variant="caption" color="text.disabled">
+                              -
+                            </Typography>
+                          )}
+
                           {/* Token Usage */}
                           <Box
                             sx={{
@@ -253,10 +241,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                               gap: 0.25,
                             }}
                           >
-                            <Token
-                              fontSize="inherit"
-                              sx={{ color: "text.disabled" }}
-                            />
+                            <Token fontSize="inherit" sx={{ color: "text.disabled" }} />
                             {totalTokens}
                           </Box>
                         </Typography>
@@ -270,19 +255,13 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                       {errorType && errorType !== "none" ? (
                         <ErrorTypeChip errorType={errorType} />
                       ) : (
-                        <Typography
-                          variant="body2"
-                          sx={{ color: "text.disabled" }}
-                        >
+                        <Typography variant="body2" sx={{ color: "text.disabled" }}>
                           —
                         </Typography>
                       )}
                     </TableCell>
                     <TableCell>
-                      <Typography
-                        variant="body2"
-                        sx={{ fontFamily: "monospace" }}
-                      >
+                      <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
                         {duration.toFixed(2)}s
                       </Typography>
                     </TableCell>
@@ -313,10 +292,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                     <TableCell sx={{ p: 0, border: 0 }} colSpan={8}>
                       <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                         <Box sx={{ bgcolor: "action.hover" }}>
-                          <Table
-                            size="small"
-                            sx={{ width: "100%", tableLayout: "fixed" }}
-                          >
+                          <Table size="small" sx={{ width: "100%", tableLayout: "fixed" }}>
                             <colgroup>
                               <col style={{ width: "2%" }} />
                               <col style={{ width: "10%" }} />
@@ -330,18 +306,15 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                             <TableBody>
                               {trace.spans.map((span) => {
                                 const spanDuration = spanGetDuration(span);
-                                const spanStatus: "success" | "error" =
-                                  spanHasError(span) ? "error" : "success";
+                                const spanStatus: "success" | "error" = spanHasError(span)
+                                  ? "error"
+                                  : "success";
 
                                 return (
                                   <TableRow
                                     key={span.span_id}
                                     onClick={(e) =>
-                                      handleSpanClick(
-                                        trace.trace_id,
-                                        span.span_id,
-                                        e,
-                                      )
+                                      handleSpanClick(trace.trace_id, span.span_id, e)
                                     }
                                     sx={{
                                       cursor: "pointer",
@@ -364,10 +337,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                                       </Typography>
                                     </TableCell>
                                     <TableCell>
-                                      <Typography
-                                        variant="body2"
-                                        sx={{ fontSize: "0.875rem" }}
-                                      >
+                                      <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                                         {span.name}
                                       </Typography>
                                       <Typography
@@ -384,10 +354,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                                       </Typography>
                                     </TableCell>
                                     <TableCell>
-                                      <StatusChip
-                                        status={spanStatus}
-                                        secondary
-                                      />
+                                      <StatusChip status={spanStatus} secondary />
                                     </TableCell>
                                     <TableCell></TableCell>
                                     <TableCell>

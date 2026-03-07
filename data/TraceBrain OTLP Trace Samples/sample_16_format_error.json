@@ -16,6 +16,8 @@
       "span_id": "0000000000000201",
       "parent_id": null,
       "name": "LLM Inference",
+      "start_time": "2025-11-26T11:45:30.000Z",
+      "end_time": "2025-11-26T11:45:31.200Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Add 5 and 10\"}]",

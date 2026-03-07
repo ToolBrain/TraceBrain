@@ -444,6 +444,16 @@ tracebrain-tracing/
 ├── src/
 │   ├── tracebrain/          # Main package
 │   │   ├── api/v1/                 # FastAPI REST endpoints
+│   │   │   ├── ai_features.py      # AI evaluation + librarian endpoints
+│   │   │   ├── api_router.py       # Main v1 router
+│   │   │   ├── common.py           # Shared store/helpers
+│   │   │   ├── curriculum.py       # Curriculum endpoints
+│   │   │   ├── episodes.py         # Episode endpoints
+│   │   │   ├── operations.py       # Ops + analytics endpoints
+│   │   │   ├── system.py           # Root, health, settings, history
+│   │   │   ├── traces.py           # Trace endpoints
+│   │   │   └── schemas/            # Shared Pydantic models
+│   │   │       └── api_models.py
 │   │   ├── core/                   # TraceStore, schema, agent logic
 │   │   ├── db/                     # Database session management
 │   │   ├── sdk/                    # Client SDK
