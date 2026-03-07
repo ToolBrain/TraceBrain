@@ -75,6 +75,9 @@ interface ErrorTypeChipProps {
 const ErrorTypeChip: React.FC<ErrorTypeChipProps> = ({ errorType, secondary = false }) => {
   const styles = ERROR_TYPE_STYLES[errorType];
 
+  if (!styles) {
+    return null;
+  }
   return (
     <Chip
       label={styles.label}

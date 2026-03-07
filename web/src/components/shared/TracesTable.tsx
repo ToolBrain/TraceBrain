@@ -11,13 +11,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import {
-  Flag,
-  KeyboardArrowDown,
-  KeyboardArrowRight,
-  Layers,
-  Token,
-} from "@mui/icons-material";
+import { Flag, KeyboardArrowDown, KeyboardArrowRight, Layers, Star, Token } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import type { Trace } from "../../types/trace";
 import SpanRows from "./SpanRows";
@@ -26,6 +20,7 @@ import {
   traceGetErrorType,
   traceGetEvaluation,
   traceGetPriority,
+  traceGetRating,
   traceGetStartTime,
   traceGetStatus,
   traceGetTotalTokens,
@@ -46,6 +41,7 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
   const totalTokens = traceGetTotalTokens(trace) ?? "N/A";
   const errorType = traceGetErrorType(trace);
   const evaluation = traceGetEvaluation(trace);
+  const rating = traceGetRating(trace);
   const confidence = evaluation?.confidence;
   const suggestion_status = evaluation?.status;
   const isAnalyzing = !evaluation;
@@ -55,7 +51,7 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
       <TableRow
         hover
         onClick={() => nav(`/trace/${trace.trace_id}`)}
-        sx={{ cursor: "pointer" }}
+        sx={{ cursor: "pointer", "& > td": { p: 1.75 } }}
       >
         <TableCell>
           <IconButton
@@ -122,6 +118,24 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
                 {priority}
               </Box>
 
+              {/* Rating */}
+              {rating > 0 ? (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.25,
+                  }}
+                >
+                  <Star fontSize="inherit" sx={{ color: "warning.light" }} />
+                  {rating}
+                </Box>
+              ) : (
+                <Typography variant="caption" color="text.disabled">
+                  -
+                </Typography>
+              )}
+              
               {/* Token Usage */}
               <Box
                 sx={{

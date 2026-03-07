@@ -92,3 +92,47 @@ def export_curriculum(
         return export_data
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+@router.delete("/{task_id}", tags=["Curriculum"])
+def delete_curriculum_task(task_id: int):
+    """Delete a single curriculum task by ID."""
+    try:
+        deleted = store.delete_curriculum_task(task_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return Response(status_code=204)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("", tags=["Curriculum"])
+def delete_all_curriculum_tasks():
+    """Delete all curriculum tasks."""
+    try:
+        store.delete_all_curriculum_tasks()
+        return Response(status_code=204)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/{task_id}/complete", response_model=CurriculumTaskOut, tags=["Curriculum"])
+def mark_curriculum_task_complete(task_id: int):
+    """Mark a single curriculum task as complete."""
+    try:
+        task = store.mark_curriculum_task_complete(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return task
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/complete", tags=["Curriculum"])
+def mark_all_curriculum_tasks_complete():
+    """Mark all curriculum tasks as complete."""
+    try:
+        store.mark_all_curriculum_tasks_complete()
+        return Response(status_code=204)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

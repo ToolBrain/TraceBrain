@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  Paper,
-  Stack,
-  Typography,
-  TextField,
-  IconButton,
-  Fab,
-  Divider,
-} from "@mui/material";
+import { Paper, Stack, Typography, TextField, IconButton, Fab, Divider } from "@mui/material";
 import { Send, ChatBubble, Remove, DeleteOutline } from "@mui/icons-material";
 import { useChat } from "../../contexts/ChatContext";
 import { ChatMessages } from "./ChatMessages";
@@ -17,8 +9,7 @@ import { AssistantAvatar } from "./Icons";
 export const Librarian: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
-  const { messages, suggestions, isLoading, sendMessage, clearMessages } =
-    useChat();
+  const { messages, suggestions, isLoading, sendMessage, clearMessages, clearSuggestions } = useChat();
   const [selectedSuggestion, setSelectedSuggestion] = useState(false);
 
   // Sends the message if input is not empty and clears the input
@@ -81,25 +72,18 @@ export const Librarian: React.FC = () => {
             spacing={2}
             sx={{
               p: 2,
-              bgcolor: "primary.main",
+              bgcolor: "primary.dark",
               color: "primary.contrastText",
             }}
           >
             <AssistantAvatar />
             <Stack flex={1}>
-              <Typography
-                variant="h6"
-                sx={{ fontWeight: 600, userSelect: "none" }}
-              >
+              <Typography variant="h6" sx={{ fontWeight: 600, userSelect: "none" }}>
                 TraceBrain Librarian
               </Typography>
             </Stack>
 
-            <IconButton
-              size="small"
-              onClick={handleClearSession}
-              sx={{ color: "inherit" }}
-            >
+            <IconButton size="small" onClick={handleClearSession} sx={{ color: "inherit" }}>
               <DeleteOutline />
             </IconButton>
 
@@ -119,6 +103,7 @@ export const Librarian: React.FC = () => {
             <ChatSuggestions
               suggestions={suggestions}
               onSuggestionClick={handleSuggestionClick}
+              onDismiss={clearSuggestions}
             />
           )}
 
@@ -136,7 +121,6 @@ export const Librarian: React.FC = () => {
               fullWidth
               placeholder="Type your message..."
               variant="outlined"
-              size="small"
               multiline
               maxRows={3}
               value={input}

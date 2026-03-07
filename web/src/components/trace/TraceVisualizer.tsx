@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Box } from "@mui/material";
 import TraceTree from "./TraceTree";
-import SpanDetails from "./SpanDetails";
 import type { Trace } from "../../types/trace";
 import { useSearchParams, useParams } from "react-router-dom";
+import SpanDetails from "./SpanDetails";
 
 interface TraceVisualizerProps {
   traces: Trace[];

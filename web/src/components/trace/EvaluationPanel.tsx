@@ -12,10 +12,13 @@ import {
   DialogContent,
   DialogActions,
   Collapse,
+  FormControl,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { ExpandLess, ExpandMore, ErrorOutline } from "@mui/icons-material";
 import type { Trace } from "../../types/trace";
-import { traceGetEvaluation } from "../utils/traceUtils";
+import { traceGetEvaluation, traceGetLatestFeedback, traceGetPriority } from "../utils/traceUtils";
 import { evaluateTrace, submitTraceFeedback } from "../utils/api";
 import StatusChip from "../shared/StatusChip";
 import { useSettings } from "../../contexts/SettingsContext";
@@ -27,6 +30,7 @@ interface EvaluationPanelProps {
 
 const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
   const [expertRating, setExpertRating] = useState<number | null>(null);
+  const [priority, setPriority] = useState<number>(trace ? traceGetPriority(trace) : 3);
   const [expertComment, setExpertComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -37,6 +41,8 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
   const [evalError, setEvalError] = useState<string>("");
   const [showEvalError, setShowEvalError] = useState(false);
 
+  const feedback = traceGetLatestFeedback(trace!);
+
   const { settings } = useSettings();
 
   const evaluation = useMemo(() => {
@@ -44,21 +50,21 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     return traceGetEvaluation(trace) ?? null;
   }, [trace]);
 
-  const aiRating =
-    typeof evaluation?.rating === "number" ? evaluation.rating : null;
-  const aiFeedback =
-    typeof evaluation?.feedback === "string" ? evaluation.feedback : "";
-  const aiConfidence =
-    typeof evaluation?.confidence === "number" ? evaluation.confidence : null;
+  const aiRating = typeof evaluation?.rating === "number" ? evaluation.rating : null;
+  const aiFeedback = typeof evaluation?.feedback === "string" ? evaluation.feedback : "";
+  const aiConfidence = typeof evaluation?.confidence === "number" ? evaluation.confidence : null;
+  const [localStatus, setLocalStatus] = useState<string | null>(null);
   const aiStatus =
-    typeof evaluation?.status === "string" ? evaluation.status : null;
+    localStatus ?? (typeof evaluation?.status === "string" ? evaluation.status : null);
 
   useEffect(() => {
     setSubmitError("");
     setSuccessOpen(false);
-    setExpertRating(aiRating);
-    setExpertComment(aiFeedback);
+    setExpertRating(feedback ? feedback.rating : aiRating);
+    setPriority(trace ? traceGetPriority(trace) : 3);
+    setExpertComment(feedback ? feedback.comment : aiFeedback);
     setEvalError("");
+    setLocalStatus(null)
     setShowEvalError(false);
   }, [trace?.trace_id]);
 
@@ -81,8 +87,9 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     setSubmitting(true);
     setSubmitError("");
     try {
-      await submitTraceFeedback(trace.trace_id, expertRating, expertComment);
+      await submitTraceFeedback(trace.trace_id, expertRating, expertComment, priority);
       setSuccessOpen(true);
+      setLocalStatus("completed");
     } catch (error: any) {
       setSubmitError(error?.message || "Failed to submit validation.");
     } finally {
@@ -95,8 +102,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
   const matchesAISuggestion =
     !!evaluation && expertRating === aiRating && expertComment === aiFeedback;
 
-  const hasEdited =
-    !!evaluation && (expertRating !== aiRating || expertComment !== aiFeedback);
+  const hasEdited = !!evaluation && (expertRating !== aiRating || expertComment !== aiFeedback);
 
   const renderAIAssessment = () => {
     // If currently evaluating
@@ -134,8 +140,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
             Evaluation Failed
           </Typography>
           <Typography variant="body2" color="text.secondary" align="center">
-            Something went wrong while generating the evaluation. Please try
-            again.
+            Something went wrong while generating the evaluation. Please try again.
           </Typography>
           <Collapse in={showEvalError} sx={{ width: "60%" }}>
             <Alert
@@ -155,11 +160,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
             </Alert>
           </Collapse>
           <Box sx={{ display: "flex", gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => setShowEvalError((p) => !p)}
-            >
+            <Button variant="outlined" size="small" onClick={() => setShowEvalError((p) => !p)}>
               {showEvalError ? "Hide" : "Show"} Details
             </Button>
             <Button variant="contained" size="small" onClick={handleEvaluate}>
@@ -236,7 +237,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
         </Box>
 
         {aiStatus && (
-          <Box>
+          <Box sx={{ mt: 1 }}>
             <StatusChip status={aiStatus} />
           </Box>
         )}
@@ -382,6 +383,22 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
                 />
               </Box>
 
+              {/* Priority */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Priority
+                </Typography>
+                <FormControl size="small">
+                  <Select value={priority} onChange={(e) => setPriority(Number(e.target.value))}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <MenuItem key={n} value={n}>
+                        {n}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+              
               <Box>
                 <Typography variant="caption" color="text.secondary">
                   Comment

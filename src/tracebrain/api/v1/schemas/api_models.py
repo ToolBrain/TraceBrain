@@ -109,6 +109,7 @@ class FeedbackIn(BaseModel):
     comment: Optional[str] = Field(None, description="Text comment or feedback")
     tags: Optional[List[str]] = Field(None, description="Tags for categorizing feedback")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    priority: Optional[int] = Field(None, description="The priority of the trace from 1-5")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -153,6 +154,7 @@ class NaturalLanguageResponse(BaseModel):
     session_id: str = Field(..., description="Conversation session ID")
     suggestions: Optional[List[Suggestion]] = Field(default_factory=list)
     sources: List[str] = Field(default_factory=list, description="Trace IDs referenced in the answer")
+    filters: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Filters extracted from the query")
 
 
 class ChatMessageOut(BaseModel):

@@ -41,22 +41,16 @@ if __name__ == "__main__":
     if not client.health_check():
         print("\n❌ TraceBrain Tracing server is not running. Please run 'tracebrain-trace up' first.")
     else:
-        # 3. Run the agent as usual
-        # NOTE: If your agent uses request_human_intervention (Active Help Request),
-        # wrap the run in trace_scope so the help signal is attached to a trace_id.
-        # Example:
-        # with client.trace_scope(system_prompt=my_agent.instructions):
-        #     my_agent.run(query)
+        # 3. Run the agent inside trace_scope so tool calls attach to a trace_id.
+        # This is required for Active Help Request and recommended for all runs.
         query = "What is the stock price of NVDA?"
         print(f"\n--- Running agent for query: '{query}' ---")
-        my_agent.run(query)
+        with client.trace_scope(system_prompt=my_agent.instructions) as trace:
+            my_agent.run(query)
 
-        # 4. Convert results from agent's memory to OTLP
-        otlp_trace_data = convert_smolagent_to_otlp(my_agent, query)
+            # 4. Convert results from agent's memory to OTLP and attach spans
+            otlp_trace_data = convert_smolagent_to_otlp(my_agent, query)
+            trace["spans"] = otlp_trace_data.get("spans", [])
 
-        # 5. Send the converted trace to TraceStore
-        print("\n--- Logging trace to TraceStore ---")
-        client.log_trace(otlp_trace_data)
-
-        # 6. Check results on UI
+        # 5. Check results on UI
         print("\n🎉 Process complete! Check the Trace Explorer UI.")

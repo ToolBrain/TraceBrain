@@ -2,6 +2,7 @@ export interface MessageContent {
   answer: string;
   suggestions?: Suggestion[];
   sources?: string[];
+  filters?: Record<string, any>;
 }
 
 export interface Message {
@@ -25,6 +26,7 @@ interface SendMessageResponse {
   answer: string;
   suggestions: Suggestion[];
   sources?: string[];
+  filters?: Record<string, any>;
 }
 
 export class ChatEngine {
@@ -90,7 +92,8 @@ export class ChatEngine {
       sessionId: data.session_id,
       answer: data.answer,
       suggestions: data.suggestions || [],
-      sources: data.sources || undefined,
+      sources: data.sources,
+      filters: data.filters,
     };
   }
 
@@ -120,6 +123,7 @@ export class ChatEngine {
         answer: response.answer,
         suggestions: response.suggestions,
         sources: response.sources,
+        filters: response.filters,
       },
     };
   }

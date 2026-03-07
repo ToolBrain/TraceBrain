@@ -8,6 +8,7 @@ interface ChatContextType {
   isLoading: boolean;
   sendMessage: (content: string) => Promise<void>;
   clearMessages: () => void;
+  clearSuggestions: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -83,6 +84,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     chatEngine.clearSessionStorage();
   }
 
+  function clearSuggestions() {
+    setSuggestions([]);
+  }
+
   return (
     <ChatContext.Provider
       value={{
@@ -91,6 +96,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         isLoading,
         sendMessage,
         clearMessages,
+        clearSuggestions,
       }}
     >
       {children}

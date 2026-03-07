@@ -5,10 +5,10 @@ import {
   ExpandMore,
   ErrorOutline,
   CheckCircleOutline,
-  Schedule,
 } from "@mui/icons-material";
 import type { Span, Trace } from "../../types/trace";
 import { spanGetDuration, spanHasError } from "../utils/spanUtils";
+import { formatDuration } from "../utils/utils";
 
 interface SelectedSpan {
   traceId: string;
@@ -121,9 +121,8 @@ const TraceTree: React.FC<TraceTreeProps> = ({
             {span.name}
           </Typography>
 
-          <Schedule fontSize="small" sx={{ fontSize: "1rem", mr: 0.5 }} />
           <Typography variant="caption" color="text.secondary">
-            {spanGetDuration(span)}
+            {formatDuration(parseFloat(spanGetDuration(span)))}
           </Typography>
         </Box>
 
@@ -164,7 +163,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
           alignItems: "center",
         }}
       >
-        <Typography variant="h5">Traces</Typography>
+        <Typography variant="h5">Trace Details</Typography>
       </Box>
 
       <Box sx={{ flex: 1, overflowY: "auto" }}>

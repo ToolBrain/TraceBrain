@@ -284,9 +284,14 @@ class GeminiProvider(BaseProvider):
                         type=self.genai.protos.Type.OBJECT,
                         properties={
                             key: self.genai.protos.Schema(
-                                type=self.genai.protos.Type.INTEGER
-                                if val.get("type") == "integer"
-                                else self.genai.protos.Type.STRING,
+                                type=(
+                                    self.genai.protos.Type.INTEGER if val.get("type") == "integer"
+                                    else self.genai.protos.Type.NUMBER if val.get("type") == "number"
+                                    else self.genai.protos.Type.BOOLEAN if val.get("type") == "boolean"
+                                    else self.genai.protos.Type.ARRAY if val.get("type") == "array"
+                                    else self.genai.protos.Type.OBJECT if val.get("type") == "object"
+                                    else self.genai.protos.Type.STRING
+                                ),
                                 description=val.get("description", ""),
                             )
                             for key, val in (tool.get("parameters") or {}).get("properties", {}).items()

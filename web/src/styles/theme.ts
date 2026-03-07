@@ -23,6 +23,7 @@ export const createAppTheme = (themeMode: "light" | "dark") => {
   const customScrollbar = {
     "::-webkit-scrollbar": {
       width: "8px",
+      height: "8px",
     },
     "::-webkit-scrollbar-track": {
       backgroundColor: theme.palette.background.paper,
@@ -40,6 +41,11 @@ export const createAppTheme = (themeMode: "light" | "dark") => {
   return createTheme({
     ...theme,
     components: {
+      MuiTextField: {
+        defaultProps: {
+          size: "small",
+        },
+      },
       MuiButton: {
         styleOverrides: {
           root: { textTransform: "none" },
