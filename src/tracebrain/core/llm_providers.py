@@ -56,22 +56,25 @@ class OpenAIProvider(BaseProvider):
         self.model = model
 
     def start_chat(self, system_instruction: str, tools: List[Dict[str, Any]]):
-        messages = [{"role": "system", "content": system_instruction}]
-        return {"messages": messages, "tools": tools}
+        return {"system": system_instruction, "messages": [], "tools": tools}
+
+    def _send_response(self, session):
+        response = self.client.responses.create(
+            model=self.model,
+            instructions=session.get("system"),
+            input=session["messages"],
+            tools=[{"type": "function", "function": tool} for tool in session.get("tools", [])],
+            temperature=self.temperature,
+            max_output_tokens=self.max_tokens,
+        )
+        output_text = getattr(response, "output_text", None)
+        if isinstance(output_text, str) and output_text:
+            session["messages"].append({"role": "assistant", "content": output_text})
+        return response
 
     def send_user_message(self, session, content: str):
         session["messages"].append({"role": "user", "content": content})
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=session["messages"],
-            tools=[{"type": "function", "function": tool} for tool in session.get("tools", [])],
-            tool_choice="auto" if session.get("tools") else None,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-        )
-        message = response.choices[0].message
-        session["messages"].append(message.model_dump())
-        return response
+        return self._send_response(session)
 
     def send_tool_result(self, session, tool_name: str, tool_result: str, tool_call_id: Optional[str]):
         tool_message = {
@@ -82,36 +85,38 @@ class OpenAIProvider(BaseProvider):
         if tool_call_id:
             tool_message["tool_call_id"] = tool_call_id
         session["messages"].append(tool_message)
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=session["messages"],
-            tools=[{"type": "function", "function": tool} for tool in session.get("tools", [])],
-            tool_choice="auto" if session.get("tools") else None,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-        )
-        message = response.choices[0].message
-        session["messages"].append(message.model_dump())
-        return response
+        return self._send_response(session)
 
     def extract_text(self, response) -> str:
-        return response.choices[0].message.content or ""
+        output_text = getattr(response, "output_text", None)
+        if isinstance(output_text, str):
+            return output_text
+        return ""
 
     def extract_tool_calls(self, response) -> List[Dict[str, Any]]:
-        message = response.choices[0].message
-        tool_calls = message.tool_calls or []
+        output_items = getattr(response, "output", None) or []
         result: List[Dict[str, Any]] = []
-        for call in tool_calls:
-            args_raw = call.function.arguments or "{}"
+        for item in output_items:
+            item_type = getattr(item, "type", None) or item.get("type")
+            if item_type not in {"tool_call", "function_call"}:
+                continue
+            name = getattr(item, "name", None) or item.get("name")
+            args_raw = (
+                getattr(item, "arguments", None)
+                or item.get("arguments")
+                or getattr(item, "args", None)
+                or item.get("args")
+                or "{}"
+            )
             try:
-                args = json.loads(args_raw)
+                args = json.loads(args_raw) if isinstance(args_raw, str) else dict(args_raw)
             except json.JSONDecodeError:
                 args = {}
             result.append(
                 {
-                    "name": call.function.name,
+                    "name": name,
                     "args": args,
-                    "id": call.id,
+                    "id": getattr(item, "id", None) or item.get("id"),
                 }
             )
         return result
@@ -169,6 +174,8 @@ class AnthropicProvider(BaseProvider):
         return response
 
     def send_tool_result(self, session, tool_name: str, tool_result: str, tool_call_id: Optional[str]):
+        if not isinstance(tool_result, str):
+            tool_result = json.dumps(tool_result)
         session["messages"].append(
             {
                 "role": "user",
@@ -205,6 +212,8 @@ class AnthropicProvider(BaseProvider):
 
     def extract_tool_calls(self, response) -> List[Dict[str, Any]]:
         parts = response.content or []
+        if not parts:
+            return []
         result: List[Dict[str, Any]] = []
         for part in parts:
             if getattr(part, "type", None) == "tool_use":
@@ -264,61 +273,95 @@ class GeminiProvider(BaseProvider):
     def __init__(self, api_key: Optional[str], model: str):
         super().__init__()
         try:
-            import google.generativeai as genai
+            from google import genai
+            from google.genai import types
         except ImportError as exc:
-            raise ProviderError("google-generativeai not available") from exc
+            raise ProviderError("google-genai not available") from exc
         if not api_key:
             raise ProviderError("LLM_API_KEY is required for gemini")
-        genai.configure(api_key=api_key)
-        self.genai = genai
+        self.client = genai.Client(api_key=api_key)
+        self.types = types
         self.model_name = model
+
+    def _to_schema_type(self, json_type: Optional[str]):
+        if json_type == "integer":
+            return self.types.Type.INTEGER
+        if json_type == "number":
+            return self.types.Type.NUMBER
+        if json_type == "boolean":
+            return self.types.Type.BOOLEAN
+        if json_type == "array":
+            return self.types.Type.ARRAY
+        if json_type == "object":
+            return self.types.Type.OBJECT
+        return self.types.Type.STRING
+
+    def _build_schema(self, schema: Dict[str, Any]) -> Dict[str, Any]:
+        schema_type = schema.get("type") or "object"
+        if schema_type == "array":
+            items = schema.get("items") or {}
+            return {
+                "type": "array",
+                "items": self._build_schema(items),
+                "description": schema.get("description", ""),
+            }
+        if schema_type == "object":
+            properties = {
+                key: self._build_schema(val or {})
+                for key, val in (schema.get("properties") or {}).items()
+            }
+            return {
+                "type": "object",
+                "properties": properties,
+                "required": schema.get("required") or [],
+                "description": schema.get("description", ""),
+            }
+        return {
+            "type": schema_type,
+            "description": schema.get("description", ""),
+        }
 
     def start_chat(self, system_instruction: str, tools: List[Dict[str, Any]]):
         tool_decls = []
         for tool in tools:
+            schema = self._build_schema(tool.get("parameters") or {"type": "object"})
             tool_decls.append(
-                self.genai.protos.FunctionDeclaration(
+                self.types.FunctionDeclaration(
                     name=tool["name"],
                     description=tool.get("description") or "",
-                    parameters=self.genai.protos.Schema(
-                        type=self.genai.protos.Type.OBJECT,
-                        properties={
-                            key: self.genai.protos.Schema(
-                                type=(
-                                    self.genai.protos.Type.INTEGER if val.get("type") == "integer"
-                                    else self.genai.protos.Type.NUMBER if val.get("type") == "number"
-                                    else self.genai.protos.Type.BOOLEAN if val.get("type") == "boolean"
-                                    else self.genai.protos.Type.ARRAY if val.get("type") == "array"
-                                    else self.genai.protos.Type.OBJECT if val.get("type") == "object"
-                                    else self.genai.protos.Type.STRING
-                                ),
-                                description=val.get("description", ""),
-                            )
-                            for key, val in (tool.get("parameters") or {}).get("properties", {}).items()
-                        },
-                        required=(tool.get("parameters") or {}).get("required") or [],
-                    ),
+                    parameters_json_schema=schema,
                 )
             )
-        model = self.genai.GenerativeModel(
-            model_name=self.model_name,
-            tools=tool_decls,
-            system_instruction=system_instruction,
+        tools_config = (
+            [self.types.Tool(function_declarations=tool_decls)] if tool_decls else None
         )
-        chat = model.start_chat()
+        config = self.types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            tools=tools_config,
+            temperature=self.temperature,
+            tool_config=self.types.ToolConfig(
+                function_calling_config=self.types.FunctionCallingConfig(mode="AUTO")
+            ),
+        )
+        chat = self.client.chats.create(model=self.model_name, config=config)
         return {"chat": chat}
 
     def send_user_message(self, session, content: str):
         return session["chat"].send_message(content)
 
     def send_tool_result(self, session, tool_name: str, tool_result: str, tool_call_id: Optional[str]):
+        try:
+            parsed_result = json.loads(tool_result)
+        except Exception:
+            parsed_result = {"result": tool_result}
         return session["chat"].send_message(
-            self.genai.protos.Content(
+            self.types.Content(
+                role="tool",
                 parts=[
-                    self.genai.protos.Part(
-                        function_response=self.genai.protos.FunctionResponse(
+                    self.types.Part(
+                        function_response=self.types.FunctionResponse(
                             name=tool_name,
-                            response={"result": tool_result},
+                            response=parsed_result,
                         )
                     )
                 ]
@@ -340,10 +383,15 @@ class GeminiProvider(BaseProvider):
         return "".join(parts_text).strip()
 
     def extract_tool_calls(self, response) -> List[Dict[str, Any]]:
-        if not response.candidates or not response.candidates[0].content.parts:
+        candidates = getattr(response, "candidates", None)
+        if not candidates:
+            return []
+        content = getattr(candidates[0], "content", None)
+        parts = getattr(content, "parts", None)
+        if not parts:
             return []
         tool_calls: List[Dict[str, Any]] = []
-        for part in response.candidates[0].content.parts:
+        for part in parts:
             if hasattr(part, "function_call") and part.function_call:
                 function_call = part.function_call
                 tool_calls.append(

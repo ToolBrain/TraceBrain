@@ -3,7 +3,8 @@
 import json
 import re
 import uuid
-from typing import Dict
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List
 
 from smolagents import CodeAgent
 
@@ -144,6 +145,149 @@ def convert_smolagent_to_otlp(agent: CodeAgent, query: str) -> Dict:
         "trace_id": trace_id,
         "attributes": {
             TraceBrainAttributes.SYSTEM_PROMPT: agent.initialize_system_prompt(),
+            TraceBrainAttributes.EPISODE_ID: episode_id,
+        },
+        "spans": spans,
+    }
+
+    print(f"Conversion complete. Created a trace with {len(spans)} spans.")
+    return otlp_trace
+
+
+def convert_langchain_to_otlp(messages: list, system_prompt: str = "") -> Dict:
+    """
+    Convert LangChain messages to a TraceBrain OTLP trace.
+    """
+    print("\n--- Converting LangChain messages to OTLP Trace ---")
+
+    trace_id = uuid.uuid4().hex
+    episode_id = f"ep-{uuid.uuid4().hex[:8]}"
+    spans: List[Dict[str, Any]] = []
+    parent_id: str | None = None
+
+    tool_call_names: Dict[str, str] = {}
+    tool_call_args: Dict[str, Any] = {}
+    offset_ms = 0
+
+    def _next_time() -> str:
+        nonlocal offset_ms
+        now = datetime.now(timezone.utc) + timedelta(milliseconds=offset_ms)
+        offset_ms += 5
+        return now.isoformat().replace("+00:00", "Z")
+
+    def _serialize_message(role: str, content: Any, tool_calls: Any = None) -> str:
+        payload: Dict[str, Any] = {"role": role, "content": content}
+        if tool_calls:
+            payload["tool_calls"] = tool_calls
+        return json.dumps([payload], ensure_ascii=True)
+        return json.dumps(payload, ensure_ascii=True)
+
+    def _format_tool_call(call: Dict[str, Any]) -> str:
+        name = str(call.get("name") or "unknown")
+        args = call.get("args") or {}
+        try:
+            args_text = json.dumps(args, ensure_ascii=True)
+        except TypeError:
+            args_text = json.dumps(str(args), ensure_ascii=True)
+        return f"{name}({args_text})"
+
+    for msg in messages:
+        msg_type = getattr(msg, "type", None) or msg.__class__.__name__.lower()
+        content = getattr(msg, "content", "")
+
+        if "human" in msg_type:
+            span_id = uuid.uuid4().hex[:16]
+            span = {
+                "span_id": span_id,
+                "parent_id": parent_id,
+                "name": "LLM Inference",
+                "start_time": _next_time(),
+                "end_time": _next_time(),
+                "attributes": {
+                    TraceBrainAttributes.SPAN_TYPE: SpanType.LLM_INFERENCE,
+                    TraceBrainAttributes.LLM_NEW_CONTENT: _serialize_message("user", content),
+                },
+            }
+            spans.append(span)
+            parent_id = span_id
+            continue
+
+        if "ai" in msg_type:
+            tool_calls = getattr(msg, "tool_calls", None) or []
+            tool_code = None
+            thought = None
+            final_answer = None
+
+            if tool_calls:
+                for call in tool_calls:
+                    call_id = call.get("id")
+                    call_name = call.get("name")
+                    call_args = call.get("args")
+                    if call_id and call_name:
+                        tool_call_names[str(call_id)] = str(call_name)
+                        tool_call_args[str(call_id)] = call_args
+                tool_code = "; ".join(_format_tool_call(call) for call in tool_calls)
+                thought = content or None
+            else:
+                final_answer = content
+
+            span_id = uuid.uuid4().hex[:16]
+            new_content = _serialize_message(
+                "assistant",
+                content,
+                tool_calls if tool_calls else None,
+            )
+            span = {
+                "span_id": span_id,
+                "parent_id": parent_id,
+                "name": "LLM Inference",
+                "start_time": _next_time(),
+                "end_time": _next_time(),
+                "attributes": {
+                    TraceBrainAttributes.SPAN_TYPE: SpanType.LLM_INFERENCE,
+                    TraceBrainAttributes.LLM_NEW_CONTENT: new_content,
+                    TraceBrainAttributes.LLM_COMPLETION: content,
+                    TraceBrainAttributes.LLM_THOUGHT: thought,
+                    TraceBrainAttributes.LLM_TOOL_CODE: tool_code,
+                    TraceBrainAttributes.LLM_FINAL_ANSWER: final_answer,
+                },
+            }
+            spans.append(span)
+            parent_id = span_id
+            continue
+
+        if "tool" in msg_type:
+            tool_name = getattr(msg, "name", None)
+            if not tool_name:
+                call_id = getattr(msg, "tool_call_id", None)
+                tool_name = tool_call_names.get(str(call_id), "unknown") if call_id else "unknown"
+            tool_input = None
+            call_id = getattr(msg, "tool_call_id", None)
+            if call_id is not None:
+                tool_input = tool_call_args.get(str(call_id))
+
+            span_id = uuid.uuid4().hex[:16]
+            span = {
+                "span_id": span_id,
+                "parent_id": parent_id,
+                "name": f"Tool Execution: {tool_name}",
+                "start_time": _next_time(),
+                "end_time": _next_time(),
+                "attributes": {
+                    TraceBrainAttributes.SPAN_TYPE: SpanType.TOOL_EXECUTION,
+                    TraceBrainAttributes.TOOL_NAME: tool_name,
+                    TraceBrainAttributes.TOOL_INPUT: tool_input,
+                    TraceBrainAttributes.TOOL_OUTPUT: content,
+                },
+            }
+            spans.append(span)
+            parent_id = span_id
+            continue
+
+    otlp_trace = {
+        "trace_id": trace_id,
+        "attributes": {
+            TraceBrainAttributes.SYSTEM_PROMPT: system_prompt,
             TraceBrainAttributes.EPISODE_ID: episode_id,
         },
         "spans": spans,

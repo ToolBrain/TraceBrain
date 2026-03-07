@@ -2,39 +2,36 @@
 # Install with: pip install -r tracebrain/requirements.txt
 
 # Core database ORM
-sqlalchemy>=2.0.0
+sqlalchemy>=2.0,<3
 
 # PostgreSQL driver
-psycopg2-binary>=2.9.0
+psycopg2-binary>=2.9
 
 # REST API framework
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
+fastapi>=0.104,<1
+uvicorn[standard]>=0.24,<1
+pydantic>=2,<3
+pydantic-settings>=2,<3
 
 # CLI framework
-typer>=0.9.0
+typer>=0.24,<1
 
 # HTTP client for tools
-requests>=2.31.0
+requests>=2.31,<3
 
 # SQL parsing for read-only enforcement
-sqlparse>=0.5.5
+sqlparse>=0.5
 
 # Vector search
-pgvector>=0.2.5
+pgvector>=0.2
 
-# Mounting config files 
-platformdirs 
+# Mounting config files
+platformdirs>=4
 
-# Optional: local embeddings (install only if EMBEDDING_PROVIDER=local)
-# sentence-transformers>=2.7.0
-
-# Optional: for SQLite JSON support enhancements
-# (SQLite comes with Python, no installation needed)
+# Optional: local embeddings
+# sentence-transformers>=2.7
 
 # Optional: AI providers
-google-generativeai>=0.3.0
-openai>=1.0.0
-anthropic>=0.30.0
+google-genai>=1.60,<2
+openai>=2.26,<3
+anthropic>=0.34,<1

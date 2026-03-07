@@ -81,15 +81,23 @@ class CloudEmbeddingProvider(BaseEmbeddingProvider):
             logger.warning("Missing EMBEDDING_API_KEY for Gemini embeddings")
             return []
         try:
-            import google.generativeai as genai
+            from google import genai
+            from google.genai import types
 
-            genai.configure(api_key=settings.EMBEDDING_API_KEY)
-            response = genai.embed_content(
-                model=self._resolve_model(),
-                content=text,
-                task_type="retrieval_query",
+            client = genai.Client(api_key=settings.EMBEDDING_API_KEY)
+            task_type_enum = getattr(types, "TaskType", None)
+            task_type_value = (
+                task_type_enum.RETRIEVAL_QUERY if task_type_enum else "RETRIEVAL_QUERY"
             )
-            return response.get("embedding", [])
+            response = client.models.embed_content(
+                model=self._resolve_model(),
+                contents=text,
+                config=types.EmbedContentConfig(task_type=task_type_value),
+            )
+            embeddings = getattr(response, "embeddings", None) or []
+            if embeddings:
+                return embeddings[0].values or []
+            return []
         except Exception as exc:
             logger.warning("Gemini embedding failed: %s", exc)
             return []

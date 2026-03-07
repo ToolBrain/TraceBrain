@@ -1,4 +1,4 @@
-# my_agent_project/run_my_agent.py
+# my_agent_project/run_smol_agent.py
 
 # --- User's own imports ---
 from smolagents import CodeAgent, tool, TransformersModel
