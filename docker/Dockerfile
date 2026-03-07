@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
 COPY data/ ./data/
+COPY scripts/ ./scripts/
 
 # Copy frontend build artifacts into static directory
 COPY --from=frontend-builder /app/web/dist /app/src/tracebrain/static
