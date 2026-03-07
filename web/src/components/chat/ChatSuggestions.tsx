@@ -8,7 +8,6 @@ interface ChatSuggestionsProps {
   onSuggestionClick: (value: string) => void;
   onDismiss: () => void;
 }
-const MAX_SUGGESTIONS = 2;
 
 export const ChatSuggestions: React.FC<ChatSuggestionsProps> = ({
   suggestions,
@@ -42,7 +41,7 @@ export const ChatSuggestions: React.FC<ChatSuggestionsProps> = ({
         </IconButton>
       </Stack>
       <Stack spacing={0.5}>
-        {suggestions.slice(0, MAX_SUGGESTIONS).map((suggestion, index) => (
+        {suggestions.map((suggestion, index) => (
           <Box
             key={index}
             onClick={() => onSuggestionClick(suggestion.value)}

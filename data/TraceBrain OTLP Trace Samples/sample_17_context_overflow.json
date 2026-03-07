@@ -16,6 +16,8 @@
       "span_id": "0000000000000301",
       "parent_id": null,
       "name": "LLM Inference (Truncated)",
+      "start_time": "2025-11-27T09:55:00.000Z",
+      "end_time": "2025-11-27T09:55:01.500Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Summarize everything we discussed.\"}]",

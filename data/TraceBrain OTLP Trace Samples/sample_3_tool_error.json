@@ -16,6 +16,8 @@
       "span_id": "3001a2b3c4d5e6f7",
       "parent_id": null,
       "name": "LLM Inference (Tool Call)",
+      "start_time": "2025-11-22T14:05:10.000Z",
+      "end_time": "2025-11-22T14:05:11.800Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Find the total sales for product ID 'XYZ-123'.\"}]",
@@ -33,6 +35,8 @@
       "span_id": "3002b3c4d5e6f7a8",
       "parent_id": "3001a2b3c4d5e6f7",
       "name": "Tool Execution: query_sales_db (ERROR)",
+      "start_time": "2025-11-22T14:05:11.850Z",
+      "end_time": "2025-11-22T14:05:12.200Z",
       "attributes": {
         "tracebrain.span.type": "tool_execution",
         "tracebrain.tool.name": "query_sales_db",
@@ -46,6 +50,8 @@
       "span_id": "3003c4d5e6f7a8b9",
       "parent_id": "3002b3c4d5e6f7a8",
       "name": "LLM Inference (Final Answer with Error)",
+      "start_time": "2025-11-22T14:05:12.350Z",
+      "end_time": "2025-11-22T14:05:13.100Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"query_sales_db\", \"arguments\": {\"product_id\": \"XYZ-123\"}, \"id\": \"call_jkl012\"}]}, {\"role\": \"tool\", \"content\": \"Error: Connection to database failed. Timeout expired.\", \"tool_call_id\": \"call_jkl012\"}]",

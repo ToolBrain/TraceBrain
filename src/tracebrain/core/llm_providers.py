@@ -326,7 +326,18 @@ class GeminiProvider(BaseProvider):
         )
 
     def extract_text(self, response) -> str:
-        return response.text
+        text = getattr(response, "text", None)
+        if isinstance(text, str) and text.strip():
+            return text.strip()
+
+        parts_text: List[str] = []
+        for candidate in getattr(response, "candidates", []) or []:
+            content = getattr(candidate, "content", None)
+            for part in getattr(content, "parts", []) or []:
+                part_text = getattr(part, "text", None)
+                if part_text:
+                    parts_text.append(str(part_text))
+        return "".join(parts_text).strip()
 
     def extract_tool_calls(self, response) -> List[Dict[str, Any]]:
         if not response.candidates or not response.candidates[0].content.parts:

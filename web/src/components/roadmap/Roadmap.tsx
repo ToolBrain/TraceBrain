@@ -145,6 +145,13 @@ const Roadmap: React.FC = () => {
           severity: "warning",
           key: Date.now(),
         });
+      } else {
+        setSnackbar({
+          open: true,
+          message: `${result.tasks_generated} task${result.tasks_generated === 1 ? "" : "s"} generated`,
+          severity: "success",
+          key: Date.now(),
+        });
       }
     } catch (error) {
       console.error("Error generating curriculum:", error);
@@ -484,7 +491,8 @@ const Roadmap: React.FC = () => {
         <DialogTitle>Delete All Tasks?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            You are about to permanently delete all <Box component="span" sx={{ fontWeight: "bold" }}>
+            You are about to permanently delete all{" "}
+            <Box component="span" sx={{ fontWeight: "bold" }}>
               {tasks.length} task{tasks.length !== 1 ? "s" : ""}
             </Box>
             . This cannot be recovered.
