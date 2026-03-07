@@ -54,12 +54,21 @@ export function parseLLMContent(newContent: string): {
   subtitle: string;
   content: string;
 } {
-  const parsed = JSON.parse(newContent);
-  const lastItem = parsed[parsed.length - 1];
-  return {
-    subtitle: lastItem.role,
-    content: lastItem.content,
-  };
+  try {
+    const parsed = JSON.parse(newContent);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const lastItem = parsed[parsed.length - 1];
+      if (lastItem && typeof lastItem === "object") {
+        return {
+          subtitle: String(lastItem.role ?? ""),
+          content: String(lastItem.content ?? ""),
+        };
+      }
+    }
+  } catch {
+    // Fallback to raw content when parsing fails.
+  }
+  return { subtitle: "", content: newContent };
 }
 
 export const getConfidenceColor = (
