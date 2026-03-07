@@ -136,38 +136,49 @@ class LibrarianAgent:
         ai_rating = TraceBrainAttributes.AI_RATING.value
         ai_status = TraceBrainAttributes.AI_STATUS.value
         ai_feedback = TraceBrainAttributes.AI_FEEDBACK.value
+        ai_error_type = TraceBrainAttributes.AI_ERROR_TYPE.value
         span_type = TraceBrainAttributes.SPAN_TYPE.value
         tool_name = TraceBrainAttributes.TOOL_NAME.value
+        from tracebrain.core.curator import CurriculumCurator
+        valid_error_types = ", ".join(sorted(CurriculumCurator.VALID_ERROR_TYPES))
 
         dialect = self._detect_dialect()
 
         if dialect == "sqlite":
             json_examples = (
-                "JSON usage examples (SQLite json_extract):\n"
-                f"- json_extract(spans.attributes, '$.\"{ span_type}\"')\n"
-                f"- json_extract(spans.attributes, '$.\"{tool_name}\"')\n"
-                "- json_extract(spans.attributes, '$.\"otel.status_code\"')\n"
-                "- json_extract(traces.feedback, '$.\"rating\"')\n"
-                f"- json_extract(traces.attributes, '$.\"{ai_eval_key}\".{ai_conf}')\n\n"
-                "Advanced SQL examples:\n"
-                f"- Uncertainty query: SELECT id FROM traces WHERE CAST(json_extract(attributes, '$.\"{ai_eval_key}\".{ai_conf}') AS REAL) < 0.5\n"
-                f"- Feedback search: SELECT id FROM traces WHERE json_extract(attributes, '$.\"{ai_eval_key}\".{ai_feedback}') LIKE '%loop%'\n"
-                "- Time filter: created_at > datetime('now', '-24 hours')\n"
-                "- Metadata join: spans.trace_id = traces.id\n"
+                "### FEW-SHOT EXAMPLES (Translate User Intent to SQLite):\n"
+                "User: \"Find all traces from the last 24 hours with high evaluation uncertainty\"\n"
+                f"SQL: SELECT id FROM traces WHERE CAST(json_extract(attributes, '$.\"{ai_eval_key}\".\"{ai_conf}\"') AS REAL) < 0.5 AND created_at > datetime('now', '-24 hours');\n\n"
+                
+                "User: \"Show me traces that failed due to a logic loop\"\n"
+                f"SQL: SELECT id FROM traces WHERE json_extract(attributes, '$.\"{ai_eval_key}\".\"{ai_error_type}\"') = 'logic_loop';\n\n"
+                
+                "User: \"Find traces where the AI feedback mentions the word 'loop'\"\n"
+                f"SQL: SELECT id FROM traces WHERE json_extract(attributes, '$.\"{ai_eval_key}\".\"{ai_feedback}\"') LIKE '%loop%';\n\n"
+                
+                "User: \"What is the average rating of traces using the get_market_cap tool?\"\n"
+                f"SQL: SELECT AVG(CAST(json_extract(traces.attributes, '$.\"{ai_eval_key}\".\"{ai_rating}\"') AS INTEGER)) FROM traces JOIN spans ON traces.id = spans.trace_id WHERE json_extract(spans.attributes, '$.\"{tool_name}\"') = 'get_market_cap';\n\n"
+
+                "User: \"List tool execution spans for a specific trace\"\n"
+                f"SQL: SELECT span_id, name FROM spans WHERE trace_id = 'trace_123' AND json_extract(attributes, '$.\"{span_type}\"') = 'tool_execution';\n"
             )
         else:
             json_examples = (
-                "JSONB usage examples (use ->> for text comparisons):\n"
-                f"- spans.attributes->>'{span_type}'\n"
-                f"- spans.attributes->>'{tool_name}'\n"
-                "- spans.attributes->>'otel.status_code'\n"
-                "- traces.feedback->>'rating'\n"
-                f"- traces.attributes->'{ai_eval_key}'->>'{ai_conf}'\n\n"
-                "Advanced SQL examples:\n"
-                f"- Uncertainty query: SELECT id FROM traces WHERE (attributes->'{ai_eval_key}'->>'{ai_conf}')::float < 0.5\n"
-                f"- Feedback search: SELECT id FROM traces WHERE attributes->'{ai_eval_key}'->>'{ai_feedback}' ILIKE '%loop%'\n"
-                "- Time filter: created_at > now() - interval '24 hours'\n"
-                "- Metadata join: spans.trace_id = traces.id\n"
+                "### FEW-SHOT EXAMPLES (Translate User Intent to PostgreSQL):\n"
+                "User: \"Find all traces from the last 24 hours with high evaluation uncertainty\"\n"
+                f"SQL: SELECT id FROM traces WHERE (attributes->'{ai_eval_key}'->>'{ai_conf}')::float < 0.5 AND created_at > now() - interval '24 hours';\n\n"
+                
+                "User: \"Show me traces that failed due to a logic loop\"\n"
+                f"SQL: SELECT id FROM traces WHERE attributes->'{ai_eval_key}'->>'{ai_error_type}' = 'logic_loop';\n\n"
+                
+                "User: \"Find traces where the AI feedback mentions the word 'loop'\"\n"
+                f"SQL: SELECT id FROM traces WHERE attributes->'{ai_eval_key}'->>'{ai_feedback}' ILIKE '%loop%';\n\n"
+                
+                "User: \"What is the average rating of traces using the get_market_cap tool?\"\n"
+                f"SQL: SELECT AVG((traces.attributes->'{ai_eval_key}'->>'{ai_rating}')::int) FROM traces JOIN spans ON traces.id = spans.trace_id WHERE spans.attributes->>'{tool_name}' = 'get_market_cap';\n\n"
+
+                "User: \"List tool execution spans for a specific trace\"\n"
+                f"SQL: SELECT span_id, name FROM spans WHERE trace_id = 'trace_123' AND spans.attributes->>'{span_type}' = 'tool_execution';\n"
             )
 
         return (
@@ -177,6 +188,8 @@ class LibrarianAgent:
             "- system_prompt (text)\n"
             "- episode_id (string)\n"
             "- created_at (timestamp)\n"
+            "- status (string) - possible values: (running, completed, needs_review, failed)\n"
+            "- priority (integer, 1-5)\n"
             "- feedback (jsonb)\n"
             "- attributes (jsonb)\n\n"
             "Table: spans\n"
@@ -192,6 +205,7 @@ class LibrarianAgent:
             f"- traces.attributes contains '{ai_eval_key}' (JSON object)\n"
             f"  - '{ai_rating}': integer (1-5)\n"
             f"  - '{ai_conf}': float (0.0-1.0). High uncertainty is < 0.5\n"
+            f"  - '{ai_error_type}': string ({valid_error_types})\n"
             f"  - '{ai_status}': string (pending_review, auto_verified, completed)\n"
             f"  - '{ai_feedback}': string (AI rationale)\n\n"
             f"{json_examples}"
