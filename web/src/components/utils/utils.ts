@@ -83,3 +83,11 @@ export const getPriorityColor = (priority: number | null): string => {
 };
 
 export const toTitleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+
+export const formatDuration = (seconds: number): string => {
+  if (seconds < 0.01) return `${(seconds * 1000).toFixed(0)}ms`;
+  if (seconds < 60) return `${seconds.toFixed(2)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = (seconds % 60).toFixed(0);
+  return `${m}m ${s}s`;
+};

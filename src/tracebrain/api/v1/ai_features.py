@@ -80,6 +80,7 @@ def natural_language_query(query: NaturalLanguageQuery):
             session_id=session_id,
             suggestions=result.get("suggestions", []),
             sources=normalized_sources,
+            filters=result.get("filters", {}),
         )
 
     except Exception as exc:
@@ -91,6 +92,7 @@ def natural_language_query(query: NaturalLanguageQuery):
             session_id=session_id,
             suggestions=[],
             sources=[],
+            filters={},
         )
 
 

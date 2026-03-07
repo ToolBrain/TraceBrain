@@ -81,21 +81,19 @@ const TraceFiltersPanel: React.FC<TraceFiltersPanelProps> = ({ filters, onChange
   const activeDatePreset = (() => {
     if (!filters.startTime || !filters.endTime) return null;
     const end = new Date(filters.endTime);
+    const now = new Date();
+    if (Math.abs(end.getTime() - now.getTime()) > 5 * 60 * 1000) return null;
     const start = new Date(filters.startTime);
     const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     return DATE_PRESETS.find((p) => p.days === diffDays)?.label ?? null;
   })();
 
   const applyPreset = (days: number) => {
-    if (days === 0) {
-      const today = new Date().toISOString().slice(0, 10);
-      set({ startTime: today, endTime: today });
-    } else {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(end.getDate() - days);
-      set({ startTime: start.toISOString().slice(0, 10), endTime: end.toISOString().slice(0, 10) });
-    }
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - days);
+    start.setHours(0, 0, 0, 0);
+    set({ startTime: start.toISOString(), endTime: now.toISOString() });
   };
 
   return (
@@ -197,7 +195,6 @@ const TraceFiltersPanel: React.FC<TraceFiltersPanelProps> = ({ filters, onChange
           <TextField
             label="Min"
             type="number"
-            size="small"
             value={minRaw}
             onChange={(e) => setMinRaw(e.target.value)}
             slotProps={{
@@ -211,7 +208,6 @@ const TraceFiltersPanel: React.FC<TraceFiltersPanelProps> = ({ filters, onChange
           <TextField
             label="Max"
             type="number"
-            size="small"
             value={maxRaw}
             onChange={(e) => setMaxRaw(e.target.value)}
             slotProps={{
@@ -238,7 +234,7 @@ const TraceFiltersPanel: React.FC<TraceFiltersPanelProps> = ({ filters, onChange
                     : "…"}
                   {" - "}
                   {filters.endTime
-                    ? new Date(filters.startTime).toLocaleDateString("en-GB", {
+                    ? new Date(filters.endTime).toLocaleDateString("en-GB", {
                         day: "numeric",
                         month: "short",
                         year: "numeric",
@@ -280,17 +276,15 @@ const TraceFiltersPanel: React.FC<TraceFiltersPanelProps> = ({ filters, onChange
             <TextField
               label="From"
               type="date"
-              size="small"
               value={filters.startTime?.slice(0, 10) ?? ""}
-              onChange={(e) => set({ startTime: e.target.value })}
+              onChange={(e) => set({ startTime: `${e.target.value}T00:00:00Z` })}
               slotProps={{ inputLabel: { shrink: true } }}
             />
             <TextField
               label="To"
               type="date"
-              size="small"
               value={filters.endTime?.slice(0, 10) ?? ""}
-              onChange={(e) => set({ endTime: e.target.value })}
+              onChange={(e) => set({ endTime: `${e.target.value}T23:59:59Z` })}
               slotProps={{ inputLabel: { shrink: true } }}
             />
           </Stack>

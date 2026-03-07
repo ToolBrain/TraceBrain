@@ -25,30 +25,69 @@ const DEBOUNCE_MS = 300;
 
 type ViewMode = "traces" | "episodes";
 
-const TraceExplorer: React.FC = () => {
-  const [searchParams] = useSearchParams();
+const TRACE_PARAM_MAP: { key: string; value: keyof TraceFilters; type?: "number" }[] = [
+  { key: "status", value: "status" },
+  { key: "error_type", value: "errorType" },
+  { key: "min_rating", value: "minRating", type: "number" },
+  { key: "min_confidence", value: "minConfidence", type: "number" },
+  { key: "max_confidence", value: "maxConfidence", type: "number" },
+  { key: "start_time", value: "startTime" },
+  { key: "end_time", value: "endTime" },
+];
 
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    const tab = searchParams.get("tab");
-    return tab === "episodes" ? "episodes" : "traces";
+const EPISODE_PARAM_MAP: { key: string; value: keyof EpisodeFilters; type?: "number" }[] = [
+  { key: "min_confidence_lt", value: "minConfidenceLt", type: "number" },
+];
+
+const traceFiltersFromParams = (params: URLSearchParams): TraceFilters => {
+  const patch: Partial<TraceFilters> = {};
+  TRACE_PARAM_MAP.forEach(({ key, value, type }) => {
+    const val = params.get(key);
+    if (val) (patch as any)[value] = type === "number" ? Number(val) : val;
   });
-  const [tracePage, setTracePage] = useState(0);
-  const [episodePage, setEpisodePage] = useState(0);
+  return { ...DEFAULT_TRACE_FILTERS, ...patch };
+};
+
+const episodeFiltersFromParams = (params: URLSearchParams): EpisodeFilters => {
+  const patch: Partial<EpisodeFilters> = {};
+  EPISODE_PARAM_MAP.forEach(({ key, value, type }) => {
+    const val = params.get(key);
+    if (val) (patch as any)[value] = type === "number" ? Number(val) : val;
+  });
+  return { ...DEFAULT_EPISODE_FILTERS, ...patch };
+};
+
+const traceFiltersToParams = (filters: TraceFilters): Record<string, string | null> => {
+  const patch: Record<string, string | null> = {};
+  TRACE_PARAM_MAP.forEach(({ key, value }) => {
+    const val = filters[value];
+    patch[key] = val != null && String(val) !== "" ? String(val) : null;
+  });
+  return patch;
+};
+
+const episodeFiltersToParams = (filters: EpisodeFilters): Record<string, string | null> => {
+  const patch: Record<string, string | null> = {};
+  EPISODE_PARAM_MAP.forEach(({ key, value }) => {
+    const val = filters[value];
+    patch[key] = val != null && String(val) !== "" ? String(val) : null;
+  });
+  return patch;
+};
+
+const TraceExplorer: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const viewMode = (searchParams.get("type") === "episodes" ? "episodes" : "traces") as ViewMode;
+  const tracePage = Number(searchParams.get("page") ?? 0);
+  const episodePage = Number(searchParams.get("page") ?? 0);
   const currentPage = viewMode === "traces" ? tracePage : episodePage;
-  const setCurrentPage = viewMode === "traces" ? setTracePage : setEpisodePage;
+  const traceFilters = traceFiltersFromParams(searchParams);
+  const episodeFilters = episodeFiltersFromParams(searchParams);
+
   const [rowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-
-  const [traceFilters, setTraceFilters] = useState<TraceFilters>(() => ({
-    ...DEFAULT_TRACE_FILTERS,
-    ...Object.fromEntries(searchParams.entries()),
-  }));
-
-  const [episodeFilters, setEpisodeFilters] = useState<EpisodeFilters>(() => ({
-    ...DEFAULT_EPISODE_FILTERS,
-    ...Object.fromEntries(searchParams.entries()),
-  }));
 
   const [traces, setTraces] = useState<Trace[]>([]);
   const [totalTraces, setTotalTraces] = useState(0);
@@ -58,18 +97,29 @@ const TraceExplorer: React.FC = () => {
   const [totalEpisodes, setTotalEpisodes] = useState(0);
   const [episodesLoading, setEpisodesLoading] = useState(false);
 
+  const updateParams = (patch: Record<string, string | null>, resetPage = true) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      Object.entries(patch).forEach(([k, v]) => {
+        if (v == null || v === "") next.delete(k);
+        else next.set(k, v);
+      });
+      if (resetPage) next.set("page", "0");
+      return next;
+    }, { replace: true });
+  };
+
   // Debounce search query and reset pagination on change
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-      setTracePage(0);
-      setEpisodePage(0);
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
   // Fetches paginated traces
   useEffect(() => {
+    if (viewMode !== "traces") return;
     setTracesLoading(true);
     fetchTraces(tracePage * rowsPerPage, rowsPerPage, debouncedQuery || undefined, traceFilters)
       .then((data) => {
@@ -77,10 +127,11 @@ const TraceExplorer: React.FC = () => {
         setTotalTraces(data.total);
       })
       .finally(() => setTracesLoading(false));
-  }, [tracePage, rowsPerPage, debouncedQuery, traceFilters]);
+  }, [searchParams, debouncedQuery]);
 
   // Fetches paginated episodes
   useEffect(() => {
+    if (viewMode !== "episodes") return;
     setEpisodesLoading(true);
     fetchEpisodes(episodePage * rowsPerPage, rowsPerPage, debouncedQuery || undefined, episodeFilters)
       .then((data) => {
@@ -88,35 +139,30 @@ const TraceExplorer: React.FC = () => {
         setTotalEpisodes(data.total);
       })
       .finally(() => setEpisodesLoading(false));
-  }, [episodePage, rowsPerPage, debouncedQuery, episodeFilters]);
+  }, [searchParams, debouncedQuery]);
 
   const loading = viewMode === "traces" ? tracesLoading : episodesLoading;
   const currentTotal = viewMode === "traces" ? totalTraces : totalEpisodes;
 
   // Switches between different views
   const handleViewModeChange = (_: React.SyntheticEvent, newValue: ViewMode) => {
-    setViewMode(newValue);
+    updateParams({ type: newValue });
   };
 
   // Handles page change
   const handleChangePage = (_: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
-    setCurrentPage(newPage);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("page", String(newPage));
+      return next;
+    }, { replace: true });
   };
 
   // Resets pagination and refetches
   const handleRefresh = () => {
-    setTracePage(0);
-    setEpisodePage(0);
     setSearchQuery("");
+    updateParams({ page: "0" }, false);
   };
-
-  useEffect(() => {
-    setTracePage(0);
-  }, [traceFilters]);
-
-  useEffect(() => {
-    setEpisodePage(0);
-  }, [episodeFilters]);
 
   return (
     <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}>
@@ -159,7 +205,7 @@ const TraceExplorer: React.FC = () => {
             minHeight: 0,
           }}
         >
-          <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+          <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
             <Tabs value={viewMode} onChange={handleViewModeChange}>
               <Tab icon={<Timeline />} iconPosition="start" label="Traces" value="traces" />
               <Tab icon={<ViewList />} iconPosition="start" label="Episodes" value="episodes" />
@@ -187,8 +233,8 @@ const TraceExplorer: React.FC = () => {
             mode={viewMode}
             traceFilters={traceFilters}
             episodeFilters={episodeFilters}
-            onTraceFiltersChange={setTraceFilters}
-            onEpisodeFiltersChange={setEpisodeFilters}
+            onTraceFiltersChange={(filters) => updateParams({ ...traceFiltersToParams(filters), type: "traces" })}
+            onEpisodeFiltersChange={(filters) => updateParams({ ...episodeFiltersToParams(filters), type: "episodes" })}
           />
 
           <Box sx={{ flexGrow: 1, overflow: "auto", minHeight: 0 }}>

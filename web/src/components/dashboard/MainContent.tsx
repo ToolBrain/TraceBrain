@@ -174,12 +174,11 @@ const MainContent: React.FC<MainContentProps> = ({
         </FormControl>
 
         <Button
+          variant="outlined"
           onClick={onFetchTraces}
           size="small"
           sx={{
-            border: "2px solid",
-            borderColor: "gray",
-            borderRadius: "4px",
+            borderRadius: 1,
             height: "40px",
             "&:hover": {
               borderColor: "text.primary",
@@ -203,7 +202,7 @@ const MainContent: React.FC<MainContentProps> = ({
             )
           }
           sx={{
-            borderRadius: "4px",
+            borderRadius: 1,
             height: "40px",
             fontWeight: 600,
           }}
@@ -212,7 +211,6 @@ const MainContent: React.FC<MainContentProps> = ({
         </Button>
 
         <TextField
-          size="small"
           sx={{ width: "20%", maxWidth: 300, ml: "auto" }}
           placeholder="Search ID..."
           value={searchQuery}

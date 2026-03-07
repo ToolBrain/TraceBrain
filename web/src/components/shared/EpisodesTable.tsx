@@ -43,7 +43,7 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
       <TableRow
         hover
         onClick={() => nav(`/trace/${episode.episode_id}?type=episode`)}
-        sx={{ cursor: "pointer" }}
+        sx={{ cursor: "pointer", "& > td": { p: 1.75 } }}
       >
         <TableCell>
           <IconButton

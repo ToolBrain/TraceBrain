@@ -57,6 +57,10 @@ def root():
             "clear_history": "DELETE /api/v1/history",
             "get_settings": "GET /api/v1/settings",
             "save_settings": "POST /api/v1/settings",
+            "curriculum_delete_task": "DELETE /api/v1/curriculum/{task_id}",
+            "curriculum_delete_all": "DELETE /api/v1/curriculum",
+            "curriculum_complete_task": "PATCH /api/v1/curriculum/{task_id}/complete",
+            "curriculum_complete_all": "PATCH /api/v1/curriculum/complete",
         },
     }
 

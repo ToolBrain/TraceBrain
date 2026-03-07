@@ -599,18 +599,13 @@ class BaseStorageBackend:
 
         if not self.is_sqlite:
             if min_rating is not None:
-                rating_value = Trace.feedback["rating"].astext.cast(Integer)
+                rating_value = cast(Trace.feedback, JSONB)["rating"].astext.cast(Integer)
                 q = q.filter(rating_value >= min_rating)
             if error_type:
-                error_value = (
-                    Trace.attributes["tracebrain.ai_evaluation"]["error_type"].astext
-                )
+                error_value = cast(Trace.ai_evaluation, JSONB)["error_type"].astext
                 q = q.filter(error_value == error_type)
             if min_confidence is not None or max_confidence is not None:
-                conf_value = (
-                    Trace.attributes["tracebrain.ai_evaluation"]["confidence"].astext
-                    .cast(Float)
-                )
+                conf_value = cast(Trace.ai_evaluation, JSONB)["confidence"].astext.cast(Float)
                 if min_confidence is not None:
                     q = q.filter(conf_value >= min_confidence)
                 if max_confidence is not None:
@@ -738,7 +733,12 @@ class BaseStorageBackend:
             results = []
             for message in messages:
                 content = message.content
-                if not isinstance(content, dict):
+                if isinstance(content, str):
+                    try:
+                        content = json.loads(content)
+                    except (json.JSONDecodeError, TypeError):
+                        content = {"answer": content}
+                elif not isinstance(content, dict):
                     content = {"answer": str(content)}
                 results.append(
                     {
@@ -837,6 +837,11 @@ class BaseStorageBackend:
             trace = session.query(Trace).filter(Trace.id == trace_id).first()
             if not trace:
                 raise ValueError(f"Trace not found: {trace_id}")
+            
+            priority = feedback_data.pop("priority", None)
+            if priority is not None:
+                trace.priority = priority
+
             trace.feedback = feedback_data
             trace.status = TraceStatus.completed
             if isinstance(trace.attributes, dict):
@@ -952,6 +957,51 @@ class BaseStorageBackend:
                 }
                 for task in tasks
             ]
+        finally:
+            session.close()
+        
+    def delete_curriculum_task(self, task_id: int) -> bool:
+        """Delete a single curriculum task by ID. Returns False if not found."""
+        session = self.get_session()
+        try:
+            task = session.query(CurriculumTask).filter(CurriculumTask.id == task_id).first()
+            if not task:
+                return False
+            session.delete(task)
+            session.commit()
+            return True
+        finally:
+            session.close()
+
+    def delete_all_curriculum_tasks(self) -> None:
+        """Delete all curriculum tasks."""
+        session = self.get_session()
+        try:
+            session.query(CurriculumTask).delete()
+            session.commit()
+        finally:
+            session.close()
+
+    def mark_curriculum_task_complete(self, task_id: int) -> Optional[CurriculumTask]:
+        """Mark a single curriculum task as complete. Returns None if not found."""
+        session = self.get_session()
+        try:
+            task = session.query(CurriculumTask).filter(CurriculumTask.id == task_id).first()
+            if not task:
+                return None
+            task.status = "completed"
+            session.commit()
+            session.refresh(task)
+            return task
+        finally:
+            session.close()
+
+    def mark_all_curriculum_tasks_complete(self) -> None:
+        """Mark all curriculum tasks as complete."""
+        session = self.get_session()
+        try:
+            session.query(CurriculumTask).update({CurriculumTask.status: "completed"})
+            session.commit()
         finally:
             session.close()
 
