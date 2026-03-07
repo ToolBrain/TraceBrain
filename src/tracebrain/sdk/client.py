@@ -25,7 +25,6 @@ Usage:
 
 import logging
 import json
-import os
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List, Iterator
@@ -538,7 +537,7 @@ class TraceScope:
 
     def __init__(self, client: TraceClient, episode_id: Optional[str], system_prompt: str):
         self._client = client
-        self._previous_trace_id = os.getenv("TRACEBRAIN_TRACE_ID")
+        self._trace_token = None
         if not episode_id:
             episode_id = f"ep-{uuid.uuid4().hex[:8]}"
         self._trace_data: Dict[str, Any] = {
@@ -559,16 +558,16 @@ class TraceScope:
         )
         if initialized_id:
             self._trace_data["trace_id"] = initialized_id
-        os.environ["TRACEBRAIN_TRACE_ID"] = self._trace_data["trace_id"]
+        from .trace_context import set_trace_id
+        self._trace_token = set_trace_id(self._trace_data["trace_id"])
         return self._trace_data
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
         if exc_type is None:
             self._client.log_trace(self._trace_data)
-            if self._previous_trace_id is None:
-                os.environ.pop("TRACEBRAIN_TRACE_ID", None)
-            else:
-                os.environ["TRACEBRAIN_TRACE_ID"] = self._previous_trace_id
+            from .trace_context import reset_trace_id
+            if self._trace_token is not None:
+                reset_trace_id(self._trace_token)
             return False
 
         if exc_type is not None and issubclass(exc_type, ActiveHelpRequest):
@@ -589,10 +588,9 @@ class TraceScope:
             }
             self._trace_data.setdefault("spans", []).append(help_span)
             self._client.log_trace(self._trace_data)
-            if self._previous_trace_id is None:
-                os.environ.pop("TRACEBRAIN_TRACE_ID", None)
-            else:
-                os.environ["TRACEBRAIN_TRACE_ID"] = self._previous_trace_id
+            from .trace_context import reset_trace_id
+            if self._trace_token is not None:
+                reset_trace_id(self._trace_token)
             return True
 
         message = str(exc_val) if exc_val else "Unhandled exception"
@@ -610,10 +608,9 @@ class TraceScope:
         self._trace_data.setdefault("spans", []).append(crash_span)
         TraceClient._mark_failed_if_error(self._trace_data)
         self._client.log_trace(self._trace_data)
-        if self._previous_trace_id is None:
-            os.environ.pop("TRACEBRAIN_TRACE_ID", None)
-        else:
-            os.environ["TRACEBRAIN_TRACE_ID"] = self._previous_trace_id
+        from .trace_context import reset_trace_id
+        if self._trace_token is not None:
+            reset_trace_id(self._trace_token)
         return False
 
     @staticmethod

@@ -8,6 +8,8 @@ import os
 from typing import Any, Dict, Optional
 import requests
 
+from .trace_context import get_trace_id
+
 
 def tool(func):
     """Lightweight decorator to mark a function as a tool."""
@@ -67,11 +69,11 @@ def search_similar_traces(query: str, min_rating: int = 4, limit: int = 3) -> Di
 @tool
 def request_human_intervention(reason: str) -> Dict[str, Any]:
     """Escalate to the command center by flagging a trace for review."""
-    trace_id = os.getenv("TRACEBRAIN_TRACE_ID")
+    trace_id = get_trace_id()
     if not trace_id:
         return {
             "success": False,
-            "message": "trace_id is required to signal a trace. Set TRACEBRAIN_TRACE_ID.",
+            "message": "trace_id is required to signal a trace. Use trace_scope to set it.",
             "reason": reason,
         }
 

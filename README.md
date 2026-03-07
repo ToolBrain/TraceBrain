@@ -1,27 +1,27 @@
 # TraceBrain: An Open-Source Framework for Agentic Trace Management 🧠🚀
 
-**TraceBrain** is a comprehensive trace management platform purpose-built for the era of Agentic AI.
+**TraceBrain** is an open-source platform for collecting, managing, and analyzing execution traces from LLM agents.
 
-As AI agents become increasingly autonomous and operationally complex, TraceBrain provides the infrastructure to observe, govern, and continuously refine agentic workflows. Rather than serving as a passive logging system, it creates an active, closed-loop environment where execution traces are systematically collected, standardized, and converted into actionable insights.
+The system standardizes heterogeneous agent logs into a unified trace format, enabling consistent inspection, evaluation, and downstream analysis across different frameworks.
 
-This enables agents to learn from historical execution data while ensuring that human operators maintain visibility, oversight, and control.
+By organizing historical traces as structured artifacts, TraceBrain supports agent observability, human oversight, and iterative improvement of agent workflows.
 
 ## ✨ Key Features
 
 ### 📥 Ingestion Layer (Standardization)
-- **Unified Observability**: Capture agent workflows in a standardized OTLP format.
-- **Framework-Agnostic**: Simple SDK/CLI to integrate any agent (LangChain, SmolAgents, or custom).
-- **Delta-based Tracing**: Highly storage-efficient prompt tracking via `new_content` logic.
-
-### 🧠 Cognitive Layer (Self-Evolving)
-- **Experience Retrieval**: `search_past_experiences` tool for agents to perform Dynamic ICL using past successes.
-- **Curriculum Automation**: Automatically generate and export training tasks from failed traces.
-- **Semantic Search**: Powered by `pgvector` for finding similar reasoning patterns.
+- **Standardized Trace Format**: Capture agent workflows using a unified OTLP-based schema.
+- **Framework-Agnostic Integration**: Lightweight SDK and converters support agents built with various frameworks (e.g., LangChain, SmolAgents) or custom implementations.
+- **Delta-based Tracing**: Stores only incremental context updates (`new_content`) to reduce redundant prompt storage.
 
 ### 🛡️ Governance Layer (Human-in-the-loop)
-- **Active Help Request**: Real-time escalation tool for agents to signal uncertainty to human experts.
-- **Interactive Command Center**: Visualize complex multi-turn traces and provide expert feedback.
-- **Semi-Automated Evaluation**: AI Judge creates a draft evaluation automatically; experts verify and finalize.
+- **Active Help Request**: Allows agents to escalate uncertain decisions to human experts during execution.
+- **Command Center UI**: Visualize multi-step agent traces and enable expert inspection and feedback.
+- **Semi-Automated Evaluation**: An AI Judge generates draft evaluations (e.g., `rating`, `confidence`, `error_type`, and `feedback`) that experts can review and finalize.
+
+### 🧠 Cognitive Layer (Trace-driven Learning)
+- **Experience Retrieval**: Agents can query past successful trajectories to guide reasoning via in-context learning.
+- **Automated Curriculum Generation**: Using error classifications produced by the AI Judge, a Curator agent analyzes clustered failure traces and synthesizes targeted training tasks.
+- **Semantic Trace Search**: Vector-based retrieval (via `pgvector`) for locating similar reasoning trajectories.
 
 ## 🏗️ Architecture
 
@@ -37,7 +37,7 @@ This enables agents to learn from historical execution data while ensuring that 
 - **Database**: PostgreSQL (production), SQLite (development), pgvector (semantic search)
 - **Frontend**: React (Vite + MUI) in `web/`
 - **Deployment**: Docker Compose
-- **AI Integration**: LibrarianAgent + AI Judge with multi-provider LLM support
+- **AI Integration**: LibrarianAgent + AI Judge + Curriculum Curator with multi-provider LLM support
 - **Embeddings**: sentence-transformers (local) or OpenAI/Gemini (cloud)
 
 ## 🚀 Quick Start
@@ -52,8 +52,8 @@ This enables agents to learn from historical execution data while ensuring that 
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/TraceBrain/tracebrain-tracing.git
-   cd tracebrain-tracing
+   git clone https://github.com/ToolBrain/TraceBrain.git
+   cd TraceBrain
    ```
 
 2. **Start the services**
@@ -282,7 +282,10 @@ EMBEDDING_BASE_URL=https://your-endpoint/v1
 
 ## 🔌 Integration with Your Agent
 
-### Using the TraceStore Client
+### Using the TraceStore Client (read/query)
+
+This section focuses on read/query operations. For logging traces, see the
+`trace_scope` section below.
 
 ```python
 import json
@@ -290,13 +293,6 @@ import json
 from tracebrain.sdk.client import TraceClient
 
 client = TraceClient(base_url="http://localhost:8000")
-
-# Submit a trace
-client.log_trace({
-    "trace_id": "my-trace-001",
-    "spans": [...],  # Your OTLP spans
-    "feedback": {}
-})
 
 # Query traces
 traces = client.list_traces()
@@ -309,74 +305,61 @@ trace_items = [json.loads(line) for line in jsonl_payload.splitlines() if line.s
 
 # Reconstruct messages or turns from OTLP
 trace_data = client.get_trace("my-trace-001")
+
+# to_messages: rebuilds chat message list (role/content) from spans
 messages = TraceClient.to_messages(trace_data)
+# Example: messages[:2] -> [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
+
+# to_turns: groups messages into conversation turns for UI/analysis
 turns = TraceClient.to_turns(trace_data)
+# Example: turns[0] -> {"user": "...", "assistant": "..."}
+
+# to_tracebrain_turns: returns TraceBrain-native turn objects with metadata
 tracebrain_turns = TraceClient.to_tracebrain_turns(trace_data)
+# Example: tracebrain_turns[0] -> {"turn_id": "...", "messages": [...], "span_ids": [...]} 
 ```
 
-### Trace Init and trace_scope (for Active Help Request)
+### Trace Init and trace_scope (recommended for all runs)
 
-Use `trace_scope` when your agent might call `request_human_intervention` during
-execution. It pre-registers a trace via `/api/v1/traces/init` and sets
-`TRACEBRAIN_TRACE_ID` so the help signal attaches to the right trace.
+Use `trace_scope` for every agent run you plan to log. It pre-registers a trace
+via `/api/v1/traces/init`, sets the trace ID in a context-local store (safe for
+async and multi-thread usage), and uploads the trace when the scope exits. This
+is required if your agent might call `request_human_intervention` (Active Help
+Request) so the help signal is attached to the correct trace.
+
+**Recommended: use `trace_scope` (auto init + auto log)**
 
 ```python
 from tracebrain import TraceClient
-from tracebrain.sdk import request_human_intervention
+from my_converters import convert_smolagent_to_otlp
 
 client = TraceClient(base_url="http://localhost:8000")
 
-with client.trace_scope(system_prompt="You are a helpful assistant"):
-    # Run your agent logic here
-    request_human_intervention("Need clarification on user requirements")
+with client.trace_scope(system_prompt="You are a helpful assistant") as trace:
+    agent = MyAgent(system_prompt="You are a helpful assistant")
+    agent.run("Summarize this report")
+
+    otlp_trace = convert_smolagent_to_otlp(agent)
+    trace["spans"] = otlp_trace.get("spans", [])
 ```
 
-If you do not use Active Help Request, you can skip `trace_scope` and log the
-trace at the end as usual.
-e Init and trace_scope (for Active Help Request)
-ges = TraceClient.to_messages(trace_data)
-turns = TraceClient.to_turns(trace_data)
-tracebrain_turns = TraceClient.to_tracebrain_turns(trace_data)
-```
-
-### Trace Init and trace_scope (for Active Help Request)
-
-Use `trace_scope` when your agent might call `request_human_intervention` during
-execution. It pre-registers a trace via `/api/v1/traces/init` and sets
-`TRACEBRAIN_TRACE_ID` so the help signal attaches to the right trace.
+**Advanced: manual trace ID + manual log**
 
 ```python
 from tracebrain import TraceClient
-from tracebrain.sdk import request_human_intervention
+from tracebrain.sdk.trace_context import set_trace_id, get_trace_id
+from my_converters import convert_smolagent_to_otlp
 
 client = TraceClient(base_url="http://localhost:8000")
+set_trace_id("trace_123")
 
-with client.trace_scope(system_prompt="You are a helpful assistant"):
-    # Run your agent logic here
-    request_human_intervention("Need clarification on user requirements")
+agent = MyAgent(system_prompt="You are a helpful assistant")
+agent.run("Summarize this report")
+
+otlp_trace = convert_smolagent_to_otlp(agent)
+otlp_trace["trace_id"] = get_trace_id() or "trace_123"
+client.log_trace(otlp_trace)
 ```
-
-If you do not use Active Help Request, you can skip `trace_scope` and log the
-trace at the end as usual.
-e Init and trace_scope (for Active Help Request)
-
-Use `trace_scope` when your agent might call `request_human_intervention` during
-execution. It pre-registers a trace via `/api/v1/traces/init` and sets
-`TRACEBRAIN_TRACE_ID` so the help signal attaches to the right trace.
-
-```python
-from tracebrain import TraceClient
-from tracebrain.sdk import request_human_intervention
-
-client = TraceClient(base_url="http://localhost:8000")
-
-with client.trace_scope(system_prompt="You are a helpful assistant"):
-    # Run your agent logic here
-    request_human_intervention("Need clarification on user requirements")
-```
-
-If you do not use Active Help Request, you can skip `trace_scope` and log the
-trace at the end as usual.
 
 ### Agent Tools (Experience Retrieval + Active Help Request)
 
@@ -440,7 +423,7 @@ def convert_my_agent_to_otlp(agent_data):
 ## 📁 Project Structure
 
 ```
-tracebrain-tracing/
+TraceBrain/
 ├── src/
 │   ├── tracebrain/          # Main package
 │   │   ├── api/v1/                 # FastAPI REST endpoints
