@@ -41,7 +41,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
   const [evalError, setEvalError] = useState<string>("");
   const [showEvalError, setShowEvalError] = useState(false);
 
-  const feedback = traceGetLatestFeedback(trace!);
+  const feedback = trace ? traceGetLatestFeedback(trace) : null;
 
   const { settings } = useSettings();
 
