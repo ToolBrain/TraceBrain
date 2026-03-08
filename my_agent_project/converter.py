@@ -208,7 +208,7 @@ def convert_langchain_to_otlp(messages: list, system_prompt: str = "") -> Dict:
             span = {
                 "span_id": span_id,
                 "parent_id": parent_id,
-                "name": "User Input",
+                "name": "LLM Inference",
                 "start_time": _next_time(),
                 "end_time": _next_time(),
                 "attributes": {
@@ -240,13 +240,12 @@ def convert_langchain_to_otlp(messages: list, system_prompt: str = "") -> Dict:
             else:
                 final_answer = content
 
-            agent_name = (getattr(msg, "name", None) or "Agent").strip()
             span_id = uuid.uuid4().hex[:16]
             new_content = _serialize_prev_message(prev_msg)
             span = {
                 "span_id": span_id,
                 "parent_id": parent_id,
-                "name": f"LLM Inference ({agent_name})",
+                "name": "LLM Inference",
                 "start_time": _next_time(),
                 "end_time": _next_time(),
                 "attributes": {
