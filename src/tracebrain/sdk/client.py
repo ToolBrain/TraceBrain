@@ -660,14 +660,14 @@ class TraceScope:
         spans = trace_data.get("spans") or []
         spans_sorted = sorted(
             spans,
-            key=lambda span: TraceClient._parse_iso(span.get("start_time")) or datetime.min,
+            key=lambda span: TraceScope._parse_iso(span.get("start_time")) or datetime.min,
         )
         for span in spans_sorted:
             attrs = span.get("attributes") or {}
             if attrs.get(TraceBrainAttributes.SPAN_TYPE) != SpanType.LLM_INFERENCE:
                 continue
             new_content = attrs.get(TraceBrainAttributes.LLM_NEW_CONTENT)
-            messages.extend(TraceClient._normalize_messages(new_content))
+            messages.extend(TraceScope._normalize_messages(new_content))
 
         return messages
 
@@ -685,7 +685,7 @@ class TraceScope:
         spans = trace_data.get("spans") or []
         spans_sorted = sorted(
             spans,
-            key=lambda span: TraceClient._parse_iso(span.get("start_time")) or datetime.min,
+            key=lambda span: TraceScope._parse_iso(span.get("start_time")) or datetime.min,
         )
 
         tool_outputs: Dict[str, Any] = {}
@@ -702,7 +702,7 @@ class TraceScope:
                 continue
 
             new_content = attrs.get(TraceBrainAttributes.LLM_NEW_CONTENT)
-            new_messages = TraceClient._normalize_messages(new_content)
+            new_messages = TraceScope._normalize_messages(new_content)
             if new_messages:
                 messages.extend(new_messages)
 
@@ -720,7 +720,7 @@ class TraceScope:
     @staticmethod
     def to_tracebrain_turns(trace_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Format turns for TraceBrain 1.0 compatibility."""
-        turns = TraceClient.to_turns(trace_data)
+        turns = TraceScope.to_turns(trace_data)
         formatted = []
         for turn in turns:
             formatted.append(
