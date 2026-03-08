@@ -180,7 +180,14 @@ def convert_langchain_to_otlp(messages: list, system_prompt: str = "") -> Dict:
         if tool_calls:
             payload["tool_calls"] = tool_calls
         return json.dumps([payload], ensure_ascii=True)
-        return json.dumps(payload, ensure_ascii=True)
+
+    def _serialize_prev_message(prev_msg: Any) -> str:
+        if not prev_msg:
+            return json.dumps([], ensure_ascii=True)
+        prev_type = getattr(prev_msg, "type", None) or prev_msg.__class__.__name__.lower()
+        prev_role = "user" if "human" in prev_type else "assistant"
+        prev_content = getattr(prev_msg, "content", "")
+        return _serialize_message(prev_role, prev_content)
 
     def _format_tool_call(call: Dict[str, Any]) -> str:
         name = str(call.get("name") or "unknown")
@@ -191,6 +198,7 @@ def convert_langchain_to_otlp(messages: list, system_prompt: str = "") -> Dict:
             args_text = json.dumps(str(args), ensure_ascii=True)
         return f"{name}({args_text})"
 
+    prev_msg = None
     for msg in messages:
         msg_type = getattr(msg, "type", None) or msg.__class__.__name__.lower()
         content = getattr(msg, "content", "")
@@ -200,7 +208,7 @@ def convert_langchain_to_otlp(messages: list, system_prompt: str = "") -> Dict:
             span = {
                 "span_id": span_id,
                 "parent_id": parent_id,
-                "name": "LLM Inference",
+                "name": "User Input",
                 "start_time": _next_time(),
                 "end_time": _next_time(),
                 "attributes": {
@@ -210,6 +218,7 @@ def convert_langchain_to_otlp(messages: list, system_prompt: str = "") -> Dict:
             }
             spans.append(span)
             parent_id = span_id
+            prev_msg = msg
             continue
 
         if "ai" in msg_type:
@@ -231,16 +240,13 @@ def convert_langchain_to_otlp(messages: list, system_prompt: str = "") -> Dict:
             else:
                 final_answer = content
 
+            agent_name = (getattr(msg, "name", None) or "Agent").strip()
             span_id = uuid.uuid4().hex[:16]
-            new_content = _serialize_message(
-                "assistant",
-                content,
-                tool_calls if tool_calls else None,
-            )
+            new_content = _serialize_prev_message(prev_msg)
             span = {
                 "span_id": span_id,
                 "parent_id": parent_id,
-                "name": "LLM Inference",
+                "name": f"LLM Inference ({agent_name})",
                 "start_time": _next_time(),
                 "end_time": _next_time(),
                 "attributes": {
@@ -254,6 +260,7 @@ def convert_langchain_to_otlp(messages: list, system_prompt: str = "") -> Dict:
             }
             spans.append(span)
             parent_id = span_id
+            prev_msg = msg
             continue
 
         if "tool" in msg_type:
@@ -282,6 +289,7 @@ def convert_langchain_to_otlp(messages: list, system_prompt: str = "") -> Dict:
             }
             spans.append(span)
             parent_id = span_id
+            prev_msg = msg
             continue
 
     otlp_trace = {

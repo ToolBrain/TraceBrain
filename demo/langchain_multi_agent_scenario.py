@@ -20,11 +20,22 @@ from demo.terminal import AgentLogger, LogLevel
 from tracebrain import TraceClient
 
 
+SYSTEM_PROMPT = (
+    "You are a Collaborative Software Development Orchestrator. "
+    "Your goal is to coordinate a Coder Agent and a Reviewer Agent to produce "
+    "high-quality, production-ready Python code. Enforce strict type hinting "
+    "and PEP-8 standards. If a consensus is not reached within 5 turns, escalate to the user."
+)
+
+
 def build_messages():
     return [
+        # Span 1: User Request
         HumanMessage(content="Write a Python function to calculate the Fibonacci sequence optimally."),
+
+        # Span 2: Coder - Initial Draft
         AIMessage(
-            name="Coder",
+            name="Coder - Initial Draft",
             content=(
                 "Here is a simple recursive solution:\n"
                 "```python\n"
@@ -34,15 +45,19 @@ def build_messages():
                 "```"
             ),
         ),
+
+        # Span 3: Reviewer - Efficiency Critique
         AIMessage(
-            name="Reviewer",
+            name="Reviewer - Efficiency Critique",
             content=(
                 "Recursion is inefficient O(2^n) and can hit recursion limits. "
                 "Please use an iterative approach or memoization."
             ),
         ),
+
+        # Span 4: Coder - Iterative Fix
         AIMessage(
-            name="Coder",
+            name="Coder - Iterative Fix",
             content=(
                 "Understood. Here is the iterative approach:\n"
                 "```python\n"
@@ -54,15 +69,19 @@ def build_messages():
                 "```"
             ),
         ),
+
+        # Span 5: Reviewer - Edge Case Check
         AIMessage(
-            name="Reviewer",
+            name="Reviewer - Edge Case Check",
             content=(
                 "Edge case `n=0` is not handled correctly. If n=0, your code returns 1, "
                 "which is incorrect (should be 0). Please fix."
             ),
         ),
+
+        # Span 6: Coder - Regression Error
         AIMessage(
-            name="Coder",
+            name="Coder - Regression Error",
             content=(
                 "I see. Let me fix the edge case. Here is the corrected version:\n"
                 "```python\n"
@@ -72,8 +91,10 @@ def build_messages():
                 "```"
             ),
         ),
+
+        # Span 7: Reviewer - Loop Detection
         AIMessage(
-            name="Reviewer",
+            name="Reviewer - Loop Detection",
             content=(
                 "This is the recursive version again. I explicitly said to use the iterative approach "
                 "and handle n=0. You reverted the logic."
@@ -101,10 +122,11 @@ def main() -> None:
             continue
 
         name = (msg.name or "Agent").strip()
-        if name.lower() == "coder":
+        name_key = name.lower()
+        if name_key.startswith("coder"):
             border = "cyan"
             title = "Coder Agent"
-        elif name.lower() == "reviewer":
+        elif name_key.startswith("reviewer"):
             border = "magenta"
             title = "Reviewer Agent"
         else:
@@ -137,10 +159,8 @@ def main() -> None:
         print("\nTraceBrain server is not running. Please start it first.")
         return
 
-    system_prompt = "You are a multi-agent coding system."
-
-    with client.trace_scope(system_prompt=system_prompt) as tracker:
-        otlp_trace = convert_langchain_to_otlp(messages, system_prompt=system_prompt)
+    with client.trace_scope(system_prompt=SYSTEM_PROMPT) as tracker:
+        otlp_trace = convert_langchain_to_otlp(messages, system_prompt=SYSTEM_PROMPT)
         otlp_trace["attributes"]["tracebrain.ai_evaluation"] = {
             "rating": 2,
             "confidence": 0.60,
