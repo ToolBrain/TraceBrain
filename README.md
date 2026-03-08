@@ -192,6 +192,27 @@ docker compose -f docker/docker-compose.yml build --no-cache
 - `GET /api/v1/settings` - Retrieve current TraceBrain settings
 - `POST /api/v1/settings` - Update TraceBrain settings
 
+### Trace Status and Needs Review
+
+Trace status is stored in both the database column `status` and in
+`attributes.tracebrain.trace.status` for UI and API consistency.
+
+**Supported statuses:**
+
+- `running` - Trace is in progress or not finalized.
+- `completed` - Trace has been reviewed and finalized.
+- `needs_review` - Trace requires human attention.
+- `failed` - Trace is marked as failed.
+
+**When `needs_review` is set:**
+
+- **Agent Signal:** The agent calls `request_human_intervention` (Active Help Request).
+- **AI Judgment:** `tracebrain.ai_evaluation.confidence` < 0.75, or
+    `tracebrain.ai_evaluation.error_type` is one of:
+    `logic_loop`, `hallucination`, `invalid_tool_usage`, `tool_execution_error`,
+    `format_error`, `misinterpretation`, `context_overflow`.
+- **System Error:** Any span has `otel.status_code` = `ERROR`.
+
 ### Configuration (LLM + Embeddings)
 
 Core environment variables:

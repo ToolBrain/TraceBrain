@@ -147,12 +147,31 @@ class BaseStorageBackend:
             except ValueError:
                 status = TraceStatus.running
 
-        if self._has_active_help_request(spans_data) and status != TraceStatus.failed:
+        has_system_error = self._has_system_error(spans_data)
+        needs_review = (
+            self._has_active_help_request(spans_data)
+            or self._ai_eval_requires_review(ai_evaluation)
+            or has_system_error
+        )
+        if needs_review:
+            status = TraceStatus.needs_review
+        if has_system_error and status == TraceStatus.failed:
             status = TraceStatus.needs_review
 
         priority = priority_value if isinstance(priority_value, int) else 3
         if priority < 1 or priority > 5:
             priority = 3
+
+        if isinstance(attributes, dict):
+            attributes["tracebrain.trace.status"] = (
+                status.value if hasattr(status, "value") else str(status)
+            )
+        else:
+            attributes = {
+                "tracebrain.trace.status": (
+                    status.value if hasattr(status, "value") else str(status)
+                )
+            }
 
         trace = Trace(
             id=trace_id,
@@ -194,8 +213,20 @@ class BaseStorageBackend:
                         existing.attributes = {**existing.attributes, **attributes}
                     else:
                         existing.attributes = dict(attributes)
-                if status != TraceStatus.running or existing.status == TraceStatus.running:
+                if needs_review:
+                    existing.status = TraceStatus.needs_review
+                elif status != TraceStatus.running or existing.status == TraceStatus.running:
                     existing.status = status
+                if isinstance(existing.attributes, dict):
+                    existing.attributes["tracebrain.trace.status"] = (
+                        existing.status.value if hasattr(existing.status, "value") else str(existing.status)
+                    )
+                else:
+                    existing.attributes = {
+                        "tracebrain.trace.status": (
+                            existing.status.value if hasattr(existing.status, "value") else str(existing.status)
+                        )
+                    }
                 if priority != existing.priority:
                     existing.priority = priority
                 if embedding and not existing.embedding:
@@ -291,6 +322,36 @@ class BaseStorageBackend:
             tool_code = attrs.get("tracebrain.llm.tool_code")
             if isinstance(tool_code, str) and "request_human_intervention" in tool_code:
                 return True
+        return False
+
+    @staticmethod
+    def _has_system_error(spans_data: List[Dict[str, Any]]) -> bool:
+        for span in spans_data:
+            attrs = (span or {}).get("attributes") or {}
+            if attrs.get("otel.status_code") == "ERROR":
+                return True
+        return False
+
+    @staticmethod
+    def _ai_eval_requires_review(ai_evaluation: Any) -> bool:
+        critical_errors = {
+            "logic_loop",
+            "hallucination",
+            "invalid_tool_usage",
+            "tool_execution_error",
+            "format_error",
+            "misinterpretation",
+            "context_overflow",
+        }
+        confidence_threshold = 0.75
+        if not isinstance(ai_evaluation, dict):
+            return False
+        error_type = ai_evaluation.get("error_type")
+        if isinstance(error_type, str) and error_type in critical_errors:
+            return True
+        confidence = ai_evaluation.get("confidence")
+        if isinstance(confidence, (int, float)) and float(confidence) < confidence_threshold:
+            return True
         return False
 
     @staticmethod
