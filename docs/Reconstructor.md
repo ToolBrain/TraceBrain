@@ -37,13 +37,13 @@ Each span stores only the delta for that step. The `parent_id` chain preserves t
 
 ## 3. Standard SDK Views
 
-The SDK provides built-in reconstruction helpers in `TraceClient`:
+The SDK provides built-in reconstruction helpers in `TraceScope`:
 
 | Method | Output | Use Case |
 | --- | --- | --- |
-| `TraceClient.to_messages(trace_data)` | ChatML list of `{role, content}` | SFT, ICL, evaluation |
-| `TraceClient.to_turns(trace_data)` | Structured turns (TraceBrain 1.0 style) | RL, tool-augmented training |
-| `TraceClient.to_tracebrain_turns(trace_data)` | TraceBrain 1.0 compatible turns | Backward-compatible pipelines |
+| `TraceScope.to_messages(trace_data)` | ChatML list of `{role, content}` | SFT, ICL, evaluation |
+| `TraceScope.to_turns(trace_data)` | Structured turns (TraceBrain 1.0 style) | RL, tool-augmented training |
+| `TraceScope.to_tracebrain_turns(trace_data)` | TraceBrain 1.0 compatible turns | Backward-compatible pipelines |
 
 These helpers handle the backwards traversal and ordering for you.
 
@@ -52,23 +52,23 @@ These helpers handle the backwards traversal and ordering for you.
 ### Reconstructing Messages and Turns
 
 ```python
-from tracebrain.sdk.client import TraceClient
+from tracebrain.sdk.client import TraceClient, TraceScope
 
 client = TraceClient(base_url="http://localhost:8000")
 trace_data = client.get_trace("trace_id_123")
 
 # Exporting for SFT (ChatML-style messages)
-messages = TraceClient.to_messages(trace_data)
+messages = TraceScope.to_messages(trace_data)
 
 # Exporting for TraceBrain 1.0 RL (structured turns)
-turns = TraceClient.to_turns(trace_data)
+turns = TraceScope.to_turns(trace_data)
 ```
 
 ### Export and Parse JSONL for Training
 
 ```python
 import json
-from tracebrain.sdk.client import TraceClient
+from tracebrain.sdk.client import TraceClient, TraceScope
 
 client = TraceClient(base_url="http://localhost:8000")
 jsonl_payload = client.export_traces(min_rating=4, limit=100)
@@ -76,7 +76,7 @@ jsonl_payload = client.export_traces(min_rating=4, limit=100)
 # Each line is a full OTLP trace payload
 traces = [json.loads(line) for line in jsonl_payload.splitlines() if line.strip()]
 
-messages_per_trace = [TraceClient.to_messages(t) for t in traces]
+messages_per_trace = [TraceScope.to_messages(t) for t in traces]
 ```
 
 ## 5. Building a Custom Reconstructor
