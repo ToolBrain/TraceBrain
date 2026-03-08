@@ -335,14 +335,16 @@ class GeminiProvider(BaseProvider):
         tools_config = (
             [self.types.Tool(function_declarations=tool_decls)] if tool_decls else None
         )
-        config = self.types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            tools=tools_config,
-            temperature=self.temperature,
-            tool_config=self.types.ToolConfig(
+        config_kwargs = {
+            "system_instruction": system_instruction,
+            "temperature": self.temperature,
+        }
+        if tools_config:
+            config_kwargs["tools"] = tools_config
+            config_kwargs["tool_config"] = self.types.ToolConfig(
                 function_calling_config=self.types.FunctionCallingConfig(mode="AUTO")
-            ),
-        )
+            )
+        config = self.types.GenerateContentConfig(**config_kwargs)
         chat = self.client.chats.create(model=self.model_name, config=config)
         return {"chat": chat}
 
