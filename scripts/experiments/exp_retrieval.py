@@ -23,8 +23,8 @@ from tracebrain.db.base import Trace, TraceStatus
 @dataclass
 class RetrievalPoint:
     traces_k: int
-    mean_ms: float
-    std_ms: float
+    p50_ms: float
+    p90_ms: float
     p95_ms: float
 
 
@@ -92,10 +92,10 @@ def seed_traces(engine, target_count: int, batch_size: int = 5000) -> None:
 
 def format_points(points: List[RetrievalPoint]) -> Dict[str, List[float]]:
     x_vals = [p.traces_k for p in points]
-    means = [p.mean_ms for p in points]
-    stds = [p.std_ms for p in points]
+    p50s = [p.p50_ms for p in points]
+    p90s = [p.p90_ms for p in points]
     p95s = [p.p95_ms for p in points]
-    return {"x": x_vals, "mean": means, "std": stds, "p95": p95s}
+    return {"x": x_vals, "p50": p50s, "p90": p90s, "p95": p95s}
 
 
 async def benchmark_search(latency_points: List[RetrievalPoint]) -> None:
@@ -112,8 +112,8 @@ async def benchmark_search(latency_points: List[RetrievalPoint]) -> None:
                 end = time.perf_counter_ns()
                 latencies.append((end - start) / 1_000_000)
 
-            point.mean_ms = float(np.mean(latencies))
-            point.std_ms = float(np.std(latencies, ddof=1)) if len(latencies) > 1 else 0.0
+            point.p50_ms = float(np.percentile(latencies, 50))
+            point.p90_ms = float(np.percentile(latencies, 90))
             point.p95_ms = float(np.percentile(latencies, 95))
 
 
@@ -122,27 +122,21 @@ def plot_retrieval(points: List[RetrievalPoint]) -> None:
     data = format_points(points)
 
     fig, ax = plt.subplots(figsize=(6.4, 4.0))
-    ax.errorbar(
-        data["x"],
-        data["mean"],
-        yerr=data["std"],
-        fmt="o-",
-        color="#1f77b4",
-        label="Mean latency (std dev)",
-        capsize=4,
-    )
-    ax.plot(data["x"], data["p95"], "s--", color="#b22222", label="P95 latency")
+    ax.plot(data["x"], data["p50"], "o-", color="#1f77b4", label="P50 latency")
+    ax.plot(data["x"], data["p90"], "s-", color="#2ca02c", label="P90 latency")
+    ax.plot(data["x"], data["p95"], "^-", color="#b22222", label="P95 latency")
     ax.set_xlabel("Number of Traces in Database (k)")
     ax.set_ylabel("Search Latency (ms)")
+    ax.set_ylim(bottom=0)
     ax.legend(frameon=True)
     fig.tight_layout()
     output_dir = Path(__file__).resolve().parent / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_dir / "retrieval_scalability.pdf", format="pdf")
-    csv_lines = ["traces_k,mean_ms,std_ms,p95_ms"]
+    csv_lines = ["traces_k,p50_ms,p90_ms,p95_ms"]
     for point in points:
         csv_lines.append(
-            f"{point.traces_k},{point.mean_ms:.4f},{point.std_ms:.4f},{point.p95_ms:.4f}"
+            f"{point.traces_k},{point.p50_ms:.4f},{point.p90_ms:.4f},{point.p95_ms:.4f}"
         )
     (output_dir / "retrieval_scalability.csv").write_text("\n".join(csv_lines))
 
@@ -156,7 +150,7 @@ def main() -> None:
 
     for milestone in milestones:
         seed_traces(engine, milestone, batch_size=5000)
-        points.append(RetrievalPoint(traces_k=milestone // 1000, mean_ms=0.0, std_ms=0.0, p95_ms=0.0))
+        points.append(RetrievalPoint(traces_k=milestone // 1000, p50_ms=0.0, p90_ms=0.0, p95_ms=0.0))
 
     asyncio.run(benchmark_search(points))
     plot_retrieval(points)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 import json
 import time
 import uuid
@@ -77,12 +78,17 @@ def benchmark_reconstruction() -> List[ReconstructionPoint]:
 
     for size in sizes:
         trace_data = build_trace_payload(size)
+        for _ in range(100):
+            _ = TraceScope.to_messages(trace_data)
+
+        gc.disable()
         durations_ns = []
         for _ in range(500):
             start = time.perf_counter_ns()
             _ = TraceScope.to_messages(trace_data)
             end = time.perf_counter_ns()
             durations_ns.append(end - start)
+        gc.enable()
         avg_ms = float(np.mean(durations_ns)) / 1_000_000
         points.append(ReconstructionPoint(steps=size, time_ms=avg_ms))
 
@@ -108,7 +114,7 @@ async def _post_trace(
 
 async def benchmark_ingestion() -> None:
     total_requests = 10_000
-    concurrency = 100
+    concurrency = 50
     semaphore = asyncio.Semaphore(concurrency)
 
     async with aiohttp.ClientSession() as session:
