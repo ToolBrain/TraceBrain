@@ -9,7 +9,7 @@ import json
 import logging
 import re
 
-from sqlalchemy import func, cast, Integer
+from sqlalchemy import func, cast, Integer, Float
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import selectinload
 
@@ -46,6 +46,16 @@ class CurriculumCurator:
         limit: int = 20,
         error_types: Optional[List[str]] = None,
     ) -> List[Trace]:
+        critical_errors = {
+            "logic_loop",
+            "hallucination",
+            "invalid_tool_usage",
+            "tool_execution_error",
+            "format_error",
+            "misinterpretation",
+            "context_overflow",
+        }
+        confidence_threshold = 0.75
         normalized_error_types = self._normalize_error_types(error_types)
         session = self.store.get_session()
         try:
@@ -55,17 +65,25 @@ class CurriculumCurator:
                     func.jsonb_extract_path_text(cast(Trace.feedback, JSONB), "rating"),
                     Integer,
                 )
+                error_value = (
+                    Trace.attributes["tracebrain.ai_evaluation"]["error_type"].as_string()
+                )
+                confidence_value = cast(
+                    func.jsonb_extract_path_text(
+                        cast(Trace.attributes, JSONB),
+                        "tracebrain.ai_evaluation",
+                        "confidence",
+                    ),
+                    Float,
+                )
                 query = query.filter(
                     (rating_value < 3)
-                    | (Trace.status == TraceStatus.failed)
-                    | (Trace.status == "ERROR")
+                    | (Trace.status.in_([TraceStatus.failed, TraceStatus.needs_review]))
+                    | (error_value.in_(critical_errors))
+                    | (confidence_value < confidence_threshold)
                 )
                 if normalized_error_types:
-                    query = query.filter(
-                        Trace.attributes["tracebrain.ai_evaluation"]["error_type"].astext.in_(
-                            normalized_error_types
-                        )
-                    )
+                    query = query.filter(error_value.in_(normalized_error_types))
                 return (
                     query.order_by(Trace.created_at.desc())
                     .limit(limit)
@@ -81,15 +99,25 @@ class CurriculumCurator:
                 rating = None
                 if trace.feedback and isinstance(trace.feedback, dict):
                     rating = trace.feedback.get("rating")
-                error_type = "general_failure"
-                if isinstance(trace.attributes, dict):
+                ai_eval = None
+                if isinstance(trace.ai_evaluation, dict):
+                    ai_eval = trace.ai_evaluation
+                elif isinstance(trace.attributes, dict):
                     ai_eval = trace.attributes.get("tracebrain.ai_evaluation") or {}
-                    if isinstance(ai_eval, dict):
-                        error_type = str(ai_eval.get("error_type") or "general_failure")
+
+                error_type = "general_failure"
+                confidence = None
+                if isinstance(ai_eval, dict):
+                    error_type = str(ai_eval.get("error_type") or "general_failure")
+                    confidence = ai_eval.get("confidence")
+
+                status_value = trace.status.value if hasattr(trace.status, "value") else str(trace.status)
+                status_value = str(status_value).lower()
                 if (
                     (isinstance(rating, int) and rating < 3)
-                    or trace.status == TraceStatus.failed
-                    or str(trace.status).upper() == "ERROR"
+                    or status_value in {"failed", "needs_review"}
+                    or error_type in critical_errors
+                    or (isinstance(confidence, (int, float)) and float(confidence) < confidence_threshold)
                 ):
                     if normalized_error_types and error_type not in normalized_error_types:
                         continue

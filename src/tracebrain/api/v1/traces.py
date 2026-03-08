@@ -217,7 +217,7 @@ def ingest_trace(trace: TraceIn, background_tasks: BackgroundTasks):
         trace_payload = trace.model_dump()
         trace_id = store.add_trace_from_dict(trace_payload)
         attributes = trace_payload.get("attributes") or {}
-        if not attributes.get("tracebrain.ai_evaluation"):
+        if settings.AUTO_EVALUATE_TRACES and not attributes.get("tracebrain.ai_evaluation"):
             background_tasks.add_task(run_bg_evaluation, trace_id)
         return TraceIngestResponse(
             success=True,

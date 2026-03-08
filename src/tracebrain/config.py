@@ -153,6 +153,11 @@ class Settings(BaseSettings):
         default=False,
         description="Enable verbose logging for LLM tool calls and responses"
     )
+
+    AUTO_EVALUATE_TRACES: bool = Field(
+        default=True,
+        description="Automatically run AI evaluation on ingested traces"
+    )
     
     # Frontend Configuration
     STATIC_DIR: str = Field(
