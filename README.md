@@ -311,7 +311,7 @@ This section focuses on read/query operations. For logging traces, see the
 ```python
 import json
 
-from tracebrain.sdk.client import TraceClient
+from tracebrain.sdk.client import TraceClient, TraceScope
 
 client = TraceClient(base_url="http://localhost:8000")
 
@@ -328,15 +328,15 @@ trace_items = [json.loads(line) for line in jsonl_payload.splitlines() if line.s
 trace_data = client.get_trace("my-trace-001")
 
 # to_messages: rebuilds chat message list (role/content) from spans
-messages = TraceClient.to_messages(trace_data)
+messages = TraceScope.to_messages(trace_data)
 # Example: messages[:2] -> [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
 
 # to_turns: groups messages into conversation turns for UI/analysis
-turns = TraceClient.to_turns(trace_data)
+turns = TraceScope.to_turns(trace_data)
 # Example: turns[0] -> {"user": "...", "assistant": "..."}
 
 # to_tracebrain_turns: returns TraceBrain-native turn objects with metadata
-tracebrain_turns = TraceClient.to_tracebrain_turns(trace_data)
+tracebrain_turns = TraceScope.to_tracebrain_turns(trace_data)
 # Example: tracebrain_turns[0] -> {"turn_id": "...", "messages": [...], "span_ids": [...]} 
 ```
 
