@@ -1,4 +1,4 @@
-"""Smolagent to TraceBrain OTLP converter."""
+"""Smolagent and LangChain to TraceBrain OTLP converter."""
 
 import json
 import re
