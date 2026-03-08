@@ -61,11 +61,11 @@ class CurriculumCurator:
                     | (Trace.status == "ERROR")
                 )
                 if normalized_error_types:
-                    query = query.filter(
-                        Trace.attributes["tracebrain.ai_evaluation"]["error_type"].astext.in_(
-                            normalized_error_types
-                        )
+                    error_value = (
+                        Trace.attributes["tracebrain.ai_evaluation"]["error_type"]
+                        .as_string()
                     )
+                    query = query.filter(error_value.in_(normalized_error_types))
                 return (
                     query.order_by(Trace.created_at.desc())
                     .limit(limit)
