@@ -399,6 +399,12 @@ def start(
         None,
         "--log-level",
         help="Logging level (debug, info, warning, error, critical)"
+    ),
+    workers: int = typer.Option(
+        1,
+        "--workers",
+        "-w",
+        help="Number of worker processes (default: 1)",
     )
 ):
     """
@@ -426,6 +432,7 @@ def start(
     typer.echo(f"Backend Type:   {settings.get_backend_type()}")
     typer.echo(f"Log Level:      {server_log_level}")
     typer.echo(f"Reload:         {reload}")
+    typer.echo(f"Workers:        {workers}")
     typer.echo("")
     typer.echo(f"-> API Docs:     http://{server_host}:{server_port}/docs")
     typer.echo(f"-> Frontend:     http://{server_host}:{server_port}/")
@@ -438,7 +445,8 @@ def start(
             host=server_host,
             port=server_port,
             reload=reload,
-            log_level=server_log_level
+            log_level=server_log_level,
+            workers=workers,
         )
     except KeyboardInterrupt:
         typer.echo("\n\nServer stopped by user")
