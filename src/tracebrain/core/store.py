@@ -747,7 +747,7 @@ class BaseStorageBackend:
             query = session.query(Trace).filter(Trace.id.in_(trace_ids))
             if include_spans:
                 query = query.options(selectinload(Trace.spans))
-            return query.all()
+            return query.order_by(Trace.created_at.asc()).all()
         finally:
             session.close()
 
@@ -759,7 +759,7 @@ class BaseStorageBackend:
                 session.query(Trace)
                 .options(selectinload(Trace.spans))
                 .filter(Trace.episode_id == episode_id)
-                .order_by(Trace.created_at.desc())
+                .order_by(Trace.created_at.asc())
                 .all()
             )
         finally:
