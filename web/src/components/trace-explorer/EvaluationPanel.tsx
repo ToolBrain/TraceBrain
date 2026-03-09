@@ -195,7 +195,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
 
     // If evaluation exists
     return (
-<>
+      <>
         <Box>
           <Typography variant="caption" color="text.secondary">
             AI Rating
@@ -234,12 +234,14 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
           </Box>
         </Box>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-          <Typography variant="caption" color="text.secondary">
-            Error Type
-          </Typography>
-          <ErrorTypeChip errorType={errorType} />
-        </Box>
+        {errorType && errorType !== "none" && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              Error Type
+            </Typography>
+            <ErrorTypeChip errorType={errorType} />
+          </Box>
+        )}
         <Box>
           <Typography variant="caption" color="text.secondary">
             AI Rationale
