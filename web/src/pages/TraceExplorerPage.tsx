@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import TraceVisualizer from "../components/trace/TraceVisualizer";
+import TraceExplorer from "../components/trace/TraceExplorer";
 import {
   fetchEpisodeTraces,
   fetchTrace,
@@ -61,7 +61,7 @@ const TracePage: React.FC = () => {
     };
   }, [id, type]);
 
-  return <TraceVisualizer traces={traces} />;
+  return <TraceExplorer traces={traces} />;
 };
 
 export default TracePage;
