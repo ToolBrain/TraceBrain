@@ -18,9 +18,15 @@ import {
 } from "@mui/material";
 import { ExpandLess, ExpandMore, ErrorOutline } from "@mui/icons-material";
 import type { Trace } from "../../types/trace";
-import { traceGetEvaluation, traceGetLatestFeedback, traceGetPriority } from "../utils/traceUtils";
+import {
+  traceGetEvaluation,
+  traceGetLatestFeedback,
+  traceGetPriority,
+  traceGetErrorType,
+} from "../utils/traceUtils";
 import { evaluateTrace, submitTraceFeedback } from "../utils/api";
 import StatusChip from "../shared/StatusChip";
+import ErrorTypeChip from "../shared/ErrorTypeChip";
 import { useSettings } from "../../contexts/SettingsContext";
 import { getConfidenceColor } from "../utils/utils";
 
@@ -53,6 +59,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
   const aiRating = typeof evaluation?.rating === "number" ? evaluation.rating : null;
   const aiFeedback = typeof evaluation?.feedback === "string" ? evaluation.feedback : "";
   const aiConfidence = typeof evaluation?.confidence === "number" ? evaluation.confidence : null;
+  const errorType = trace ? traceGetErrorType(trace) : null;
   const [localStatus, setLocalStatus] = useState<string | null>(null);
   const aiStatus =
     localStatus ?? (typeof evaluation?.status === "string" ? evaluation.status : null);
@@ -64,7 +71,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     setPriority(trace ? traceGetPriority(trace) : 3);
     setExpertComment(feedback ? feedback.comment : aiFeedback);
     setEvalError("");
-    setLocalStatus(null)
+    setLocalStatus(null);
     setShowEvalError(false);
   }, [trace?.trace_id]);
 
@@ -188,7 +195,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
 
     // If evaluation exists
     return (
-      <>
+<>
         <Box>
           <Typography variant="caption" color="text.secondary">
             AI Rating
@@ -227,6 +234,12 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
           </Box>
         </Box>
 
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <Typography variant="caption" color="text.secondary">
+            Error Type
+          </Typography>
+          <ErrorTypeChip errorType={errorType} />
+        </Box>
         <Box>
           <Typography variant="caption" color="text.secondary">
             AI Rationale
@@ -399,7 +412,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
                   </Select>
                 </FormControl>
               </Box>
-              
+
               <Box>
                 <Typography variant="caption" color="text.secondary">
                   Comment
