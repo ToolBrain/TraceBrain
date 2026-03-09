@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Box, Tab, Tabs } from "@mui/material";
+import { useParams } from "react-router-dom";
 import type { Span, Trace } from "../../types/trace";
 import SpanDetails from "./SpanDetails";
 import TraceDiff from "./TraceDiff";
@@ -11,14 +12,13 @@ interface InspectorPanelProps {
 }
 
 const InspectorPanel: React.FC<InspectorPanelProps> = ({ span, trace, traces }) => {
+  const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState(0);
   const [selectedTraceIds, setSelectedTraceIds] = useState<string[]>([]);
 
   useEffect(() => {
-    setSelectedTraceIds((prev) =>
-      prev.length === 0 ? traces.slice(0, 2).map((t) => t.trace_id) : prev,
-    );
-  }, [traces]);
+    setSelectedTraceIds(traces.slice(0, 2).map((t) => t.trace_id));
+  }, [id, traces]);
 
   return (
     <Box
