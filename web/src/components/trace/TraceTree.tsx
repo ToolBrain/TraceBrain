@@ -1,14 +1,17 @@
 import React from "react";
-import { Box, Typography, IconButton } from "@mui/material";
+import { Box, Typography, IconButton, Button } from "@mui/material";
 import {
   ChevronRight,
   ExpandMore,
   ErrorOutline,
   CheckCircleOutline,
+  OpenInNew,
 } from "@mui/icons-material";
 import type { Span, Trace } from "../../types/trace";
 import { spanGetDuration, spanHasError } from "../utils/spanUtils";
 import { formatDuration } from "../utils/utils";
+import { traceGetEpisodeId } from "../utils/traceUtils";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface SelectedSpan {
   traceId: string;
@@ -30,6 +33,10 @@ const TraceTree: React.FC<TraceTreeProps> = ({
   onToggleExpand,
   onSelectSpan,
 }) => {
+  const [searchParams] = useSearchParams();
+  const isEpisode = searchParams.get("type") === "episode";
+  const episodeId = traceGetEpisodeId(traces[0]);
+  const nav = useNavigate();
   const SpanRow = ({
     span,
     traceId,
@@ -101,11 +108,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
               }}
               sx={{ mr: 1, p: 0 }}
             >
-              {isExpanded ? (
-                <ExpandMore fontSize="small" />
-              ) : (
-                <ChevronRight fontSize="small" />
-              )}
+              {isExpanded ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />}
             </IconButton>
           ) : (
             <Box sx={{ width: "1.25rem", mr: 1 }} />
@@ -165,6 +168,17 @@ const TraceTree: React.FC<TraceTreeProps> = ({
         }}
       >
         <Typography variant="h5">Trace Details</Typography>
+        {!isEpisode && (
+          <Button
+            variant="text"
+            size="small"
+            endIcon={<OpenInNew style={{ fontSize: 16 }} />}
+            sx={{ color: "text.secondary", fontSize: "0.75rem", "& .MuiButton-endIcon": { ml: 0.5 } }}
+            onClick={() => nav(`/trace/${episodeId}?type=episode`)}
+          >
+            View Episode
+          </Button>
+        )}
       </Box>
 
       <Box sx={{ flex: 1, overflowY: "auto" }}>
