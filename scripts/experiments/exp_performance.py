@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import gc
 import json
+import os
 import time
 import uuid
 from dataclasses import dataclass
@@ -18,6 +19,11 @@ import numpy as np
 from scipy.stats import linregress
 
 from tracebrain.sdk.client import TraceScope
+
+# Ensure background evaluation stays off during benchmarks.
+os.environ["AUTO_EVALUATE_TRACES"] = "false"
+
+API_BASE_URL = os.getenv("TRACEBRAIN_API_URL", "http://localhost:8000").rstrip("/")
 
 
 @dataclass
@@ -75,15 +81,17 @@ def build_trace_payload(steps: int) -> Dict[str, Any]:
 def benchmark_reconstruction() -> List[ReconstructionPoint]:
     sizes = [1, 50, 100, 200, 300, 400, 500]
     points: List[ReconstructionPoint] = []
+    warmup_runs = 100
+    measured_runs = 500
 
     for size in sizes:
         trace_data = build_trace_payload(size)
-        for _ in range(100):
+        for _ in range(warmup_runs):
             _ = TraceScope.to_messages(trace_data)
 
         gc.disable()
         durations_ns = []
-        for _ in range(500):
+        for _ in range(measured_runs):
             start = time.perf_counter_ns()
             _ = TraceScope.to_messages(trace_data)
             end = time.perf_counter_ns()
@@ -103,7 +111,7 @@ async def _post_trace(
     async with semaphore:
         start = time.perf_counter_ns()
         try:
-            async with session.post("http://localhost:8000/api/v1/traces", json=payload) as resp:
+            async with session.post(f"{API_BASE_URL}/api/v1/traces", json=payload) as resp:
                 await resp.text()
                 ok = resp.status in (200, 201)
         except Exception:
@@ -112,59 +120,70 @@ async def _post_trace(
         return ok, (end - start) / 1_000_000
 
 
+def _build_ingestion_payload() -> Dict[str, Any]:
+    return {
+        "trace_id": uuid.uuid4().hex,
+        "attributes": {"system_prompt": "load test"},
+        "spans": [
+            {
+                "span_id": uuid.uuid4().hex[:16],
+                "parent_id": None,
+                "name": "LLM Inference",
+                "start_time": _iso_time(0),
+                "end_time": _iso_time(1),
+                "attributes": {
+                    "tracebrain.span.type": "llm_inference",
+                    "tracebrain.llm.new_content": json.dumps(
+                        [{"role": "user", "content": "ping"}]
+                    ),
+                },
+            },
+            {
+                "span_id": uuid.uuid4().hex[:16],
+                "parent_id": None,
+                "name": "Tool Execution: ping",
+                "start_time": _iso_time(2),
+                "end_time": _iso_time(3),
+                "attributes": {
+                    "tracebrain.span.type": "tool_execution",
+                    "tracebrain.tool.name": "ping",
+                    "tracebrain.tool.output": "pong",
+                },
+            },
+            {
+                "span_id": uuid.uuid4().hex[:16],
+                "parent_id": None,
+                "name": "LLM Inference",
+                "start_time": _iso_time(4),
+                "end_time": _iso_time(5),
+                "attributes": {
+                    "tracebrain.span.type": "llm_inference",
+                    "tracebrain.llm.new_content": json.dumps(
+                        [{"role": "assistant", "content": "pong"}]
+                    ),
+                },
+            },
+        ],
+    }
+
+
 async def benchmark_ingestion() -> None:
     total_requests = 10_000
+    warmup_requests = 200
     concurrency = 50
     semaphore = asyncio.Semaphore(concurrency)
 
     async with aiohttp.ClientSession() as session:
+        warmup_tasks = []
+        for _ in range(warmup_requests):
+            warmup_tasks.append(
+                _post_trace(session, _build_ingestion_payload(), semaphore)
+            )
+        await asyncio.gather(*warmup_tasks)
+
         tasks = []
         for _ in range(total_requests):
-            payload = {
-                "trace_id": uuid.uuid4().hex,
-                "attributes": {"system_prompt": "load test"},
-                "spans": [
-                    {
-                        "span_id": uuid.uuid4().hex[:16],
-                        "parent_id": None,
-                        "name": "LLM Inference",
-                        "start_time": _iso_time(0),
-                        "end_time": _iso_time(1),
-                        "attributes": {
-                            "tracebrain.span.type": "llm_inference",
-                            "tracebrain.llm.new_content": json.dumps(
-                                [{"role": "user", "content": "ping"}]
-                            ),
-                        },
-                    },
-                    {
-                        "span_id": uuid.uuid4().hex[:16],
-                        "parent_id": None,
-                        "name": "Tool Execution: ping",
-                        "start_time": _iso_time(2),
-                        "end_time": _iso_time(3),
-                        "attributes": {
-                            "tracebrain.span.type": "tool_execution",
-                            "tracebrain.tool.name": "ping",
-                            "tracebrain.tool.output": "pong",
-                        },
-                    },
-                    {
-                        "span_id": uuid.uuid4().hex[:16],
-                        "parent_id": None,
-                        "name": "LLM Inference",
-                        "start_time": _iso_time(4),
-                        "end_time": _iso_time(5),
-                        "attributes": {
-                            "tracebrain.span.type": "llm_inference",
-                            "tracebrain.llm.new_content": json.dumps(
-                                [{"role": "assistant", "content": "pong"}]
-                            ),
-                        },
-                    },
-                ],
-            }
-            tasks.append(_post_trace(session, payload, semaphore))
+            tasks.append(_post_trace(session, _build_ingestion_payload(), semaphore))
 
         start = time.perf_counter_ns()
         results = await asyncio.gather(*tasks)

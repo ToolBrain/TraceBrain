@@ -1,0 +1,2 @@
+total_requests,throughput_rps,avg_latency_ms,p95_latency_ms,p99_latency_ms
+10000,278.0493,178.1191,404.8336,799.6600

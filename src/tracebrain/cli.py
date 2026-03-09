@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 from typing import Optional
 import typer
+import multiprocessing
 import uvicorn
 
 from .config import settings
@@ -399,6 +400,12 @@ def start(
         None,
         "--log-level",
         help="Logging level (debug, info, warning, error, critical)"
+    ),
+    workers: Optional[int] = typer.Option(
+        None,
+        "--workers",
+        "-w",
+        help="Number of worker processes (default: CPU count)",
     )
 ):
     """
@@ -416,6 +423,8 @@ def start(
     server_host = host or settings.HOST
     server_port = port or settings.PORT
     server_log_level = (log_level or settings.LOG_LEVEL).lower()
+    default_workers = multiprocessing.cpu_count() or 4
+    server_workers = workers or default_workers
     
     typer.echo("=" * 70)
     typer.echo("TraceBrain Tracing - Starting API Server")
@@ -426,6 +435,7 @@ def start(
     typer.echo(f"Backend Type:   {settings.get_backend_type()}")
     typer.echo(f"Log Level:      {server_log_level}")
     typer.echo(f"Reload:         {reload}")
+    typer.echo(f"Workers:        {server_workers}")
     typer.echo("")
     typer.echo(f"-> API Docs:     http://{server_host}:{server_port}/docs")
     typer.echo(f"-> Frontend:     http://{server_host}:{server_port}/")
@@ -438,7 +448,8 @@ def start(
             host=server_host,
             port=server_port,
             reload=reload,
-            log_level=server_log_level
+            log_level=server_log_level,
+            workers=server_workers,
         )
     except KeyboardInterrupt:
         typer.echo("\n\nServer stopped by user")

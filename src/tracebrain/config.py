@@ -67,12 +67,12 @@ class Settings(BaseSettings):
 
     # Database Pool Configuration
     DB_POOL_SIZE: int = Field(
-        default=5,
+        default=50,
         ge=1,
         description="Base number of database connections in the pool"
     )
     DB_MAX_OVERFLOW: int = Field(
-        default=10,
+        default=100,
         ge=0,
         description="Maximum number of overflow connections beyond pool size"
     )
@@ -157,6 +157,11 @@ class Settings(BaseSettings):
     AUTO_EVALUATE_TRACES: bool = Field(
         default=True,
         description="Automatically run AI evaluation on ingested traces"
+    )
+
+    DISABLE_BACKGROUND_EMBEDDINGS: bool = Field(
+        default=False,
+        description="Disable background embedding generation on ingestion"
     )
     
     # Frontend Configuration

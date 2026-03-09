@@ -48,6 +48,7 @@ services:
       # LLM_API_KEY: your_llm_api_key_here
     ports:
       - "8000:8000"
+    command: ["tracebrain-trace", "start", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     depends_on:
       postgres:
         condition: service_healthy

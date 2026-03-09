@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 import os
 import time
 import uuid
@@ -14,10 +15,15 @@ from typing import Any, Dict, List
 import aiohttp
 import matplotlib.pyplot as plt
 import numpy as np
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine, func, text
 from sqlalchemy.orm import sessionmaker
 
 from tracebrain.db.base import Trace, TraceStatus
+
+# Ensure background evaluation stays off during benchmarks.
+os.environ["AUTO_EVALUATE_TRACES"] = "false"
+
+API_BASE_URL = os.getenv("TRACEBRAIN_API_URL", "http://localhost:8000").rstrip("/")
 
 
 @dataclass
@@ -90,6 +96,11 @@ def seed_traces(engine, target_count: int, batch_size: int = 5000) -> None:
         remaining -= batch
 
 
+def vacuum_analyze(engine) -> None:
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        conn.execute(text("VACUUM (ANALYZE) traces"))
+
+
 def format_points(points: List[RetrievalPoint]) -> Dict[str, List[float]]:
     x_vals = [p.traces_k for p in points]
     p50s = [p.p50_ms for p in points]
@@ -101,16 +112,25 @@ def format_points(points: List[RetrievalPoint]) -> Dict[str, List[float]]:
 async def benchmark_search(latency_points: List[RetrievalPoint]) -> None:
     async with aiohttp.ClientSession() as session:
         for point in latency_points:
+            for _ in range(10):
+                async with session.get(
+                    f"{API_BASE_URL}/api/v1/traces/search",
+                    params={"text": "tool execution error", "min_rating": 4, "limit": 3},
+                ) as resp:
+                    await resp.text()
+
             latencies = []
+            gc.disable()
             for _ in range(100):
                 start = time.perf_counter_ns()
                 async with session.get(
-                    "http://localhost:8000/api/v1/traces/search",
+                    f"{API_BASE_URL}/api/v1/traces/search",
                     params={"text": "tool execution error", "min_rating": 4, "limit": 3},
                 ) as resp:
                     await resp.text()
                 end = time.perf_counter_ns()
                 latencies.append((end - start) / 1_000_000)
+            gc.enable()
 
             point.p50_ms = float(np.percentile(latencies, 50))
             point.p90_ms = float(np.percentile(latencies, 90))
@@ -150,9 +170,10 @@ def main() -> None:
 
     for milestone in milestones:
         seed_traces(engine, milestone, batch_size=5000)
-        points.append(RetrievalPoint(traces_k=milestone // 1000, p50_ms=0.0, p90_ms=0.0, p95_ms=0.0))
-
-    asyncio.run(benchmark_search(points))
+        vacuum_analyze(engine)
+        point = RetrievalPoint(traces_k=milestone // 1000, p50_ms=0.0, p90_ms=0.0, p95_ms=0.0)
+        points.append(point)
+        asyncio.run(benchmark_search([point]))
     plot_retrieval(points)
 
 

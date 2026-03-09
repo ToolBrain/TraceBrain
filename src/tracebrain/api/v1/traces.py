@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 import json
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from sqlalchemy import Integer, cast, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -211,12 +212,19 @@ def get_trace(trace_id: str):
     status_code=status.HTTP_201_CREATED,
     tags=["Traces"],
 )
-def ingest_trace(trace: TraceIn, background_tasks: BackgroundTasks):
+async def ingest_trace(trace: TraceIn, background_tasks: BackgroundTasks):
     """Ingest a trace into the TraceStore."""
     try:
         trace_payload = trace.model_dump()
-        trace_id = store.add_trace_from_dict(trace_payload)
+        trace_id = await run_in_threadpool(store.add_trace_from_dict, trace_payload)
         attributes = trace_payload.get("attributes") or {}
+        spans = trace_payload.get("spans") or []
+        text_to_embed = store._extract_embedding_text(
+            attributes.get("system_prompt"),
+            spans,
+        )
+        if text_to_embed and not settings.DISABLE_BACKGROUND_EMBEDDINGS:
+            background_tasks.add_task(store.update_trace_embedding, trace_id, text_to_embed)
         if settings.AUTO_EVALUATE_TRACES and not attributes.get("tracebrain.ai_evaluation"):
             background_tasks.add_task(run_bg_evaluation, trace_id)
         return TraceIngestResponse(

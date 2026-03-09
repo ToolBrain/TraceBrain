@@ -137,9 +137,6 @@ class BaseStorageBackend:
         ai_evaluation = attributes.get("tracebrain.ai_evaluation")
 
         spans_data = trace_data.get("spans") or []
-        embedding_text = self._extract_embedding_text(system_prompt, spans_data)
-        embedding = self.embedding_provider.get_embedding(embedding_text) if embedding_text else []
-
         status = TraceStatus.running
         if isinstance(status_value, str):
             try:
@@ -180,7 +177,7 @@ class BaseStorageBackend:
             created_at=datetime.utcnow(),
             status=status,
             priority=priority,
-            embedding=embedding or None,
+            embedding=None,
             attributes=attributes,
             ai_evaluation=ai_evaluation,
         )
@@ -229,8 +226,6 @@ class BaseStorageBackend:
                     }
                 if priority != existing.priority:
                     existing.priority = priority
-                if embedding and not existing.embedding:
-                    existing.embedding = embedding
                 if ai_evaluation and not existing.ai_evaluation:
                     existing.ai_evaluation = ai_evaluation
 
@@ -250,6 +245,27 @@ class BaseStorageBackend:
             session.rollback()
             logger.exception("Failed to add trace")
             raise
+        finally:
+            session.close()
+
+    def update_trace_embedding(self, trace_id: str, text_to_embed: str) -> None:
+        if not trace_id or not text_to_embed:
+            return
+
+        embedding = self.embedding_provider.get_embedding(text_to_embed)
+        if not embedding:
+            return
+
+        session = self.get_session()
+        try:
+            trace = session.query(Trace).filter(Trace.id == trace_id).first()
+            if not trace:
+                return
+            trace.embedding = embedding
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to update embedding for trace %s", trace_id)
         finally:
             session.close()
 
