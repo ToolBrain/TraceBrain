@@ -154,7 +154,8 @@ const TraceTree: React.FC<TraceTreeProps> = ({
     >
       <Box
         sx={{
-          p: 2,
+          py: 1,
+          px: 2,
           borderBottom: 1,
           borderColor: "divider",
           bgcolor: "background.default",

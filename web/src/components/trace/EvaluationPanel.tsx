@@ -249,7 +249,8 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     <>
       <Box
         sx={{
-          p: 2,
+          py: 1.5,
+          px: 2,
           borderBottom: 1,
           borderColor: "divider",
           bgcolor: "background.default",
@@ -258,7 +259,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
           justifyContent: "space-between",
         }}
       >
-        <Typography variant="h5">Evaluation and Governance</Typography>
+        <Typography variant="h6">Evaluation and Governance</Typography>
         <Button
           size="small"
           variant="outlined"
