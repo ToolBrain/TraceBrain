@@ -5,7 +5,7 @@ import type { Trace } from "../../types/trace";
 import { useSearchParams, useParams } from "react-router-dom";
 import InspectorPanel from "./InspectorPanel";
 
-interface TraceVisualizerProps {
+interface TraceExplorerProps {
   traces: Trace[];
 }
 
@@ -14,7 +14,7 @@ interface SelectedSpan {
   spanId: string;
 }
 
-const TraceVisualizer: React.FC<TraceVisualizerProps> = ({ traces }) => {
+const TraceExplorer: React.FC<TraceExplorerProps> = ({ traces }) => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const preselectedSpan = searchParams.get("span");
@@ -84,4 +84,4 @@ const TraceVisualizer: React.FC<TraceVisualizerProps> = ({ traces }) => {
   );
 };
 
-export default TraceVisualizer;
+export default TraceExplorer;
