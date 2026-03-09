@@ -519,8 +519,6 @@ class LibrarianAgent:
 
             session = provider.start_chat(system_prompt, self.tools)
             response = provider.send_user_message(session, user_content)
-            last_sql_result: Optional[str] = None
-            saw_sql_result = False
             extracted_filters = {}
 
             for _ in range(5):
@@ -534,9 +532,6 @@ class LibrarianAgent:
                     if tool_name == "run_sql_query":
                         sql_query = args.get("query", "")
                         tool_result = self.run_sql_query(sql_query)
-                        if not tool_result.startswith("EXECUTION_FAILED") and not tool_result.startswith("EMPTY_RESULT"):
-                            last_sql_result = tool_result
-                            saw_sql_result = True
                         self.store.save_chat_message(
                             session_id,
                             "tool",
@@ -579,16 +574,6 @@ class LibrarianAgent:
                         result = self._abstain_response_from_llm(user_query, history_text, provider)
                         self.store.save_chat_message(session_id, "assistant", result)
                         return result
-
-            if saw_sql_result and last_sql_result:
-                response = provider.send_user_message(
-                    session,
-                    (
-                        "Using the SQL results below, return ONLY a JSON object with keys "
-                        "answer, suggestions, sources, filters. The answer must be a natural language summary.\n"
-                        f"SQL_RESULTS: {last_sql_result}"
-                    ),
-                )
 
             answer_text = provider.extract_text(response)
             try:
