@@ -18,6 +18,8 @@ import sqlparse
 from tracebrain.config import settings
 from tracebrain.core.llm_providers import select_provider, is_provider_available, BaseProvider
 from tracebrain.core.schema import TraceBrainAttributes
+from tracebrain.core.curator import CurriculumCurator
+from tracebrain.db.base import TraceStatus
 
 logger = logging.getLogger(__name__)
 
@@ -113,11 +115,23 @@ def _build_tool_specs() -> List[Dict[str, Any]]:
         },
     ]
 
-def _validate_filters(filters: dict) -> dict | None:
+def _validate_filters(filters: dict) -> dict:
     if not filters:
-        return None
-    if not all(key in {"status", "min_rating", "error_type", "min_confidence", "max_confidence", "start_time", "end_time"} for key in filters):
-        return None
+        return {}
+    valid_keys = {"status", "min_rating", "error_type", "min_confidence", "max_confidence", "start_time", "end_time"}
+    if not all(key in valid_keys for key in filters):
+        return {}
+    valid_statuses = {s.value for s in TraceStatus}
+    if "status" in filters and filters["status"] not in valid_statuses:
+        return {}
+    if "error_type" in filters and filters["error_type"] not in CurriculumCurator.VALID_ERROR_TYPES:
+        return {}
+    if "min_rating" in filters and not (1 <= filters["min_rating"] <= 5):
+        return {}
+    if "min_confidence" in filters and not (0.0 <= filters["min_confidence"] <= 1.0):
+        return {}
+    if "max_confidence" in filters and not (0.0 <= filters["max_confidence"] <= 1.0):
+        return {}
     return filters
 
 LIBRARIAN_AVAILABLE = is_provider_available()
@@ -139,7 +153,6 @@ class LibrarianAgent:
         ai_error_type = TraceBrainAttributes.AI_ERROR_TYPE.value
         span_type = TraceBrainAttributes.SPAN_TYPE.value
         tool_name = TraceBrainAttributes.TOOL_NAME.value
-        from tracebrain.core.curator import CurriculumCurator
         valid_error_types = ", ".join(sorted(CurriculumCurator.VALID_ERROR_TYPES))
 
         dialect = self._detect_dialect()
@@ -183,6 +196,7 @@ class LibrarianAgent:
 
         return (
             f"{dialect.upper()} schema (read-only):\n\n"
+            "Always map natural language terms to the closest exact value before querying.\n\n"
             "Table: traces\n"
             "- id (string, primary key)\n"
             "- system_prompt (text)\n"
@@ -324,7 +338,7 @@ class LibrarianAgent:
             "### YOUR TASK:\n"
             "1. Analyze the User Question and explain politely that no traces currently match those specific criteria.\n"
             "2. Identify potential reasons for the empty result (e.g., a time range that is too narrow, a specific error code that hasn't occurred, or a tool name typo).\n"
-            "3. Provide 2-3 ACTIONABLE suggestions to help the user find what they need. These should be formatted as direct questions or commands the user can click.\n\n"
+            "3. Provide 1-2 ACTIONABLE suggestions to help the user find what they need. These should be formatted as direct questions or commands the user can click.\n\n"
             "### SUGGESTION GUIDELINES:\n"
             "- 'Broaden Time': Suggest looking back further (e.g., last 7 days).\n"
             "- 'Relax Filters': If they asked for errors, suggest looking for all traces of that tool.\n"
@@ -596,7 +610,7 @@ class LibrarianAgent:
             answer = str(parsed.get("answer", "")).strip() or "No response."
             suggestions = self._normalize_suggestions(parsed.get("suggestions"))
             sources = self._normalize_sources(parsed.get("sources"), answer)
-            filters = self._normalize_filters(extracted_filters)
+            filters = self._normalize_filters(extracted_filters if extracted_filters else (_validate_filters(parsed.get("filters", {}))))
 
             result = {
                 "answer": answer,

@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import TraceTree from "./TraceTree";
 import type { Trace } from "../../types/trace";
 import { useSearchParams, useParams } from "react-router-dom";
-import SpanDetails from "./SpanDetails";
+import InspectorPanel from "./InspectorPanel";
 
 interface TraceVisualizerProps {
   traces: Trace[];
@@ -79,7 +79,7 @@ const TraceVisualizer: React.FC<TraceVisualizerProps> = ({ traces }) => {
         onToggleExpand={toggleExpand}
         onSelectSpan={setSelectedSpan}
       />
-      <SpanDetails span={selectedSpanData} trace={activeTrace} />
+      <InspectorPanel span={selectedSpanData} trace={activeTrace} traces={traces} />
     </Box>
   );
 };
