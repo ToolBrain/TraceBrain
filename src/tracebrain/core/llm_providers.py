@@ -356,18 +356,17 @@ class GeminiProvider(BaseProvider):
             parsed_result = json.loads(tool_result)
         except Exception:
             parsed_result = {"result": tool_result}
+        if not isinstance(parsed_result, dict):
+            parsed_result = {"result": parsed_result}
         return session["chat"].send_message(
-            self.types.Content(
-                role="tool",
-                parts=[
-                    self.types.Part(
-                        function_response=self.types.FunctionResponse(
-                            name=tool_name,
-                            response=parsed_result,
-                        )
+            [
+                self.types.Part(
+                    function_response=self.types.FunctionResponse(
+                        name=tool_name,
+                        response=parsed_result,
                     )
-                ]
-            )
+                )
+            ]
         )
 
     def extract_text(self, response) -> str:
