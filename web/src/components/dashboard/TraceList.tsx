@@ -29,6 +29,7 @@ import StatusChip, { ALLOWED_STATUSES, type ChipStatus } from "../shared/StatusC
 import {
   traceGetDuration,
   traceGetErrorType,
+  traceGetEvalRating,
   traceGetEvaluation,
   traceGetPriority,
   traceGetRating,
@@ -134,6 +135,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
               const totalTokens = traceGetTotalTokens(trace) ?? "N/A";
               const errorType = traceGetErrorType(trace);
               const rating = traceGetRating(trace);
+              const aiRating = traceGetEvalRating(trace);
 
               const evaluation = traceGetEvaluation(trace);
               const confidence = evaluation?.confidence;
@@ -216,7 +218,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                           </Box>
 
                           {/* Rating */}
-                          {rating > 0 ? (
+                          {rating > 0 || aiRating > 0 ? (
                             <Box
                               sx={{
                                 display: "flex",
@@ -224,8 +226,11 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                                 gap: 0.25,
                               }}
                             >
-                              <Star fontSize="inherit" sx={{ color: "warning.light" }} />
-                              {rating}
+                              <Star
+                                fontSize="inherit"
+                                sx={{ color: rating > 0 ? "warning.light" : "info.light" }}
+                              />
+                              {rating > 0 ? rating : aiRating}
                             </Box>
                           ) : (
                             <Typography variant="caption" color="text.disabled">
