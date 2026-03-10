@@ -1,4 +1,4 @@
-import type { Span } from "../../types/trace";
+import type { Span, Trace } from "../../types/trace";
 
 export function spanGetType(span: Span) {
   return span?.attributes["tracebrain.span.type"];
@@ -61,6 +61,6 @@ export function spanGetOutput(span: Span) {
   }
 }
 
-export function spanGetSystemPrompt(span: Span) {
-  return span?.attributes["system_prompt"];
+export function spanGetSystemPrompt(span: Span | null | undefined, trace?: Trace | null) {
+  return span?.attributes["system_prompt"] ?? trace?.attributes?.["system_prompt"];
 }

@@ -10,29 +10,32 @@ TraceBrain stores traces in a **delta-based OTLP schema**. Each span only contai
 
 ## 2. Core Reconstruction Logic
 
-The reconstruction algorithm is a **backwards traversal** over the `parent_id` chain.
+The reconstruction algorithm is a **backwards traversal** over the `parent_id` chain of `llm_inference` spans.
 
 ### Backwards Traversal Algorithm
 
-1. Start at a specific span (often the last LLM step or final answer).
-2. Follow each `parent_id` pointer back to the root span.
-3. Collect:
-   - `tracebrain.llm.new_content` from LLM spans
-   - `tracebrain.tool.output` from tool execution spans
-4. Reverse the collected items to restore chronological order.
-5. Prepend the top-level `system_prompt` from `trace.attributes.system_prompt`.
+1. Start at a specific `llm_inference` span (often the final answer).
+2. Follow each `parent_id` pointer back to the root span, collecting only `llm_inference` spans.
+3. Reverse the collected spans to restore chronological order.
+4. Initialize the history with the top-level `system_prompt` from `trace.attributes.system_prompt`.
+5. For each `llm_inference` span in order:
+    - Append `tracebrain.llm.new_content` to the history.
+    - If the span is **not** the target span, append the assistant `completion` from the span.
 
 ### Why This Works
 
-Each span stores only the delta for that step. The `parent_id` chain preserves the causal ordering of steps. Traversing backwards and reversing the list reconstructs the full, ordered prompt.
+Each `llm_inference` span stores the delta for that step. The `parent_id` chain preserves the causal ordering of those steps. Adding `new_content` plus the intermediate `completion` preserves conversation continuity without duplicating tool output.
 
 ### ASCII Diagram
 
 ```
-[Span D] <- parent_id <- [Span C] <- parent_id <- [Span B] <- parent_id <- [Span A]
-   |                         |                         |                  |
-   |                         |                         |                  |
- new_content/tool_output collected in reverse, then reversed to chronological order
+[Span D*] <- parent_id <- [Span C] <- parent_id <- [Span B] <- parent_id <- [Span A]
+     |                         |                         |                  |
+     |                         |                         |                  |
+ new_content + completion   new_content + completion   new_content + completion
+ (only if not target)       (only if not target)       (only if not target)
+
+*Span D is the target span: append new_content only (no completion).
 ```
 
 ## 3. Standard SDK Views
@@ -85,23 +88,24 @@ Advanced users may need a custom reconstruction format (for example, DPO pairs o
 
 - `trace_data["attributes"]["system_prompt"]`
 - `span["attributes"]["tracebrain.llm.new_content"]`
-- `span["attributes"]["tracebrain.tool.output"]`
+- `span["attributes"]["tracebrain.llm.completion"]`
 - `span["parent_id"]`
 
 ### Minimal Pseudocode
 
 ```
-collect = []
-current = last_span
+path = []
+current = target_span
 while current is not None:
     if span_type == "llm_inference":
-        collect.append(llm_new_content)
-    if span_type == "tool_execution":
-        collect.append(tool_output)
+        path.insert(0, current)
     current = span_parent_id
 
-collect.reverse()
-full_context = [system_prompt] + collect
+history = [system_prompt]
+for span in path:
+    history.extend(parse(span.new_content))
+    if span != target_span:
+        history.append({"role": "assistant", "content": span.completion})
 ```
 
 This is the same logic used by the SDK helpers, but you can adapt it to custom formats or target datasets.

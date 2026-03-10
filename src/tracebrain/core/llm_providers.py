@@ -13,6 +13,126 @@ from tracebrain.config import settings
 logger = logging.getLogger(__name__)
 
 
+def extract_usage_from_response(provider: str, response: Any) -> Optional[Dict[str, Any]]:
+    provider_key = (provider or "").lower()
+    if provider_key in {"openai", "azure_openai", "openai_compatible"}:
+        usage = getattr(response, "usage", None)
+        if usage is None and isinstance(response, dict):
+            usage = response.get("usage")
+        if usage is None:
+            return None
+
+        if isinstance(usage, dict):
+            raw = usage
+        else:
+            raw = {
+                "input_tokens": getattr(usage, "input_tokens", None),
+                "output_tokens": getattr(usage, "output_tokens", None),
+                "total_tokens": getattr(usage, "total_tokens", None),
+                "cached_tokens": getattr(usage, "cached_tokens", None),
+                "reasoning_tokens": getattr(usage, "reasoning_tokens", None),
+                "input_tokens_details": getattr(usage, "input_tokens_details", None),
+                "output_tokens_details": getattr(usage, "output_tokens_details", None),
+            }
+
+        prompt_tokens = raw.get("prompt_tokens", raw.get("input_tokens"))
+        completion_tokens = raw.get("completion_tokens", raw.get("output_tokens"))
+        total_tokens = raw.get("total_tokens")
+        if total_tokens is None and isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
+            total_tokens = prompt_tokens + completion_tokens
+
+        usage_out = {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+        }
+        if raw.get("cached_tokens") is not None:
+            usage_out["cached_tokens"] = raw.get("cached_tokens")
+        if raw.get("reasoning_tokens") is not None:
+            usage_out["reasoning_tokens"] = raw.get("reasoning_tokens")
+        if raw.get("input_tokens_details") is not None:
+            usage_out["input_tokens_details"] = raw.get("input_tokens_details")
+        if raw.get("output_tokens_details") is not None:
+            usage_out["output_tokens_details"] = raw.get("output_tokens_details")
+
+        if not any(isinstance(val, (int, float)) for val in usage_out.values()):
+            return None
+        return usage_out
+
+    if provider_key == "anthropic":
+        usage = getattr(response, "usage", None)
+        if usage is None and isinstance(response, dict):
+            usage = response.get("usage")
+        if usage is None:
+            return None
+
+        if isinstance(usage, dict):
+            prompt_tokens = usage.get("input_tokens")
+            completion_tokens = usage.get("output_tokens")
+        else:
+            prompt_tokens = getattr(usage, "input_tokens", None)
+            completion_tokens = getattr(usage, "output_tokens", None)
+
+        if prompt_tokens is None and completion_tokens is None:
+            return None
+
+        total_tokens = None
+        if isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
+            total_tokens = prompt_tokens + completion_tokens
+
+        return {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+        }
+
+    if provider_key == "gemini":
+        usage = getattr(response, "usage_metadata", None)
+        if usage is None and isinstance(response, dict):
+            usage = response.get("usage_metadata") or response.get("usageMetadata")
+        if usage is None:
+            return None
+
+        if isinstance(usage, dict):
+            raw = usage
+        else:
+            raw = {
+                "prompt_token_count": getattr(usage, "prompt_token_count", None),
+                "response_token_count": getattr(usage, "response_token_count", None),
+                "total_token_count": getattr(usage, "total_token_count", None),
+                "cached_content_token_count": getattr(usage, "cached_content_token_count", None),
+                "thoughts_token_count": getattr(usage, "thoughts_token_count", None),
+                "prompt_tokens_details": getattr(usage, "prompt_tokens_details", None),
+                "response_tokens_details": getattr(usage, "response_tokens_details", None),
+            }
+
+        prompt_tokens = raw.get("prompt_token_count")
+        completion_tokens = raw.get("response_token_count")
+        total_tokens = raw.get("total_token_count")
+        if total_tokens is None and isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
+            total_tokens = prompt_tokens + completion_tokens
+
+        usage_out = {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+        }
+        if raw.get("cached_content_token_count") is not None:
+            usage_out["cached_tokens"] = raw.get("cached_content_token_count")
+        if raw.get("thoughts_token_count") is not None:
+            usage_out["reasoning_tokens"] = raw.get("thoughts_token_count")
+        if raw.get("prompt_tokens_details") is not None:
+            usage_out["prompt_tokens_details"] = raw.get("prompt_tokens_details")
+        if raw.get("response_tokens_details") is not None:
+            usage_out["response_tokens_details"] = raw.get("response_tokens_details")
+
+        if not any(isinstance(val, (int, float)) for val in usage_out.values()):
+            return None
+        return usage_out
+
+    return None
+
+
 class ProviderError(RuntimeError):
     pass
 
@@ -40,6 +160,9 @@ class BaseProvider:
 
     def extract_tool_calls(self, response) -> List[Dict[str, Any]]:
         return []
+
+    def extract_usage(self, response) -> Optional[Dict[str, Any]]:
+        return None
 
 
 class OpenAIProvider(BaseProvider):
@@ -120,6 +243,50 @@ class OpenAIProvider(BaseProvider):
                 }
             )
         return result
+
+    def extract_usage(self, response) -> Optional[Dict[str, Any]]:
+        usage = getattr(response, "usage", None)
+        if usage is None and isinstance(response, dict):
+            usage = response.get("usage")
+        if usage is None:
+            return None
+
+        if isinstance(usage, dict):
+            raw = usage
+        else:
+            raw = {
+                "input_tokens": getattr(usage, "input_tokens", None),
+                "output_tokens": getattr(usage, "output_tokens", None),
+                "total_tokens": getattr(usage, "total_tokens", None),
+                "cached_tokens": getattr(usage, "cached_tokens", None),
+                "reasoning_tokens": getattr(usage, "reasoning_tokens", None),
+                "input_tokens_details": getattr(usage, "input_tokens_details", None),
+                "output_tokens_details": getattr(usage, "output_tokens_details", None),
+            }
+
+        prompt_tokens = raw.get("prompt_tokens", raw.get("input_tokens"))
+        completion_tokens = raw.get("completion_tokens", raw.get("output_tokens"))
+        total_tokens = raw.get("total_tokens")
+        if total_tokens is None and isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
+            total_tokens = prompt_tokens + completion_tokens
+
+        usage_out = {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+        }
+        if raw.get("cached_tokens") is not None:
+            usage_out["cached_tokens"] = raw.get("cached_tokens")
+        if raw.get("reasoning_tokens") is not None:
+            usage_out["reasoning_tokens"] = raw.get("reasoning_tokens")
+        if raw.get("input_tokens_details") is not None:
+            usage_out["input_tokens_details"] = raw.get("input_tokens_details")
+        if raw.get("output_tokens_details") is not None:
+            usage_out["output_tokens_details"] = raw.get("output_tokens_details")
+
+        if not any(isinstance(val, (int, float)) for val in usage_out.values()):
+            return None
+        return usage_out
 
 
 class AzureOpenAIProvider(OpenAIProvider):
@@ -209,6 +376,33 @@ class AnthropicProvider(BaseProvider):
         parts = response.content or []
         texts = [p.text for p in parts if getattr(p, "type", None) == "text"]
         return "".join(texts).strip()
+
+    def extract_usage(self, response) -> Optional[Dict[str, Any]]:
+        usage = getattr(response, "usage", None)
+        if usage is None and isinstance(response, dict):
+            usage = response.get("usage")
+        if usage is None:
+            return None
+
+        if isinstance(usage, dict):
+            prompt_tokens = usage.get("input_tokens")
+            completion_tokens = usage.get("output_tokens")
+        else:
+            prompt_tokens = getattr(usage, "input_tokens", None)
+            completion_tokens = getattr(usage, "output_tokens", None)
+
+        if prompt_tokens is None and completion_tokens is None:
+            return None
+
+        total_tokens = None
+        if isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
+            total_tokens = prompt_tokens + completion_tokens
+
+        return {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+        }
 
     def extract_tool_calls(self, response) -> List[Dict[str, Any]]:
         parts = response.content or []
@@ -403,6 +597,50 @@ class GeminiProvider(BaseProvider):
                     }
                 )
         return tool_calls
+
+    def extract_usage(self, response) -> Optional[Dict[str, Any]]:
+        usage = getattr(response, "usage_metadata", None)
+        if usage is None and isinstance(response, dict):
+            usage = response.get("usage_metadata") or response.get("usageMetadata")
+        if usage is None:
+            return None
+
+        if isinstance(usage, dict):
+            raw = usage
+        else:
+            raw = {
+                "prompt_token_count": getattr(usage, "prompt_token_count", None),
+                "response_token_count": getattr(usage, "response_token_count", None),
+                "total_token_count": getattr(usage, "total_token_count", None),
+                "cached_content_token_count": getattr(usage, "cached_content_token_count", None),
+                "thoughts_token_count": getattr(usage, "thoughts_token_count", None),
+                "prompt_tokens_details": getattr(usage, "prompt_tokens_details", None),
+                "response_tokens_details": getattr(usage, "response_tokens_details", None),
+            }
+
+        prompt_tokens = raw.get("prompt_token_count")
+        completion_tokens = raw.get("response_token_count")
+        total_tokens = raw.get("total_token_count")
+        if total_tokens is None and isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
+            total_tokens = prompt_tokens + completion_tokens
+
+        usage_out = {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+        }
+        if raw.get("cached_content_token_count") is not None:
+            usage_out["cached_tokens"] = raw.get("cached_content_token_count")
+        if raw.get("thoughts_token_count") is not None:
+            usage_out["reasoning_tokens"] = raw.get("thoughts_token_count")
+        if raw.get("prompt_tokens_details") is not None:
+            usage_out["prompt_tokens_details"] = raw.get("prompt_tokens_details")
+        if raw.get("response_tokens_details") is not None:
+            usage_out["response_tokens_details"] = raw.get("response_tokens_details")
+
+        if not any(isinstance(val, (int, float)) for val in usage_out.values()):
+            return None
+        return usage_out
 
 
 class HuggingFaceProvider(BaseProvider):

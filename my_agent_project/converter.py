@@ -88,6 +88,7 @@ def convert_smolagent_to_otlp(agent: CodeAgent, query: str) -> Dict:
             return first_line or None
         return text.strip() or None
 
+
     for step in agent.memory.steps:
         if step.__class__.__name__ != "ActionStep":
             continue
@@ -198,6 +199,34 @@ def convert_langchain_to_otlp(messages: list, system_prompt: str = "") -> Dict:
             args_text = json.dumps(str(args), ensure_ascii=True)
         return f"{name}({args_text})"
 
+    def _extract_langchain_usage(msg: Any) -> Dict[str, Any] | None:
+        usage = getattr(msg, "usage_metadata", None)
+        if usage is None and isinstance(msg, dict):
+            usage = msg.get("usage_metadata") or msg.get("usageMetadata")
+        if not isinstance(usage, dict):
+            return None
+
+        input_tokens = usage.get("input_tokens")
+        output_tokens = usage.get("output_tokens")
+        total_tokens = usage.get("total_tokens")
+        if total_tokens is None and isinstance(input_tokens, int) and isinstance(output_tokens, int):
+            total_tokens = input_tokens + output_tokens
+
+        usage_out: Dict[str, Any] = {
+            "prompt_tokens": input_tokens,
+            "completion_tokens": output_tokens,
+            "total_tokens": total_tokens,
+        }
+        if "input_token_details" in usage:
+            usage_out["input_tokens_details"] = usage.get("input_token_details")
+        if "output_token_details" in usage:
+            usage_out["output_tokens_details"] = usage.get("output_token_details")
+
+        if not any(isinstance(val, (int, float)) for val in usage_out.values()):
+            return None
+        return usage_out
+
+
     prev_msg = None
     for msg in messages:
         msg_type = getattr(msg, "type", None) or msg.__class__.__name__.lower()
@@ -257,6 +286,9 @@ def convert_langchain_to_otlp(messages: list, system_prompt: str = "") -> Dict:
                     TraceBrainAttributes.LLM_FINAL_ANSWER: final_answer,
                 },
             }
+            usage = _extract_langchain_usage(msg)
+            if usage:
+                span["attributes"][TraceBrainAttributes.USAGE] = usage
             spans.append(span)
             parent_id = span_id
             prev_msg = msg

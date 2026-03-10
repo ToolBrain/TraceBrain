@@ -528,6 +528,7 @@ rating = func.jsonb_extract_path_text(cast(Trace.feedback, JSONB), "rating")
 ## 📚 Documentation
 
 - **[Building Your Own Trace Converter](docs/Converter.md)** - Complete guide for integrating custom agent frameworks
+- **[LLM Provider Guide](docs/LLMProviders.md)** - Use TraceBrain LLM providers and attach usage metadata
 - **[Trace Reconstruction Guide](docs/Reconstructor.md)** - Rebuild full context from delta traces for training
 - **[Sample OTLP Traces](data/TraceBrain%20OTLP%20Trace%20Samples)** - Example trace files
 - **[API Documentation](http://localhost:8000/docs)** - Interactive OpenAPI docs (when server is running)
