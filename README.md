@@ -267,7 +267,7 @@ requests.post("http://localhost:8000/api/v1/traces/trace-001/feedback", json={
 
 The admin UI provides:
 - **Trace Browser**: View all traces with filters
-- **Trace Details**: Expandable span tree visualization
+- **Trace Details**: Expandable span tree visualization and compare related traces
 - **Feedback Form**: Rate and tag traces
 - **Analytics Dashboard**: Stats, tool usage charts
 - **AI Librarian**: Session-aware chat with suggestions and history restore

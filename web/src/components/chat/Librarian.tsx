@@ -9,7 +9,8 @@ import { AssistantAvatar } from "./Icons";
 export const Librarian: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
-  const { messages, suggestions, isLoading, sendMessage, clearMessages, clearSuggestions } = useChat();
+  const { messages, suggestions, isLoading, sendMessage, clearMessages, clearSuggestions } =
+    useChat();
   const [selectedSuggestion, setSelectedSuggestion] = useState(false);
 
   // Sends the message if input is not empty and clears the input
@@ -71,7 +72,7 @@ export const Librarian: React.FC = () => {
             alignItems="center"
             spacing={2}
             sx={{
-              p: 2,
+              p: 1.5,
               bgcolor: "primary.dark",
               color: "primary.contrastText",
             }}
@@ -113,7 +114,7 @@ export const Librarian: React.FC = () => {
             direction="row"
             spacing={1}
             sx={{
-              p: 2,
+              p: 1.5,
               bgcolor: "background.paper",
             }}
           >
@@ -127,22 +128,27 @@ export const Librarian: React.FC = () => {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
               disabled={isLoading}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={handleSend}
+                      disabled={isLoading || !input.trim()}
+                      sx={{ alignSelf: "flex-end", mb: 0.5 }}
+                    >
+                      <Send fontSize="small" />
+                    </IconButton>
+                  ),
+                },
+              }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 2,
                 },
               }}
             />
-            <IconButton
-              color="primary"
-              onClick={handleSend}
-              disabled={isLoading || !input.trim()}
-              sx={{
-                alignSelf: "flex-end",
-              }}
-            >
-              <Send />
-            </IconButton>
           </Stack>
         </Paper>
       )}

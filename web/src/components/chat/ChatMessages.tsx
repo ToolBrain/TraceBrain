@@ -67,7 +67,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             variant="body2"
             sx={{ color: "text.secondary", fontStyle: "italic" }}
           >
-            Generating response…
+            Generating Response…
           </Typography>
         </Box>
       )}

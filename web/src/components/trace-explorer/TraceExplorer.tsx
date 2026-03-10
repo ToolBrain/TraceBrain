@@ -3,9 +3,9 @@ import { Box } from "@mui/material";
 import TraceTree from "./TraceTree";
 import type { Trace } from "../../types/trace";
 import { useSearchParams, useParams } from "react-router-dom";
-import SpanDetails from "./SpanDetails";
+import InspectorPanel from "./InspectorPanel";
 
-interface TraceVisualizerProps {
+interface TraceExplorerProps {
   traces: Trace[];
 }
 
@@ -14,7 +14,7 @@ interface SelectedSpan {
   spanId: string;
 }
 
-const TraceVisualizer: React.FC<TraceVisualizerProps> = ({ traces }) => {
+const TraceExplorer: React.FC<TraceExplorerProps> = ({ traces }) => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const preselectedSpan = searchParams.get("span");
@@ -79,9 +79,9 @@ const TraceVisualizer: React.FC<TraceVisualizerProps> = ({ traces }) => {
         onToggleExpand={toggleExpand}
         onSelectSpan={setSelectedSpan}
       />
-      <SpanDetails span={selectedSpanData} trace={activeTrace} />
+      <InspectorPanel span={selectedSpanData} trace={activeTrace} traces={traces} />
     </Box>
   );
 };
 
-export default TraceVisualizer;
+export default TraceExplorer;
