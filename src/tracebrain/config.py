@@ -129,10 +129,6 @@ class Settings(BaseSettings):
         default=None,
         description="Azure OpenAI deployment name"
     )
-    LLM_ANTHROPIC_VERSION: str = Field(
-        default="2023-06-01",
-        description="Anthropic API version"
-    )
     LLM_TEMPERATURE: float = Field(
         default=0.2,
         ge=0.0,

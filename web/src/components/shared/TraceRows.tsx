@@ -5,6 +5,7 @@ import type { Trace } from "../../types/trace";
 import {
   traceGetDuration,
   traceGetErrorType,
+  traceGetEvalRating,
   traceGetEvaluation,
   traceGetPriority,
   traceGetRating,
@@ -53,6 +54,7 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
           const errorType = traceGetErrorType(trace);
           const evaluation = traceGetEvaluation(trace);
           const rating = traceGetRating(trace);
+          const aiRating = traceGetEvalRating(trace);
           const confidence = evaluation?.confidence;
           const suggestion_status = evaluation?.status;
           const isAnalyzing = !evaluation;
@@ -104,7 +106,7 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                     </Box>
 
                     {/* Rating */}
-                    {rating > 0 ? (
+                    {rating > 0 || aiRating > 0 ? (
                       <Box
                         sx={{
                           display: "flex",
@@ -112,8 +114,11 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                           gap: 0.25,
                         }}
                       >
-                        <Star fontSize="inherit" sx={{ color: "warning.light" }} />
-                        {rating}
+                        <Star
+                          fontSize="inherit"
+                          sx={{ color: rating > 0 ? "warning.light" : "info.light" }}
+                        />
+                        {rating > 0 ? rating : aiRating}
                       </Box>
                     ) : (
                       <Typography variant="caption" color="text.disabled">

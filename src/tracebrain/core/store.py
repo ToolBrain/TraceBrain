@@ -677,7 +677,9 @@ class BaseStorageBackend:
 
         if not self.is_sqlite:
             if min_rating is not None:
-                rating_value = cast(Trace.feedback, JSONB)["rating"].astext.cast(Integer)
+                human_rating = cast(Trace.feedback, JSONB)["rating"].astext.cast(Integer)
+                ai_rating = cast(Trace.ai_evaluation, JSONB)["rating"].astext.cast(Integer)
+                rating_value = func.coalesce(human_rating, ai_rating)
                 q = q.filter(rating_value >= min_rating)
             if error_type:
                 error_value = cast(Trace.ai_evaluation, JSONB)["error_type"].astext
@@ -701,10 +703,6 @@ class BaseStorageBackend:
 
         filtered_ids: List[str] = []
         for trace in traces:
-            rating_value = None
-            if trace.feedback and isinstance(trace.feedback, dict):
-                rating_value = trace.feedback.get("rating")
-
             ai_eval = None
             if trace.attributes and isinstance(trace.attributes, dict):
                 ai_eval = trace.attributes.get("tracebrain.ai_evaluation")
@@ -716,6 +714,12 @@ class BaseStorageBackend:
                 eval_confidence = ai_eval.get("confidence")
 
             if min_rating is not None:
+                human_rating = None
+                if trace.feedback and isinstance(trace.feedback, dict):
+                    human_rating = trace.feedback.get("rating")
+                ai_rating = ai_eval.get("rating") if isinstance(ai_eval, dict) else None
+                rating_value = human_rating if human_rating is not None else ai_rating
+
                 if not isinstance(rating_value, int) or rating_value < min_rating:
                     continue
             if error_type is not None:
@@ -747,7 +751,7 @@ class BaseStorageBackend:
             query = session.query(Trace).filter(Trace.id.in_(trace_ids))
             if include_spans:
                 query = query.options(selectinload(Trace.spans))
-            return query.all()
+            return query.order_by(Trace.created_at.asc()).all()
         finally:
             session.close()
 
@@ -759,7 +763,7 @@ class BaseStorageBackend:
                 session.query(Trace)
                 .options(selectinload(Trace.spans))
                 .filter(Trace.episode_id == episode_id)
-                .order_by(Trace.created_at.desc())
+                .order_by(Trace.created_at.asc())
                 .all()
             )
         finally:
