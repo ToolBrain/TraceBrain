@@ -614,6 +614,23 @@ class TraceScope:
         return False
 
     @staticmethod
+    def attach_usage(span: Dict[str, Any], response: Any, provider: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        if not isinstance(span, dict):
+            return None
+        attrs = span.get("attributes")
+        if not isinstance(attrs, dict):
+            return None
+
+        from tracebrain.core.llm_providers import extract_usage_from_response
+        from tracebrain.config import settings
+
+        provider_name = provider or settings.LLM_PROVIDER
+        usage = extract_usage_from_response(provider_name, response)
+        if usage:
+            attrs[TraceBrainAttributes.USAGE] = usage
+        return usage
+
+    @staticmethod
     def _parse_iso(timestamp: Optional[str]) -> Optional[datetime]:
         if not timestamp:
             return None
@@ -657,17 +674,15 @@ class TraceScope:
         if system_prompt:
             messages.append({"role": "system", "content": str(system_prompt)})
 
-        spans = trace_data.get("spans") or []
-        spans_sorted = sorted(
-            spans,
-            key=lambda span: TraceScope._parse_iso(span.get("start_time")) or datetime.min,
-        )
-        for span in spans_sorted:
+        path, target_span = TraceScope._build_llm_inference_path(trace_data)
+        for span in path:
             attrs = span.get("attributes") or {}
-            if attrs.get(TraceBrainAttributes.SPAN_TYPE) != SpanType.LLM_INFERENCE:
-                continue
             new_content = attrs.get(TraceBrainAttributes.LLM_NEW_CONTENT)
             messages.extend(TraceScope._normalize_messages(new_content))
+            if span is not target_span:
+                completion = attrs.get(TraceBrainAttributes.LLM_COMPLETION)
+                if completion:
+                    messages.append({"role": "assistant", "content": str(completion)})
 
         return messages
 
@@ -683,39 +698,72 @@ class TraceScope:
             messages.append({"role": "system", "content": str(system_prompt)})
 
         spans = trace_data.get("spans") or []
-        spans_sorted = sorted(
-            spans,
-            key=lambda span: TraceScope._parse_iso(span.get("start_time")) or datetime.min,
-        )
-
         tool_outputs: Dict[str, Any] = {}
-        for span in spans_sorted:
+        for span in spans:
             attrs = span.get("attributes") or {}
-            if attrs.get(TraceBrainAttributes.SPAN_TYPE) == SpanType.TOOL_EXECUTION:
-                parent_id = span.get("parent_id")
-                if parent_id:
-                    tool_outputs[parent_id] = attrs.get(TraceBrainAttributes.TOOL_OUTPUT)
-
-        for span in spans_sorted:
-            attrs = span.get("attributes") or {}
-            if attrs.get(TraceBrainAttributes.SPAN_TYPE) != SpanType.LLM_INFERENCE:
+            if attrs.get(TraceBrainAttributes.SPAN_TYPE) != SpanType.TOOL_EXECUTION:
                 continue
+            parent_id = span.get("parent_id")
+            if parent_id and parent_id not in tool_outputs:
+                tool_outputs[parent_id] = attrs.get(TraceBrainAttributes.TOOL_OUTPUT)
+
+        path, target_span = TraceScope._build_llm_inference_path(trace_data)
+        for span in path:
+            attrs = span.get("attributes") or {}
 
             new_content = attrs.get(TraceBrainAttributes.LLM_NEW_CONTENT)
             new_messages = TraceScope._normalize_messages(new_content)
             if new_messages:
                 messages.extend(new_messages)
 
+            completion = attrs.get(TraceBrainAttributes.LLM_COMPLETION)
             turn = {
                 "prompt_for_model": [dict(item) for item in messages],
-                "model_completion": attrs.get(TraceBrainAttributes.LLM_COMPLETION),
+                "model_completion": completion,
                 "thought": attrs.get(TraceBrainAttributes.LLM_THOUGHT),
                 "tool_code": attrs.get(TraceBrainAttributes.LLM_TOOL_CODE),
                 "tool_output": tool_outputs.get(span.get("span_id")),
             }
             turns.append(turn)
 
+            if span is not target_span and completion:
+                messages.append({"role": "assistant", "content": str(completion)})
+
         return turns
+
+    @staticmethod
+    def _build_llm_inference_path(
+        trace_data: Dict[str, Any],
+    ) -> tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        spans = trace_data.get("spans") or []
+        span_map = {}
+        llm_spans: List[Dict[str, Any]] = []
+        for span in spans:
+            span_id = span.get("span_id")
+            if span_id:
+                span_map[span_id] = span
+            attrs = span.get("attributes") or {}
+            if attrs.get(TraceBrainAttributes.SPAN_TYPE) == SpanType.LLM_INFERENCE:
+                llm_spans.append(span)
+
+        if not llm_spans:
+            return [], None
+
+        target_span = max(
+            llm_spans,
+            key=lambda span: TraceScope._parse_iso(span.get("start_time")) or datetime.min,
+        )
+
+        path: List[Dict[str, Any]] = []
+        current = target_span
+        while current is not None:
+            attrs = current.get("attributes") or {}
+            if attrs.get(TraceBrainAttributes.SPAN_TYPE) == SpanType.LLM_INFERENCE:
+                path.insert(0, current)
+            parent_id = current.get("parent_id")
+            current = span_map.get(parent_id) if parent_id else None
+
+        return path, target_span
 
     @staticmethod
     def to_tracebrain_turns(trace_data: Dict[str, Any]) -> List[Dict[str, Any]]:
