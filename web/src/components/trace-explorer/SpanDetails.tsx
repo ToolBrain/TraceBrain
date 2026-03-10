@@ -31,17 +31,7 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
   const systemPrompt = span ? spanGetSystemPrompt(span) : "";
 
   return (
-    <Box
-      sx={{
-        width: "75%",
-        bgcolor: "background.paper",
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        minHeight: 0,
-        overflow: "hidden",
-      }}
-    >
+    <>
       <EvaluationPanel trace={trace} />
 
       <Box
@@ -54,7 +44,8 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
       >
         <Box
           sx={{
-            p: 2,
+            py: 1.5,
+            px: 2,
             borderBottom: 1,
             borderColor: "divider",
             bgcolor: "background.default",
@@ -87,12 +78,7 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
                     content={toolName}
                     hasError={hasError}
                   />
-                  <SpanContent
-                    title="Input"
-                    subtitle="AI"
-                    content={input}
-                    hasError={hasError}
-                  />
+                  <SpanContent title="Input" subtitle="AI" content={input} hasError={hasError} />
                   <SpanContent
                     title="Output"
                     subtitle="Tool"
@@ -134,7 +120,7 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
           )}
         </Box>
       </Box>
-    </Box>
+    </>
   );
 };
 
