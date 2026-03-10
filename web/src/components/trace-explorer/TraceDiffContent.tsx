@@ -125,13 +125,13 @@ const STATUS_CONFIG: Record<
 };
 
 // Span when row is expanded
-const SpanFields: React.FC<{ span: Span }> = ({ span }) => {
+const SpanFields: React.FC<{ span: Span; trace: Trace }> = ({ span, trace }) => {
   const toolName = spanGetToolName(span);
   const hasError = spanHasError(span);
   const usage = spanGetUsage(span);
   const input = spanGetInput(span);
   const output = spanGetOutput(span);
-  const systemPrompt = spanGetSystemPrompt(span);
+  const systemPrompt = spanGetSystemPrompt(span, trace);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -356,9 +356,11 @@ const TraceDiffContent: React.FC<TraceDiffContentProps> = ({ traceA, traceB, lab
                   }}
                 >
                   <Box sx={{ borderRight: 1, borderColor: "divider", bgcolor: "action.hover" }}>
-                    {row.spanA && <SpanFields span={row.spanA} />}
+                    {row.spanA && <SpanFields span={row.spanA} trace={traceA} />}
                   </Box>
-                  <Box sx={{ bgcolor: "action.hover" }}>{row.spanB && <SpanFields span={row.spanB} />}</Box>
+                  <Box sx={{ bgcolor: "action.hover" }}>
+                    {row.spanB && <SpanFields span={row.spanB} trace={traceB} />}
+                  </Box>
                 </Box>
               )}
             </Box>

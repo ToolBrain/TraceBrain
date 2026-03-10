@@ -52,10 +52,12 @@ __author__ = "TraceBrain Team"
 from .main import app
 from .config import settings
 from .sdk import TraceClient
+from .sdk.client import TraceScope
 
 __all__ = [
     "app",
     "settings",
     "TraceClient",
+    "TraceScope",
     "__version__",
 ]

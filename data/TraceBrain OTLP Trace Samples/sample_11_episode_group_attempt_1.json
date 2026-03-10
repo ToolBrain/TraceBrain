@@ -23,7 +23,12 @@
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Book me a flight from SFO to JFK next Monday morning.\"}]",
         "tracebrain.llm.completion": "Thought: I will attempt to book the flight using the booking tool.\n{\"tool_call\": {\"name\": \"book_flight\", \"arguments\": {\"from\": \"SFO\", \"to\": \"JFK\", \"date\": \"next Monday\", \"time\": \"morning\"}}}",
         "tracebrain.llm.thought": "I will attempt to book the flight using the booking tool.",
-        "tracebrain.llm.tool_code": "book_flight({'from': 'SFO', 'to': 'JFK', 'date': 'next Monday', 'time': 'morning'})"
+        "tracebrain.llm.tool_code": "book_flight({'from': 'SFO', 'to': 'JFK', 'date': 'next Monday', 'time': 'morning'})",
+        "tracebrain.usage": {
+          "prompt_tokens": 82,
+          "completion_tokens": 44,
+          "total_tokens": 126
+        }
       }
     },
     {
@@ -51,7 +56,12 @@
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"book_flight\", \"arguments\": {\"from\": \"SFO\", \"to\": \"JFK\", \"date\": \"next Monday\", \"time\": \"morning\"}, \"id\": \"call_book1\"}]}, {\"role\": \"tool\", \"content\": \"Error: Missing traveler name.\", \"tool_call_id\": \"call_book1\"}]",
         "tracebrain.llm.completion": "I need your full name to complete the booking. Please provide the traveler name.",
-        "tracebrain.llm.final_answer": "I need your full name to complete the booking. Please provide the traveler name."
+        "tracebrain.llm.final_answer": "I need your full name to complete the booking. Please provide the traveler name.",
+        "tracebrain.usage": {
+          "prompt_tokens": 96,
+          "completion_tokens": 20,
+          "total_tokens": 116
+        }
       }
     }
   ]

@@ -21,7 +21,12 @@
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Summarize everything we discussed.\"}]",
-        "tracebrain.llm.completion": "Based on the extensive logs and the 500-page document provided earlier, the key findings are: 1. Financial growth was..." 
+        "tracebrain.llm.completion": "Based on the extensive logs and the 500-page document provided earlier, the key findings are: 1. Financial growth was...",
+        "tracebrain.usage": {
+          "prompt_tokens": 512,
+          "completion_tokens": 128,
+          "total_tokens": 640
+        }
       }
     }
   ]

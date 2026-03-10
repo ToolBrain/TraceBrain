@@ -21,7 +21,12 @@
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Add 5 and 10\"}]",
-        "tracebrain.llm.completion": "{\"tool\": \"add\", \"args\": {\"a\": 5, \"b\": 10 "
+        "tracebrain.llm.completion": "{\"tool\": \"add\", \"args\": {\"a\": 5, \"b\": 10 ",
+        "tracebrain.usage": {
+          "prompt_tokens": 54,
+          "completion_tokens": 19,
+          "total_tokens": 73
+        }
       }
     }
   ]

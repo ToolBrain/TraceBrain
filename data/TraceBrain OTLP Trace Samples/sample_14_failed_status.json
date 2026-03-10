@@ -26,7 +26,12 @@
         "tracebrain.llm.completion": "Thought: I should use the calculator tool.\n{\"tool_call\": {\"name\": \"calculator\", \"arguments\": {\"expression\": \"3/0\"}}}",
         "tracebrain.llm.thought": "I should use the calculator tool.",
         "tracebrain.llm.tool_code": "calculator({'expression': '3/0'})",
-        "tracebrain.llm.final_answer": null
+        "tracebrain.llm.final_answer": null,
+        "tracebrain.usage": {
+          "prompt_tokens": 62,
+          "completion_tokens": 26,
+          "total_tokens": 88
+        }
       }
     },
     {
