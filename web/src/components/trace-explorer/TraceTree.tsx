@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography, IconButton, Button } from "@mui/material";
+import { Box, Typography, IconButton, Button, useTheme } from "@mui/material";
 import {
   ChevronRight,
   ExpandMore,
@@ -26,6 +26,9 @@ interface TraceTreeProps {
   onSelectSpan: (span: SelectedSpan) => void;
 }
 
+const lineWidth = "0.075rem";
+const branchWidth = "0.75rem";
+
 const TraceTree: React.FC<TraceTreeProps> = ({
   traces,
   expandedNodes,
@@ -37,6 +40,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
   const isEpisode = searchParams.get("type") === "episode";
   const episodeId = traceGetEpisodeId(traces[0]);
   const nav = useNavigate();
+
   const SpanRow = ({
     span,
     traceId,
@@ -54,6 +58,8 @@ const TraceTree: React.FC<TraceTreeProps> = ({
     const isExpanded = expandedNodes.has(`${traceId}:${span.span_id}`);
     const isSelected = selectedSpan?.traceId === traceId && selectedSpan?.spanId === span.span_id;
     const hasError = spanHasError(span);
+    const theme = useTheme();
+    const connectorColor = theme.palette.grey[600];
 
     return (
       <>
@@ -74,24 +80,33 @@ const TraceTree: React.FC<TraceTreeProps> = ({
         >
           {depth > 0 && (
             <>
+              {!isLast && (
+                // Not last child line keeps going
+                <Box
+                  sx={{
+                    position: "absolute",
+                    left: `${depth * 1.5}rem`,
+                    top: 0,
+                    bottom: 0,
+                    width: lineWidth,
+                    bgcolor: connectorColor,
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+              {/* Curve into node */}
               <Box
                 sx={{
                   position: "absolute",
                   left: `${depth * 1.5}rem`,
-                  top: 0,
-                  bottom: isLast ? "50%" : 0,
-                  width: "0.0625rem",
-                  bgcolor: "divider",
-                }}
-              />
-              <Box
-                sx={{
-                  position: "absolute",
-                  left: `${depth * 1.5}rem`,
-                  top: "50%",
-                  width: "0.75rem",
-                  height: "0.0625rem",
-                  bgcolor: "divider",
+                  top: isLast ? 0 : "calc(50% - 0.5rem)",
+                  height: isLast ? "50%" : "0.5rem",
+                  width: branchWidth,
+                  ...(isLast && { borderLeft: `${lineWidth} solid` }),
+                  borderBottom: `${lineWidth} solid`,
+                  borderColor: connectorColor,
+                  borderBottomLeftRadius: "0.5rem",
+                  pointerEvents: "none",
                 }}
               />
             </>
