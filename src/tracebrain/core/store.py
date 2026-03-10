@@ -317,6 +317,11 @@ class BaseStorageBackend:
         start_time = self._parse_timestamp(span_data.get("start_time"))
         end_time = self._parse_timestamp(span_data.get("end_time"))
 
+        attributes = span_data.get("attributes") or {}
+        if isinstance(attributes, dict) and "system_prompt" in attributes:
+            attributes = dict(attributes)
+            attributes.pop("system_prompt", None)
+
         return Span(
             span_id=span_id,
             trace_id=trace_id,
@@ -324,7 +329,7 @@ class BaseStorageBackend:
             name=span_data.get("name") or "Unknown",
             start_time=start_time,
             end_time=end_time,
-            attributes=span_data.get("attributes") or {}
+            attributes=attributes,
         )
 
     @staticmethod

@@ -28,7 +28,7 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
   const usage = span ? spanGetUsage(span) : null;
   const input = span ? spanGetInput(span) : "";
   const output = span ? spanGetOutput(span) : "";
-  const systemPrompt = span ? spanGetSystemPrompt(span) : "";
+  const systemPrompt = spanGetSystemPrompt(span, trace);
 
   return (
     <>

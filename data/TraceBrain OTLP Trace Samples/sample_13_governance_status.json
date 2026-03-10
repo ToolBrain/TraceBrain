@@ -26,7 +26,12 @@
         "tracebrain.llm.completion": "Thought: This is a legal request. I should escalate.\n{\"tool_call\": {\"name\": \"request_human_intervention\", \"arguments\": {\"reason\": \"Legal advice request\"}}}",
         "tracebrain.llm.thought": "This is a legal request. I should escalate.",
         "tracebrain.llm.tool_code": "request_human_intervention({'reason': 'Legal advice request'})",
-        "tracebrain.llm.final_answer": null
+        "tracebrain.llm.final_answer": null,
+        "tracebrain.usage": {
+          "prompt_tokens": 74,
+          "completion_tokens": 28,
+          "total_tokens": 102
+        }
       }
     },
     {
