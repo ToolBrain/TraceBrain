@@ -884,16 +884,16 @@ class BaseStorageBackend:
 
     def cleanup_traces(
         self,
-        older_than_hours: Optional[int] = None,
+        within_last_hours: Optional[int] = None,
         status: Optional[str] = None,
     ) -> int:
         """Delete traces matching cleanup filters and return count."""
         session = self.get_session()
         try:
             q = session.query(Trace)
-            if older_than_hours is not None:
-                cutoff = datetime.utcnow() - timedelta(hours=older_than_hours)
-                q = q.filter(Trace.created_at < cutoff)
+            if within_last_hours is not None:
+                cutoff = datetime.utcnow() - timedelta(hours=within_last_hours)
+                q = q.filter(Trace.created_at >= cutoff)
             if status:
                 q = q.filter(Trace.status == status)
 
