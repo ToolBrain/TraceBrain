@@ -1,7 +1,7 @@
-import TraceExplorer from "../components/explorer/TraceExplorer";
+import Explorer from "../components/explorer/Explorer";
 
 const ExplorerPage: React.FC = () => {
-  return <TraceExplorer />;
+  return <Explorer />;
 };
 
 export default ExplorerPage;

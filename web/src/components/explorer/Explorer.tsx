@@ -75,7 +75,7 @@ const episodeFiltersToParams = (filters: EpisodeFilters): Record<string, string 
   return patch;
 };
 
-const TraceExplorer: React.FC = () => {
+const Explorer: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const viewMode = (searchParams.get("type") === "episodes" ? "episodes" : "traces") as ViewMode;
@@ -176,7 +176,7 @@ const TraceExplorer: React.FC = () => {
       >
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
-            Trace Explorer
+            Explorer
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Browse and search the <Box component="span" sx={{ fontWeight: "bold" }}>TraceStore</Box>
@@ -260,4 +260,4 @@ const TraceExplorer: React.FC = () => {
   );
 };
 
-export default TraceExplorer;
+export default Explorer;
