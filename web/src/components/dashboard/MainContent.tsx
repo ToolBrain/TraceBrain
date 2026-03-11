@@ -51,7 +51,7 @@ const MainContent: React.FC<MainContentProps> = ({ traces, view }) => {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
-    severity: "success" as "success" | "error" | "info",
+    severity: "success" as "success" | "error" | "info" | "warning",
   });
 
   const handleEvaluateTraces = async () => {
@@ -67,17 +67,28 @@ const MainContent: React.FC<MainContentProps> = ({ traces, view }) => {
     try {
       const result = await batchEvaluateTraces();
       const processed = Number(result?.processed ?? 0);
+      const failed = Number(result?.failed ?? 0);
+
       const message =
-        typeof result?.message === "string" && result.message.trim()
-          ? result.message
-          : processed === 0
-            ? "No traces pending evaluation."
-            : `Evaluated ${processed} traces successfully.`;
-      setSnackbar({
-        open: true,
-        message,
-        severity: processed === 0 ? "info" : "success",
-      });
+        processed === 0 && failed === 0
+          ? "No traces pending evaluation."
+          : processed > 0 && failed > 0
+            ? `Evaluated ${processed} trace(s) successfully, ${failed} failed.`
+            : processed > 0
+              ? `Evaluated ${processed} trace(s) successfully.`
+              : `Evaluation failed for ${failed} trace(s).`;
+
+      const severity =
+        processed === 0 && failed === 0
+          ? "info"
+          : failed > 0 && processed === 0
+            ? "error"
+            : failed > 0
+              ? "warning"
+              : "success";
+
+      setSnackbar({ open: true, message, severity });
+
       if (processed > 0) {
         await queryClient.invalidateQueries({ queryKey: ["dashboard-traces"] });
       }
