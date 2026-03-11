@@ -26,18 +26,80 @@ def convert_smolagent_to_otlp(agent: CodeAgent, query: str) -> Dict:
 
     spans = []
     parent_id = None
+    logged_messages_count = 0
+
+    def _normalize_role(raw: str | None) -> str:
+        if not raw:
+            return "user"
+        value = raw.lower()
+        if "system" in value:
+            return "system"
+        if "assistant" in value or "ai" in value:
+            return "assistant"
+        if "tool" in value:
+            return "tool"
+        if "human" in value or "user" in value:
+            return "user"
+        return "user"
+
+    def _extract_clean_text(value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value
+        if isinstance(value, list):
+            parts: List[str] = []
+            for item in value:
+                if isinstance(item, dict) and "text" in item:
+                    parts.append(str(item.get("text") or ""))
+                else:
+                    parts.append(_extract_clean_text(item))
+            return "\n".join([p for p in parts if p])
+        if isinstance(value, dict) and "text" in value:
+            return str(value.get("text") or "")
+        try:
+            return json.dumps(value, ensure_ascii=True)
+        except Exception:
+            return str(value)
+
+    def _stringify_content(value: Any) -> str:
+        return _extract_clean_text(value)
 
     def _serialize_message(msg) -> Dict:
-        if hasattr(msg, "model_dump"):
-            return msg.model_dump()
-        if hasattr(msg, "to_dict"):
-            return msg.to_dict()
-        if hasattr(msg, "dict"):
-            return msg.dict()
-        data = getattr(msg, "__dict__", {})
-        if data:
-            return data
-        return {"content": str(msg)}
+        role = None
+        content = None
+
+        if isinstance(msg, dict):
+            role = msg.get("role")
+            content = msg.get("content")
+        else:
+            role = getattr(msg, "role", None)
+            if role is None:
+                role = getattr(msg, "type", None)
+            content = getattr(msg, "content", None)
+            if content is None and hasattr(msg, "model_dump"):
+                dumped = msg.model_dump()
+                role = role or dumped.get("role") or dumped.get("type")
+                content = dumped.get("content")
+
+        return {
+            "role": _normalize_role(role),
+            "content": _stringify_content(content),
+        }
+
+    def _to_iso(timestamp: float | datetime | None) -> str:
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+        if isinstance(timestamp, datetime):
+            return timestamp.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        return datetime.fromtimestamp(float(timestamp), tz=timezone.utc).isoformat().replace("+00:00", "Z")
+
+    def _to_timestamp(value: float | datetime | None) -> float | None:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.astimezone(timezone.utc).timestamp()
+        return float(value)
 
     def _extract_tool_name(code: str) -> str:
         if not code:
@@ -94,7 +156,10 @@ def convert_smolagent_to_otlp(agent: CodeAgent, query: str) -> Dict:
             continue
 
         llm_span_id = uuid.uuid4().hex[:16]
-        new_content = [_serialize_message(msg) for msg in step.model_input_messages]
+        input_messages = list(step.model_input_messages or [])
+        delta_messages = input_messages[logged_messages_count:]
+        logged_messages_count = len(input_messages)
+        new_content = [_serialize_message(msg) for msg in delta_messages]
 
         thought = step.model_output.strip()
         tool_code = step.code_action
@@ -105,38 +170,73 @@ def convert_smolagent_to_otlp(agent: CodeAgent, query: str) -> Dict:
                 final_answer = tool_code
             tool_code = None
 
+        timing = step.timing
+        start_time = getattr(timing, "start_time", None)
+        end_time = getattr(timing, "end_time", None)
+        duration = getattr(timing, "duration", None)
+        if isinstance(duration, timedelta):
+            duration = duration.total_seconds()
+
+        start_ts = _to_timestamp(start_time)
+        end_ts = _to_timestamp(end_time)
+        if end_ts is None and start_ts is not None and duration is not None:
+            end_ts = start_ts + float(duration)
+        if start_ts is None and end_ts is not None and duration is not None:
+            start_ts = end_ts - float(duration)
+
+        usage = None
+        if step.token_usage is not None:
+            prompt_tokens = getattr(step.token_usage, "prompt_tokens", None)
+            completion_tokens = getattr(step.token_usage, "completion_tokens", None)
+            if prompt_tokens is None:
+                prompt_tokens = getattr(step.token_usage, "input_tokens", None)
+            if completion_tokens is None:
+                completion_tokens = getattr(step.token_usage, "output_tokens", None)
+
+            usage = {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": getattr(step.token_usage, "total_tokens", None),
+            }
+            if not any(isinstance(val, (int, float)) for val in usage.values()):
+                usage = None
+
         llm_span = {
             "span_id": llm_span_id,
             "parent_id": parent_id,
             "name": "LLM Inference",
-            "start_time": get_iso_time_now(),
-            "end_time": get_iso_time_now(),
+            "start_time": _to_iso(start_ts),
+            "end_time": _to_iso(end_ts),
             "attributes": {
                 TraceBrainAttributes.SPAN_TYPE: SpanType.LLM_INFERENCE,
-                TraceBrainAttributes.LLM_NEW_CONTENT: json.dumps(new_content),
-                TraceBrainAttributes.LLM_COMPLETION: step.model_output,
+                TraceBrainAttributes.LLM_NEW_CONTENT: json.dumps(new_content, ensure_ascii=True),
+                TraceBrainAttributes.LLM_COMPLETION: _stringify_content(step.model_output),
                 TraceBrainAttributes.LLM_THOUGHT: thought,
                 TraceBrainAttributes.LLM_TOOL_CODE: tool_code,
                 TraceBrainAttributes.LLM_FINAL_ANSWER: final_answer,
             },
         }
+        if usage:
+            llm_span["attributes"][TraceBrainAttributes.USAGE] = usage
         spans.append(llm_span)
         parent_id = llm_span_id
 
         if tool_code:
             tool_name = _extract_tool_name(tool_code)
             tool_span_id = uuid.uuid4().hex[:16]
+            tool_start = end_ts if end_ts is not None else start_ts
+            tool_end = tool_start
             tool_span = {
                 "span_id": tool_span_id,
                 "parent_id": parent_id,
                 "name": f"Tool Execution: {tool_name}",
-                "start_time": get_iso_time_now(),
-                "end_time": get_iso_time_now(),
+                "start_time": _to_iso(tool_start),
+                "end_time": _to_iso(tool_end),
                 "attributes": {
                     TraceBrainAttributes.SPAN_TYPE: SpanType.TOOL_EXECUTION,
                     TraceBrainAttributes.TOOL_NAME: tool_name,
                     TraceBrainAttributes.TOOL_INPUT: tool_code,
-                    TraceBrainAttributes.TOOL_OUTPUT: step.observations,
+                    TraceBrainAttributes.TOOL_OUTPUT: _stringify_content(step.observations),
                 },
             }
             spans.append(tool_span)

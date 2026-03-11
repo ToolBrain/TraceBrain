@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { Box, Typography } from "@mui/material";
 
 interface TokenUsage {
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
+  prompt_tokens: number | null | undefined;
+  completion_tokens: number | null | undefined;
+  total_tokens: number | null | undefined;
 }
 
 interface TokenUsageBarProps {
@@ -21,18 +21,28 @@ const TokenUsageBar: React.FC<TokenUsageBarProps> = ({ usage, hasError }) => {
     ? "rgba(220, 38, 38, 0.15)"
     : "rgba(34, 197, 94, 0.15)";
 
+  const promptTokens = Number.isFinite(usage.prompt_tokens)
+    ? Number(usage.prompt_tokens)
+    : 0;
+  const completionTokens = Number.isFinite(usage.completion_tokens)
+    ? Number(usage.completion_tokens)
+    : 0;
+  const totalTokens = Number.isFinite(usage.total_tokens)
+    ? Number(usage.total_tokens)
+    : promptTokens + completionTokens;
+
   const stats = [
     {
       key: "prompt",
       label: "Prompt",
-      value: usage.prompt_tokens,
-      pct: (usage.prompt_tokens / usage.total_tokens) * 100,
+      value: promptTokens,
+      pct: totalTokens ? (promptTokens / totalTokens) * 100 : 0,
     },
     {
       key: "completion",
       label: "Completion",
-      value: usage.completion_tokens,
-      pct: (usage.completion_tokens / usage.total_tokens) * 100,
+      value: completionTokens,
+      pct: totalTokens ? (completionTokens / totalTokens) * 100 : 0,
     },
   ];
 
@@ -53,7 +63,7 @@ const TokenUsageBar: React.FC<TokenUsageBarProps> = ({ usage, hasError }) => {
             fontWeight: 600,
           }}
         >
-          {usage.total_tokens.toLocaleString()} total
+          {totalTokens.toLocaleString()} total
         </Typography>
       </Box>
 

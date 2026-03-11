@@ -20,7 +20,17 @@ export function spanGetDuration(span: Span) {
 }
 
 export function spanGetUsage(span: Span) {
-  return span?.attributes["tracebrain.usage"];
+  const usage = span?.attributes["tracebrain.usage"];
+  if (!usage || typeof usage !== "object") {
+    return null;
+  }
+  const values = [
+    usage.prompt_tokens,
+    usage.completion_tokens,
+    usage.total_tokens,
+  ];
+  const hasNumber = values.some((val) => typeof val === "number" && !Number.isNaN(val));
+  return hasNumber ? usage : null;
 }
 
 export function spanGetInput(span: Span) {
