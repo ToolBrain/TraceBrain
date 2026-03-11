@@ -277,7 +277,7 @@ export const deleteTraces = async (period: string) => {
 
   const params = new URLSearchParams();
   if (period !== "all") {
-    params.set("older_than_hours", String(hoursMap[period]));
+    params.set("within_last_hours", String(hoursMap[period]));
   }
 
   const res = await fetch(`/api/v1/ops/traces/cleanup?${params}`, { method: "DELETE" });

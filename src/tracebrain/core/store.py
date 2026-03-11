@@ -893,7 +893,7 @@ class BaseStorageBackend:
             q = session.query(Trace)
             if within_last_hours is not None:
                 cutoff = datetime.utcnow() - timedelta(hours=within_last_hours)
-                q = q.filter(Trace.created_at >= cutoff)
+                q = q.filter(Trace.created_at <= cutoff)
             if status:
                 q = q.filter(Trace.status == status)
 
