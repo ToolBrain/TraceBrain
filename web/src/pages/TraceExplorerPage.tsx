@@ -41,7 +41,10 @@ const TracePage: React.FC = () => {
         pollId = window.setInterval(async () => {
           const refreshed = await fetchTrace(id);
           if (!isActive) return;
-          setTraces(refreshed);
+          setTraces((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(refreshed)) return prev;
+            return refreshed;
+          });
           const evalNow = traceGetEvaluation(refreshed[0]);
           if (evalNow && pollId !== null) {
             window.clearInterval(pollId);

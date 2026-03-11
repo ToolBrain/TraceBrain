@@ -1,12 +1,5 @@
 import React, { useState } from "react";
-import {
-  Stack,
-  TextField,
-  Typography,
-  Card,
-  CardContent,
-  MenuItem,
-} from "@mui/material";
+import { Stack, TextField, Typography, Card, CardContent, MenuItem } from "@mui/material";
 import { useSettings } from "../../../contexts/SettingsContext";
 import Toggle from "../Toggle";
 
@@ -39,8 +32,8 @@ const AdvancedSection: React.FC = () => {
 
   return (
     <Stack spacing={3}>
+      {/* AI Evaluation Model */}
       <Stack spacing={3}>
-        {/* AI Evaluation Model */}
         <Stack spacing={0.5}>
           <Typography variant="h6">AI Evaluation</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -48,23 +41,36 @@ const AdvancedSection: React.FC = () => {
           </Typography>
         </Stack>
 
-        <TextField
-          select
-          label="Model"
-          value={settings.llm.model}
-          onChange={(e) =>
-            updateSettings((draft) => {
-              draft.llm.model = e.target.value;
-            })
-          }
-          helperText="API credentials must be configured for certain models."
-        >
-          {EVALUATION_MODELS.map(({ value, label }) => (
-            <MenuItem key={value} value={value}>
-              {label}
-            </MenuItem>
-          ))}
-        </TextField>
+        <Stack spacing={1}>
+          <TextField
+            select
+            label="Model"
+            value={settings.llm.model}
+            onChange={(e) =>
+              updateSettings((draft) => {
+                draft.llm.model = e.target.value;
+              })
+            }
+            helperText="API credentials must be configured for certain models."
+          >
+            {EVALUATION_MODELS.map(({ value, label }) => (
+              <MenuItem key={value} value={value}>
+                {label}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <Toggle
+            label="Auto Evaluate"
+            checked={settings.llm.autoEvaluate}
+            onChange={(checked) =>
+              updateSettings((draft) => {
+                draft.llm.autoEvaluate = checked;
+              })
+            }
+            tooltip="Automatically evaluate incoming traces."
+          />
+        </Stack>
       </Stack>
 
       {/* Chat Model */}

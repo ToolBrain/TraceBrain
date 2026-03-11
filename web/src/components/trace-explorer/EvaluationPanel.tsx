@@ -212,6 +212,9 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
             <Typography variant="caption" color="text.secondary">
               {aiRating !== null ? `${aiRating}/5` : ""}
             </Typography>
+            {errorType && errorType !== "none" && (
+              <ErrorTypeChip errorType={errorType} />
+            )}
           </Box>
         </Box>
 
@@ -234,14 +237,6 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
           </Box>
         </Box>
 
-        {errorType && errorType !== "none" && (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-            <Typography variant="caption" color="text.secondary">
-              Error Type
-            </Typography>
-            <ErrorTypeChip errorType={errorType} />
-          </Box>
-        )}
         <Box>
           <Typography variant="caption" color="text.secondary">
             AI Rationale

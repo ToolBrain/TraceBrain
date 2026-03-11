@@ -53,7 +53,6 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
   const aiRating = traceGetEvalRating(trace);
   const confidence = evaluation?.confidence;
   const suggestion_status = evaluation?.status;
-  const isAnalyzing = !evaluation;
 
   return (
     <React.Fragment>
@@ -201,7 +200,6 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
           <ConfidenceIndicator
             confidence={confidence}
             status={suggestion_status}
-            isAnalyzing={isAnalyzing}
           />
         </TableCell>
       </TableRow>

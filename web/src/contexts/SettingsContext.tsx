@@ -17,6 +17,7 @@ interface Settings {
   };
   llm: {
     model: string;
+    autoEvaluate: boolean;
   };
   chatLLM: {
     model: string;
@@ -32,9 +33,28 @@ interface SettingsContextType {
 const DEFAULT_SETTINGS: Settings = {
   appearance: { theme: "light" },
   refresh: { autoRefresh: false, refreshInterval: 30 },
-  llm: { model: "gemini-2.5-flash" },
+  llm: { model: "gemini-2.5-flash", autoEvaluate: true },
   chatLLM: { model: "gemini-2.5-flash" },
 };
+
+const fillDefaults = (defaults: any, saved: any): any =>
+  Object.keys(defaults).reduce(
+    (result, key) => {
+      if (!(key in saved)) {
+        result[key] = defaults[key];
+      } else if (
+        typeof defaults[key] === "object" &&
+        defaults[key] !== null &&
+        !Array.isArray(defaults[key])
+      ) {
+        result[key] = fillDefaults(defaults[key], saved[key]);
+      } else {
+        result[key] = saved[key];
+      }
+      return result;
+    },
+    { ...saved },
+  );
 
 const SettingsContext = createContext<SettingsContextType | undefined>(
   undefined,
@@ -51,11 +71,28 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         return res.json();
       })
       .then((data) => {
-        setSettings({ ...DEFAULT_SETTINGS, ...data });
+        const merged = fillDefaults(DEFAULT_SETTINGS, data);
+        const hasNewKeys = JSON.stringify(merged) !== JSON.stringify(data);
+
+        setSettings(merged);
         setIsLoading(false);
+
+        if (hasNewKeys) {
+          fetch("/api/v1/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(merged),
+          }).catch((err) => console.error("Failed to save default settings:", err));
+        }
       })
-      .catch((err) => {
-        console.error("Failed to load settings:", err);
+      .catch(() => {
+        fetch("/api/v1/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(DEFAULT_SETTINGS),
+        }).catch((err) => console.error("Failed to save default settings:", err));
+
+        setSettings(DEFAULT_SETTINGS);
         setIsLoading(false);
       });
   }, []);

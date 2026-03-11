@@ -12,6 +12,7 @@ import TraceViewSwitcher from "./TraceViewSwitcher";
 
 const DRAWER_WIDTH = 240;
 const COLLAPSED_WIDTH = 60;
+const TRACE_FETCH_LIMIT = 100;
 
 const FILTER_CONFIG = {
   Status: {
@@ -89,7 +90,7 @@ const Dashboard: React.FC = () => {
   // Function to fetch the latest traces
   const handleFetchTraces = async () => {
     try {
-      const data = await fetchTraces();
+      const data = await fetchTraces(0, TRACE_FETCH_LIMIT);
       if (data) setTraces(data.traces);
     } catch (error) {
       console.error("Failed to fetch traces:", error);
@@ -105,10 +106,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!settings.refresh.autoRefresh) return;
 
-    const interval = setInterval(
-      handleFetchTraces,
-      settings.refresh.refreshInterval * 1000,
-    );
+    const interval = setInterval(handleFetchTraces, settings.refresh.refreshInterval * 1000);
 
     return () => clearInterval(interval);
   }, [settings.refresh.autoRefresh, settings.refresh.refreshInterval]);
@@ -141,9 +139,7 @@ const Dashboard: React.FC = () => {
     // Checked filters
     const checkedFilters: Record<string, string[]> = {};
     Object.keys(filters).forEach((category) => {
-      const checked = filters[category]
-        .filter((f) => f.checked)
-        .map((f) => f.key);
+      const checked = filters[category].filter((f) => f.checked).map((f) => f.key);
 
       if (checked.length > 0) {
         checkedFilters[category] = checked;

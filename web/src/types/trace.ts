@@ -21,6 +21,7 @@ export interface Trace {
   feedbacks: Feedback[];
   attributes: Record<string, any>;
   spans: Span[];
+  isAnalyzing?: boolean;
 }
 
 export interface Episode {

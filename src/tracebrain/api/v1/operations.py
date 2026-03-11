@@ -25,16 +25,11 @@ def batch_evaluate_traces(
     processed = 0
     failed = 0
     errors: List[Dict[str, str]] = []
+    TRACE_FETCH_LIMIT = 100
     try:
-        traces = (
-            session.query(Trace)
-            .filter(Trace.ai_evaluation.is_(None))
-            .order_by(Trace.created_at.desc())
-            .limit(limit)
-            .all()
-        )
-
-        for trace in traces:
+        traces = session.query(Trace).order_by(Trace.created_at.desc()).limit(TRACE_FETCH_LIMIT).all()
+        filtered_traces = [t for t in traces if (t.attributes or {}).get("tracebrain.ai_evaluation") is None][:limit]
+        for trace in filtered_traces:
             try:
                 result = judge.evaluate(trace.id, settings.LLM_MODEL)
                 ai_eval = build_ai_evaluation(result)
@@ -47,7 +42,7 @@ def batch_evaluate_traces(
         message = (
             "No traces pending evaluation."
             if processed == 0
-            else f"Batch evaluation started for {processed} traces."
+            else f"Successfully evaluated {processed} traces."
         )
         return {
             "success": True,

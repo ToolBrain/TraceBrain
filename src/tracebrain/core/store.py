@@ -985,10 +985,9 @@ class BaseStorageBackend:
             if not trace:
                 raise ValueError(f"Trace with ID '{trace_id}' not found")
             trace.ai_evaluation = dict(ai_evaluation)
-            if isinstance(trace.attributes, dict):
-                trace.attributes["tracebrain.ai_evaluation"] = dict(ai_evaluation)
-            else:
-                trace.attributes = {"tracebrain.ai_evaluation": dict(ai_evaluation)}
+            updated_attributes = dict(trace.attributes or {})
+            updated_attributes["tracebrain.ai_evaluation"] = dict(ai_evaluation)
+            trace.attributes = updated_attributes
             session.commit()
         except Exception:
             session.rollback()
