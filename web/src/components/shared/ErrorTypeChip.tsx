@@ -21,7 +21,7 @@ export const ERROR_TYPE_STYLES: Record<
     color: "#7f1d1d",
     bg: "#fecaca",
     border: "#dc2626",
-    label: "LOOP ERROR",
+    label: "LOGIC LOOP",
   },
   hallucination: {
     color: "#6b21a8",
@@ -33,13 +33,13 @@ export const ERROR_TYPE_STYLES: Record<
     color: "#92400e",
     bg: "#fef3c7",
     border: "#f59e0b",
-    label: "INVALID TOOL",
+    label: "INVALID TOOL USE",
   },
   tool_execution_error: {
     color: "#7c2d12",
     bg: "#fff7ed",
     border: "#f97316",
-    label: "EXECUTION ERROR",
+    label: "TOOL EXECUTION",
   },
   format_error: {
     color: "#1e40af",
