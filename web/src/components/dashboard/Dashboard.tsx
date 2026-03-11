@@ -9,6 +9,7 @@ import { fetchTraces } from "../utils/api";
 import { useSettings } from "../../contexts/SettingsContext";
 import { traceGetErrorType, traceGetStatus } from "../utils/traceUtils";
 import TraceViewSwitcher from "./TraceViewSwitcher";
+import { useQuery } from "@tanstack/react-query";
 
 const DRAWER_WIDTH = 240;
 const COLLAPSED_WIDTH = 60;
@@ -42,9 +43,18 @@ const FILTER_CONFIG = {
 
 const Dashboard: React.FC = () => {
   const { settings } = useSettings();
-  const [traces, setTraces] = useState<Trace[]>([]);
   const [open, setOpen] = useState(true);
   const [showContent, setShowContent] = useState(true);
+
+  const { data } = useQuery({
+    queryKey: ["dashboard-traces"],
+    queryFn: () => fetchTraces(0, TRACE_FETCH_LIMIT),
+    refetchInterval: settings.refresh.autoRefresh
+      ? settings.refresh.refreshInterval * 1000
+      : false,
+  });
+
+  const traces = useMemo(() => data?.traces ?? [], [data]);
 
   const [filters, setFilters] = useState<Record<string, FilterOption[]>>(() => {
     const initialFilters: Record<string, FilterOption[]> = {};
@@ -86,30 +96,6 @@ const Dashboard: React.FC = () => {
       return newFilters;
     });
   }, [traces]);
-
-  // Function to fetch the latest traces
-  const handleFetchTraces = async () => {
-    try {
-      const data = await fetchTraces(0, TRACE_FETCH_LIMIT);
-      if (data) setTraces(data.traces);
-    } catch (error) {
-      console.error("Failed to fetch traces:", error);
-    }
-  };
-
-  // Initial traces fetch
-  useEffect(() => {
-    handleFetchTraces();
-  }, []);
-
-  // Auto refresh traces
-  useEffect(() => {
-    if (!settings.refresh.autoRefresh) return;
-
-    const interval = setInterval(handleFetchTraces, settings.refresh.refreshInterval * 1000);
-
-    return () => clearInterval(interval);
-  }, [settings.refresh.autoRefresh, settings.refresh.refreshInterval]);
 
   // Check if any filter is checked
   const hasActiveFilters = Object.values(filters).some((category) =>
@@ -211,7 +197,6 @@ const Dashboard: React.FC = () => {
       >
         <MainContent
           traces={filteredTraces}
-          onFetchTraces={handleFetchTraces}
           view={<TraceViewSwitcher traces={filteredTraces} />}
         />
       </Box>

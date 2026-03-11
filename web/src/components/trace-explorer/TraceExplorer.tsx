@@ -1,25 +1,29 @@
 import React, { useEffect, useState } from "react";
 import { Box } from "@mui/material";
 import TraceTree from "./TraceTree";
-import type { Trace } from "../../types/trace";
 import { useSearchParams, useParams } from "react-router-dom";
 import InspectorPanel from "./InspectorPanel";
-
-interface TraceExplorerProps {
-  traces: Trace[];
-}
+import { useQuery } from "@tanstack/react-query";
+import { fetchEpisodeTraces, fetchTrace } from "../utils/api";
 
 interface SelectedSpan {
   traceId: string;
   spanId: string;
 }
 
-const TraceExplorer: React.FC<TraceExplorerProps> = ({ traces }) => {
+const TraceExplorer: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const preselectedSpan = searchParams.get("span");
-  const isEpisodeView = searchParams.get("type") === "episode";
+  const type = searchParams.get("type");
+  const isEpisodeView = type === "episode";
   const preselectedTrace = isEpisodeView ? searchParams.get("trace") : id;
+
+  const { data: traces = [] } = useQuery({
+    queryKey: ["traces", type, id],
+    queryFn: () =>
+      isEpisodeView ? fetchEpisodeTraces(id!) : fetchTrace(id!),
+  });
 
   const [selectedSpan, setSelectedSpan] = useState<SelectedSpan | null>(
     preselectedSpan && preselectedTrace
@@ -27,19 +31,22 @@ const TraceExplorer: React.FC<TraceExplorerProps> = ({ traces }) => {
       : null,
   );
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [initialized, setInitialized] = useState(false);
 
   // Select first span of preselected trace once traces load
   useEffect(() => {
-    if (!preselectedTrace || preselectedSpan || traces.length === 0) return;
+    if (initialized || !preselectedTrace || preselectedSpan || traces.length === 0) return;
     const trace = traces.find((t) => t.trace_id === preselectedTrace);
     const firstSpan = trace?.spans[0]?.span_id ?? null;
-    if (firstSpan)
+    if (firstSpan) {
       setSelectedSpan({ traceId: preselectedTrace, spanId: firstSpan });
+      setInitialized(true);
+    }
   }, [traces, preselectedTrace]);
 
   // Expand parent nodes of preselected span
   useEffect(() => {
-    if (!preselectedSpan || !preselectedTrace || traces.length === 0) return;
+    if (initialized || !preselectedSpan || !preselectedTrace || traces.length === 0) return;
     const trace = traces.find((t) => t.trace_id === preselectedTrace);
     if (!trace) return;
     const nodesToExpand = new Set<string>();
@@ -49,6 +56,7 @@ const TraceExplorer: React.FC<TraceExplorerProps> = ({ traces }) => {
       current = trace.spans.find((s) => s.span_id === current?.parent_id);
     }
     setExpandedNodes(nodesToExpand);
+    setInitialized(true);
   }, [traces, preselectedSpan, preselectedTrace]);
 
   // Toggle expand of a node

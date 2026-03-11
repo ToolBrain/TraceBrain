@@ -25,10 +25,10 @@ import TraceList from "./TraceList";
 import type { Trace } from "../../types/trace";
 import { traceGetEvaluation, traceGetPriority } from "../utils/traceUtils";
 import { batchEvaluateTraces } from "../utils/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface MainContentProps {
   traces: Trace[];
-  onFetchTraces: () => void;
   view: React.ReactElement;
 }
 
@@ -41,7 +41,8 @@ const sortOptions = [
 
 const BATCH_EVALUATE_LIMIT = 5;
 
-const MainContent: React.FC<MainContentProps> = ({ traces, onFetchTraces, view }) => {
+const MainContent: React.FC<MainContentProps> = ({ traces, view }) => {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("datetime");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -78,7 +79,7 @@ const MainContent: React.FC<MainContentProps> = ({ traces, onFetchTraces, view }
         severity: processed === 0 ? "info" : "success",
       });
       if (processed > 0) {
-        onFetchTraces();
+        await queryClient.invalidateQueries({ queryKey: ["dashboard-traces"] });
       }
     } catch (error: any) {
       console.error("Failed to evaluate traces:", error);
@@ -91,6 +92,10 @@ const MainContent: React.FC<MainContentProps> = ({ traces, onFetchTraces, view }
       setAnalyzingIds(new Set());
       setIsEvaluating(false);
     }
+  };
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["dashboard-traces"] });
   };
 
   // Sort traces based on sortBy and sortOrder
@@ -186,7 +191,7 @@ const MainContent: React.FC<MainContentProps> = ({ traces, onFetchTraces, view }
 
         <Button
           variant="outlined"
-          onClick={onFetchTraces}
+          onClick={handleRefresh}
           size="small"
           sx={{
             borderRadius: 1,

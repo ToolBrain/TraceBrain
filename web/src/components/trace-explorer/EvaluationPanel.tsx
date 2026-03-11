@@ -28,6 +28,8 @@ import { evaluateTrace, submitTraceFeedback } from "../utils/api";
 import StatusChip from "../shared/StatusChip";
 import ErrorTypeChip from "../shared/ErrorTypeChip";
 import { useSettings } from "../../contexts/SettingsContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { useParams, useSearchParams } from "react-router-dom";
 import { getConfidenceColor } from "../utils/utils";
 
 interface EvaluationPanelProps {
@@ -50,6 +52,10 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
   const feedback = trace ? traceGetLatestFeedback(trace) : null;
 
   const { settings } = useSettings();
+  const queryClient = useQueryClient();
+  const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const type = searchParams.get("type");
 
   const evaluation = useMemo(() => {
     if (!trace) return null;
@@ -60,9 +66,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
   const aiFeedback = typeof evaluation?.feedback === "string" ? evaluation.feedback : "";
   const aiConfidence = typeof evaluation?.confidence === "number" ? evaluation.confidence : null;
   const errorType = trace ? traceGetErrorType(trace) : null;
-  const [localStatus, setLocalStatus] = useState<string | null>(null);
-  const aiStatus =
-    localStatus ?? (typeof evaluation?.status === "string" ? evaluation.status : null);
+  const aiStatus = typeof evaluation?.status === "string" ? evaluation.status : null;
 
   useEffect(() => {
     setSubmitError("");
@@ -71,7 +75,6 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     setPriority(trace ? traceGetPriority(trace) : 3);
     setExpertComment(feedback ? feedback.comment : aiFeedback);
     setEvalError("");
-    setLocalStatus(null);
     setShowEvalError(false);
   }, [trace?.trace_id]);
 
@@ -82,6 +85,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     setShowEvalError(false);
     try {
       await evaluateTrace(trace.trace_id, settings.llm.model);
+      await queryClient.invalidateQueries({ queryKey: ["traces", type, id] });
     } catch (e: any) {
       setEvalError(e?.message || "Failed to evaluate trace.");
     } finally {
@@ -96,7 +100,6 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     try {
       await submitTraceFeedback(trace.trace_id, expertRating, expertComment, priority);
       setSuccessOpen(true);
-      setLocalStatus("completed");
     } catch (error: any) {
       setSubmitError(error?.message || "Failed to submit validation.");
     } finally {
@@ -251,6 +254,10 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
             <StatusChip status={aiStatus} />
           </Box>
         )}
+
+        <Button variant="outlined" fullWidth onClick={handleEvaluate} disabled={!trace} sx={{ mt: 1 }}>
+          Generate Again
+        </Button>
       </>
     );
   };

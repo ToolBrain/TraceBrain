@@ -1,16 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import TraceExplorer from "../components/trace-explorer/TraceExplorer";
-import {
-  fetchEpisodeTraces,
-  fetchTrace,
-  addHistory,
-} from "../components/utils/api";
-import type { Trace } from "../types/trace";
+import { fetchEpisodeTraces, fetchTrace, addHistory } from "../components/utils/api";
 import { useParams, useSearchParams } from "react-router-dom";
 import { traceGetEvaluation } from "../components/utils/traceUtils";
+import { useQuery } from "@tanstack/react-query";
 
-const TracePage: React.FC = () => {
-  const [traces, setTraces] = useState<Trace[]>([]);
+const TraceExplorerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>() as { id: string };
   const [searchParams] = useSearchParams();
   const type = searchParams.get("type"); // trace or episode
@@ -21,50 +16,22 @@ const TracePage: React.FC = () => {
 
     // Record history
     addHistory(id, historyType);
-
-    let isActive = true;
-    let pollId: number | null = null;
-
-    const loadTrace = async () => {
-      if (type === "episode") {
-        const episodeTraces = await fetchEpisodeTraces(id);
-        if (isActive) setTraces(episodeTraces);
-        return;
-      }
-
-      const traceData = await fetchTrace(id);
-      if (!isActive) return;
-      setTraces(traceData);
-
-      const evaluation = traceGetEvaluation(traceData[0]);
-      if (!evaluation && pollId === null) {
-        pollId = window.setInterval(async () => {
-          const refreshed = await fetchTrace(id);
-          if (!isActive) return;
-          setTraces((prev) => {
-            if (JSON.stringify(prev) === JSON.stringify(refreshed)) return prev;
-            return refreshed;
-          });
-          const evalNow = traceGetEvaluation(refreshed[0]);
-          if (evalNow && pollId !== null) {
-            window.clearInterval(pollId);
-            pollId = null;
-          }
-        }, 4000);
-      }
-    };
-
-    loadTrace();
-
-    return () => {
-      isActive = false;
-      if (pollId !== null) {
-        window.clearInterval(pollId);
-      }
-    };
   }, [id, type]);
 
-  return <TraceExplorer traces={traces} />;
+  useQuery({
+    queryKey: ["traces", type, id],
+    queryFn: () =>
+      type === "episode" ? fetchEpisodeTraces(id) : fetchTrace(id),
+    refetchInterval: (query) => {
+      if (type === "episode") return false;
+      const data = query.state.data as Awaited<ReturnType<typeof fetchTrace>> | undefined;
+      if (!data) return false;
+      const evaluation = traceGetEvaluation(data[0]);
+      return evaluation ? false : 4000;
+    },
+  });
+
+  return <TraceExplorer />;
 };
 
-export default TracePage;
+export default TraceExplorerPage;
