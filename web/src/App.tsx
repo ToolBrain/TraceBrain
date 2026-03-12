@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useSettings } from "./contexts/SettingsContext";
 import HomePage from "./pages/HomePage";
 import DashboardHeader from "./components/layout/DashboardHeader";
-import TracePage from "./pages/TraceExplorerPage";
+import TraceExplorerPage from "./pages/TraceExplorerPage";
 import { Routes, Route } from "react-router-dom";
 import SettingsPage from "./pages/SettingsPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -60,7 +60,7 @@ const App: React.FC = () => {
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/roadmap" element={<RoadmapPage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/trace/:id" element={<TracePage />} />
+              <Route path="/trace/:id" element={<TraceExplorerPage />} />
               <Route path="*" element={<div>Page not found!</div>} />
             </Routes>
             <Librarian />

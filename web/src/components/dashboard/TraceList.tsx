@@ -140,7 +140,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
               const evaluation = traceGetEvaluation(trace);
               const confidence = evaluation?.confidence;
               const suggestion_status = evaluation?.status;
-              const isAnalyzing = !evaluation;
+              const isAnalyzing = trace.isAnalyzing;
 
               return (
                 <React.Fragment key={trace.trace_id}>

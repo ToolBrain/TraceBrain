@@ -893,7 +893,7 @@ class BaseStorageBackend:
             q = session.query(Trace)
             if within_last_hours is not None:
                 cutoff = datetime.utcnow() - timedelta(hours=within_last_hours)
-                q = q.filter(Trace.created_at >= cutoff)
+                q = q.filter(Trace.created_at <= cutoff)
             if status:
                 q = q.filter(Trace.status == status)
 
@@ -985,10 +985,9 @@ class BaseStorageBackend:
             if not trace:
                 raise ValueError(f"Trace with ID '{trace_id}' not found")
             trace.ai_evaluation = dict(ai_evaluation)
-            if isinstance(trace.attributes, dict):
-                trace.attributes["tracebrain.ai_evaluation"] = dict(ai_evaluation)
-            else:
-                trace.attributes = {"tracebrain.ai_evaluation": dict(ai_evaluation)}
+            updated_attributes = dict(trace.attributes or {})
+            updated_attributes["tracebrain.ai_evaluation"] = dict(ai_evaluation)
+            trace.attributes = updated_attributes
             session.commit()
         except Exception:
             session.rollback()

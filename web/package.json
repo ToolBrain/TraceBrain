@@ -16,6 +16,7 @@
     "@mui/icons-material": "^7.3.7",
     "@mui/material": "^7.3.7",
     "@mui/x-charts": "^8.27.0",
+    "@tanstack/react-query": "^5.90.21",
     "@toolpad/core": "^0.16.0",
     "immer": "^11.1.3",
     "react": "^19.2.0",

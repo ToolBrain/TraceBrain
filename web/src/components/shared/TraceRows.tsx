@@ -57,7 +57,6 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
           const aiRating = traceGetEvalRating(trace);
           const confidence = evaluation?.confidence;
           const suggestion_status = evaluation?.status;
-          const isAnalyzing = !evaluation;
 
           return (
             <TableRow
@@ -176,7 +175,6 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                 <ConfidenceIndicator
                   confidence={confidence}
                   status={suggestion_status}
-                  isAnalyzing={isAnalyzing}
                 />
               </TableCell>
             </TableRow>

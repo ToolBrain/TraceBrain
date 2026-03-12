@@ -25,10 +25,10 @@ import TraceList from "./TraceList";
 import type { Trace } from "../../types/trace";
 import { traceGetEvaluation, traceGetPriority } from "../utils/traceUtils";
 import { batchEvaluateTraces } from "../utils/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface MainContentProps {
   traces: Trace[];
-  onFetchTraces: () => void;
   view: React.ReactElement;
 }
 
@@ -39,51 +39,74 @@ const sortOptions = [
   { value: "priority", label: "Priority" },
 ];
 
-const MainContent: React.FC<MainContentProps> = ({
-  traces,
-  onFetchTraces,
-  view,
-}) => {
+const BATCH_EVALUATE_LIMIT = 5;
+
+const MainContent: React.FC<MainContentProps> = ({ traces, view }) => {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("datetime");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
-    severity: "success" as "success" | "error" | "info",
+    severity: "success" as "success" | "error" | "info" | "warning",
   });
 
   const handleEvaluateTraces = async () => {
     setIsEvaluating(true);
+    setAnalyzingIds(
+      new Set(
+        traces
+          .filter((t) => !traceGetEvaluation(t))
+          .slice(0, BATCH_EVALUATE_LIMIT)
+          .map((t) => t.trace_id),
+      ),
+    );
     try {
       const result = await batchEvaluateTraces();
       const processed = Number(result?.processed ?? 0);
+      const failed = Number(result?.failed ?? 0);
+
       const message =
-        typeof result?.message === "string" && result.message.trim()
-          ? result.message
-          : processed === 0
-            ? "No traces pending evaluation."
-            : `Batch evaluation started for ${processed} traces.`;
-      setSnackbar({
-        open: true,
-        message,
-        severity: processed === 0 ? "info" : "success",
-      });
+        processed === 0 && failed === 0
+          ? "No traces pending evaluation."
+          : processed > 0 && failed > 0
+            ? `Evaluated ${processed} trace(s) successfully, ${failed} failed.`
+            : processed > 0
+              ? `Evaluated ${processed} trace(s) successfully.`
+              : `Evaluation failed for ${failed} trace(s).`;
+
+      const severity =
+        processed === 0 && failed === 0
+          ? "info"
+          : failed > 0 && processed === 0
+            ? "error"
+            : failed > 0
+              ? "warning"
+              : "success";
+
+      setSnackbar({ open: true, message, severity });
+
       if (processed > 0) {
-        setTimeout(() => onFetchTraces(), 3500);
-        setTimeout(() => onFetchTraces(), 8000);
+        await queryClient.invalidateQueries({ queryKey: ["dashboard-traces"] });
       }
     } catch (error: any) {
-      console.error("Failed to start batch evaluation:", error);
+      console.error("Failed to evaluate traces:", error);
       setSnackbar({
         open: true,
-        message: "Failed to start evaluation",
+        message: "Failed to evaluate traces",
         severity: "error",
       });
     } finally {
-      setTimeout(() => setIsEvaluating(false), 3000);
+      setAnalyzingIds(new Set());
+      setIsEvaluating(false);
     }
+  };
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["dashboard-traces"] });
   };
 
   // Sort traces based on sortBy and sortOrder
@@ -107,7 +130,13 @@ const MainContent: React.FC<MainContentProps> = ({
       const evaluation = traceGetEvaluation(trace);
       const confidence = evaluation?.confidence ?? 0.5; // set undefined confidence to average
 
-      return { trace, startTime, duration, priority, confidence };
+      return {
+        trace: { ...trace, isAnalyzing: analyzingIds.has(trace.trace_id) },
+        startTime,
+        duration,
+        priority,
+        confidence,
+      };
     });
 
     return tracesWithMetrics
@@ -127,12 +156,10 @@ const MainContent: React.FC<MainContentProps> = ({
         return sortOrder === "asc" ? compareValue : -compareValue;
       })
       .map((item) => item.trace);
-  }, [traces, sortBy, sortOrder, searchQuery]);
+  }, [traces, sortBy, sortOrder, searchQuery, analyzingIds]);
 
   return (
-    <Box
-      sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}
-    >
+    <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}>
       {view}
       <Box
         sx={{
@@ -175,7 +202,7 @@ const MainContent: React.FC<MainContentProps> = ({
 
         <Button
           variant="outlined"
-          onClick={onFetchTraces}
+          onClick={handleRefresh}
           size="small"
           sx={{
             borderRadius: 1,
@@ -195,11 +222,7 @@ const MainContent: React.FC<MainContentProps> = ({
           disabled={isEvaluating}
           size="small"
           startIcon={
-            isEvaluating ? (
-              <CircularProgress size={16} color="inherit" />
-            ) : (
-              <PlaylistAddCheck />
-            )
+            isEvaluating ? <CircularProgress size={16} color="inherit" /> : <PlaylistAddCheck />
           }
           sx={{
             borderRadius: 1,
