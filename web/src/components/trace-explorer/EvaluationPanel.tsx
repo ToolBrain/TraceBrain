@@ -78,6 +78,12 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     setShowEvalError(false);
   }, [trace?.trace_id]);
 
+  useEffect(() => {
+    if (feedback) return;
+    setExpertRating(aiRating);
+    setExpertComment(aiFeedback);
+  }, [aiRating, aiFeedback]);
+
   const handleEvaluate = async () => {
     if (!trace) return;
     setEvaluating(true);
@@ -199,63 +205,75 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     // If evaluation exists
     return (
       <>
-        <Box>
-          <Typography variant="caption" color="text.secondary">
-            AI Rating
-          </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Rating
-              value={aiRating}
-              readOnly
-              max={5}
-              precision={1}
-              size="small"
-              sx={{ color: "warning.light" }}
-            />
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: 1,
+            mb: 2,
+          }}
+        >
+          <Box>
             <Typography variant="caption" color="text.secondary">
-              {aiRating !== null ? `${aiRating}/5` : ""}
+              AI Rating
             </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Rating
+                value={aiRating}
+                readOnly
+                max={5}
+                precision={1}
+                size="small"
+                sx={{ color: "warning.light" }}
+              />
+              <Typography variant="caption" color="text.secondary">
+                {aiRating !== null ? `${aiRating}/5` : ""}
+              </Typography>
             {errorType && errorType !== "none" && (
               <ErrorTypeChip errorType={errorType} />
             )}
-          </Box>
-        </Box>
-
-        <Box>
-          <Typography variant="caption" color="text.secondary">
-            Confidence
-          </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Box sx={{ flexGrow: 1 }}>
-              <LinearProgress
-                variant="determinate"
-                value={(aiConfidence ?? 0) * 100}
-                color={confidenceColor as "error" | "warning" | "success"}
-                sx={{ height: 6, borderRadius: 2 }}
-              />
             </Box>
+          </Box>
+
+          <Box>
             <Typography variant="caption" color="text.secondary">
-              {((aiConfidence ?? 0) * 100).toFixed(0)}%
+              Confidence
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box sx={{ flexGrow: 1 }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={(aiConfidence ?? 0) * 100}
+                  color={confidenceColor as "error" | "warning" | "success"}
+                  sx={{ height: 6, borderRadius: 2 }}
+                />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                {((aiConfidence ?? 0) * 100).toFixed(0)}%
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              AI Rationale
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              {aiFeedback}
             </Typography>
           </Box>
-        </Box>
 
-        <Box>
-          <Typography variant="caption" color="text.secondary">
-            AI Rationale
-          </Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            {aiFeedback}
-          </Typography>
-        </Box>
-
-        {aiStatus && (
+          {aiStatus && (
           <Box sx={{ mt: 1 }}>
-            <StatusChip status={aiStatus} />
-          </Box>
-        )}
+              <StatusChip status={aiStatus} />
+            </Box>
+          )}
+        </Box>
 
-        <Button variant="outlined" fullWidth onClick={handleEvaluate} disabled={!trace} sx={{ mt: 1 }}>
+        <Button variant="outlined" fullWidth onClick={handleEvaluate} disabled={!trace}>
           Generate Again
         </Button>
       </>
@@ -341,7 +359,15 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
               />
             </Box>
 
-            <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", pr: 0.5 }}>
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                display: "flex",
+                flexDirection: "column",
+                pr: 0.5,
+              }}
+            >
               {renderAIAssessment()}
             </Box>
           </Box>

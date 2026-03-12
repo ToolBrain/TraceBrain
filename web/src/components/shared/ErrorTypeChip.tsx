@@ -33,7 +33,7 @@ export const ERROR_TYPE_STYLES: Record<
     color: "#92400e",
     bg: "#fef3c7",
     border: "#f59e0b",
-    label: "INVALID TOOL USE",
+    label: "INVALID TOOL USAGE",
   },
   tool_execution_error: {
     color: "#7c2d12",
