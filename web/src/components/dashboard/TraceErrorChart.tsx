@@ -111,7 +111,7 @@ const TraceErrorChart: React.FC<TraceErrorChartProps> = ({ traces }) => {
                 {
                   data: pieData,
                   innerRadius: 60,
-                  outerRadius: 95,
+                  outerRadius: 90,
                   paddingAngle: 2,
                   cornerRadius: 4,
                 },

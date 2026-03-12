@@ -162,7 +162,8 @@ const Dashboard: React.FC = () => {
           borderRight: 1,
           borderColor: "divider",
           transition: "width 0.3s",
-          overflow: "hidden",
+          overflowX: "hidden",
+          height: "100%",
         }}
       >
         <Box
