@@ -47,12 +47,14 @@ const TraceTree: React.FC<TraceTreeProps> = ({
     depth,
     isLast,
     spansByParent,
+    ancestorLines,
   }: {
     span: Span;
     traceId: string;
     depth: number;
     isLast?: boolean;
     spansByParent: Map<string | null, Span[]>;
+    ancestorLines: number[];
   }) => {
     const children = spansByParent.get(span.span_id) || [];
     const isExpanded = expandedNodes.has(`${traceId}:${span.span_id}`);
@@ -60,6 +62,8 @@ const TraceTree: React.FC<TraceTreeProps> = ({
     const hasError = spanHasError(span);
     const theme = useTheme();
     const connectorColor = theme.palette.grey[600];
+
+    const childAncestorLines = isLast ? ancestorLines : [...ancestorLines, depth];
 
     return (
       <>
@@ -112,6 +116,22 @@ const TraceTree: React.FC<TraceTreeProps> = ({
             </>
           )}
 
+          {/* Ancestor continuation lines */}
+          {ancestorLines.map((ancestorDepth) => (
+            <Box
+              key={ancestorDepth}
+              sx={{
+                position: "absolute",
+                left: `${ancestorDepth * 1.5}rem`,
+                top: 0,
+                bottom: 0,
+                width: lineWidth,
+                bgcolor: connectorColor,
+                pointerEvents: "none",
+              }}
+            />
+          ))}
+
           <Box sx={{ width: `${depth * 1.5}rem` }} />
 
           {children.length > 0 ? (
@@ -153,6 +173,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
               depth={depth + 1}
               isLast={idx === children.length - 1}
               spansByParent={spansByParent}
+              ancestorLines={childAncestorLines}
             />
           ))}
       </>
@@ -217,6 +238,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
                     depth={0}
                     isLast={idx === arr.length - 1}
                     spansByParent={spansByParent}
+                    ancestorLines={[]}
                   />
                 ))}
             </React.Fragment>

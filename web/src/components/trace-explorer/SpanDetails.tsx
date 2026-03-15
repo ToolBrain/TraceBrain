@@ -64,6 +64,7 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
           {span && (
             <>
               <SpanContent
+                key={`${span.span_id}-system-prompt`}
                 title="System Prompt"
                 subtitle="System"
                 content={systemPrompt}
@@ -73,13 +74,21 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
               {spanType === "tool_execution" && (
                 <>
                   <SpanContent
+                    key={`${span.span_id}-tool`}
                     title="Tool"
                     subtitle="Tool"
                     content={toolName}
                     hasError={hasError}
                   />
-                  <SpanContent title="Input" subtitle="AI" content={input} hasError={hasError} />
                   <SpanContent
+                    key={`${span.span_id}-input`}
+                    title="Input"
+                    subtitle="AI"
+                    content={input}
+                    hasError={hasError}
+                  />
+                  <SpanContent
+                    key={`${span.span_id}-output`}
                     title="Output"
                     subtitle="Tool"
                     content={output}
@@ -96,6 +105,7 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
                       return (
                         parsed && (
                           <SpanContent
+                            key={`${span.span_id}-input`}
                             title="Input"
                             subtitle={parsed.subtitle}
                             content={parsed.content}
@@ -106,6 +116,7 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
                     })()}
                   {output && (
                     <SpanContent
+                      key={`${span.span_id}-output`}
                       title="Output"
                       subtitle="AI"
                       content={output}
