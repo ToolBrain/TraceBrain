@@ -16,7 +16,7 @@ import sqlparse
 from sqlalchemy import create_engine, event, func, cast, text, Integer, Float, case
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError, ProgrammingError, TimeoutError
-from sqlalchemy.orm import sessionmaker, Session, selectinload
+from sqlalchemy.orm import joinedload, sessionmaker, Session, selectinload
 
 from tracebrain.config import settings
 from tracebrain.core.services.embedding import EmbeddingFactory
@@ -520,6 +520,22 @@ class BaseStorageBackend:
                 .options(selectinload(Trace.spans))
                 .filter(Trace.id == trace_id)
                 .first()
+            )
+        finally:
+            session.close()
+
+    def get_traces_by_start_time(self, limit: int) -> list[Trace]:
+        """Retrieve traces based on the start time of its first span."""
+        session = self.get_session()
+        try:
+            return (
+                session.query(Trace)
+                .options(joinedload(Trace.spans))
+                .join(Trace.spans)
+                .filter(Span.parent_id == None)
+                .order_by(Span.start_time.desc())
+                .limit(limit)
+                .all()
             )
         finally:
             session.close()

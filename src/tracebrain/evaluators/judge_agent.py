@@ -41,19 +41,28 @@ class AIJudge:
             span_type = attrs.get("tracebrain.span.type", "unknown")
             thought = attrs.get("tracebrain.llm.thought")
             action = attrs.get("tracebrain.llm.tool_code")
+            completion = attrs.get("tracebrain.llm.completion")
+            final_answer = attrs.get("tracebrain.llm.final_answer")
+            tool_name = attrs.get("tracebrain.tool.name")
+            tool_input = attrs.get("tracebrain.tool.input")
             observation = attrs.get("tracebrain.tool.output")
 
             if isinstance(observation, (dict, list)):
                 observation = json.dumps(observation)
             if observation:
-                observation = str(observation)[:500]
+                observation = str(observation)[:2000]
+
+            reasoning = thought or (completion if not action else None)
 
             lines.append(
                 "Span: "
                 f"type={span_type}, "
-                f"thought={thought or 'N/A'}, "
+                f"thought={reasoning or 'N/A'}, "
                 f"action={action or 'N/A'}, "
                 f"observation={observation or 'N/A'}"
+                f"final_answer={final_answer or 'N/A'}"
+                f"tool={tool_name or 'N/A'}, "
+                f"tool_input={tool_input or 'N/A'}, "
             )
 
         return "\n".join(lines)
