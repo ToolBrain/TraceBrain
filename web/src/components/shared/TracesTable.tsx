@@ -33,7 +33,7 @@ import {
   traceGetStatus,
   traceGetTotalTokens,
 } from "../utils/traceUtils";
-import { formatDateTime, getPriorityColor } from "../utils/utils";
+import { formatDateTime, formatDuration, getPriorityColor } from "../utils/utils";
 import StatusChip from "./StatusChip";
 import TypeChip from "./TypeChip";
 import ErrorTypeChip from "./ErrorTypeChip";
@@ -180,7 +180,7 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
               fontFamily: "monospace",
             }}
           >
-            {duration}s
+            {formatDuration(duration)}
           </Typography>
         </TableCell>
         <TableCell>

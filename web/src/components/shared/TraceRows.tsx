@@ -13,7 +13,7 @@ import {
   traceGetStatus,
   traceGetTotalTokens,
 } from "../utils/traceUtils";
-import { formatDateTime, getPriorityColor } from "../utils/utils";
+import { formatDateTime, formatDuration, getPriorityColor } from "../utils/utils";
 import StatusChip from "./StatusChip";
 import TypeChip from "./TypeChip";
 import ErrorTypeChip from "./ErrorTypeChip";
@@ -153,7 +153,7 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                     fontSize: "0.75rem",
                   }}
                 >
-                  {duration}s
+                  {formatDuration(duration)}
                 </Typography>
               </TableCell>
               <TableCell>

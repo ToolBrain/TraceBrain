@@ -23,7 +23,7 @@ import {
   episodeGetStatus,
   episodeGetTotalTokens,
 } from "../utils/episodeUtils";
-import { formatDateTime, getPriorityColor } from "../utils/utils";
+import { formatDateTime, formatDuration, getPriorityColor } from "../utils/utils";
 import TypeChip from "./TypeChip";
 import StatusChip from "./StatusChip";
 import ConfidenceIndicator from "./ConfidenceIndicator";
@@ -133,7 +133,7 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
               fontFamily: "monospace",
             }}
           >
-            {duration}s
+            {formatDuration(duration)}
           </Typography>
         </TableCell>
         <TableCell>

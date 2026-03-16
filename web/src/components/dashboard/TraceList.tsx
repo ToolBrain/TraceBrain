@@ -38,7 +38,7 @@ import {
   traceGetTotalTokens,
 } from "../utils/traceUtils";
 import ConfidenceIndicator from "../shared/ConfidenceIndicator";
-import { formatDateTime, getPriorityColor } from "../utils/utils";
+import { formatDateTime, formatDuration, getPriorityColor } from "../utils/utils";
 import TypeChip from "../shared/TypeChip";
 import ErrorTypeChip from "../shared/ErrorTypeChip";
 
@@ -267,7 +267,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-                        {duration.toFixed(2)}s
+                        {formatDuration(duration)}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -370,7 +370,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                                           fontSize: "0.75rem",
                                         }}
                                       >
-                                        {spanDuration}s
+                                        {formatDuration(parseFloat(spanDuration))}
                                       </Typography>
                                     </TableCell>
                                     <TableCell>

@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import type { Span } from "../../types/trace";
-import { formatDateTime } from "../utils/utils";
+import { formatDateTime, formatDuration } from "../utils/utils";
 import {
   spanGetDuration,
   spanGetOutput,
@@ -96,7 +96,7 @@ const SpanRows: React.FC<SpanRowsProps> = ({ spans, traceId }) => {
                     fontSize: "0.75rem",
                   }}
                 >
-                  {spanDuration}s
+                  {formatDuration(parseFloat(spanDuration))}
                 </Typography>
               </TableCell>
               <TableCell sx={{ fontFamily: "monospace" }}>
