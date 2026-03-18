@@ -164,7 +164,7 @@ const Explorer: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}>
+    <Box sx={{ p: 2.5, height: "100%", display: "flex", flexDirection: "column" }}>
       <Card
         sx={{
           flexGrow: 1,
@@ -191,9 +191,26 @@ const Explorer: React.FC = () => {
               justifyContent: "space-between",
             }}
           >
-            <Tabs value={viewMode} onChange={handleViewModeChange}>
-              <Tab icon={<Timeline />} iconPosition="start" label="Traces" value="traces" />
-              <Tab icon={<ViewList />} iconPosition="start" label="Episodes" value="episodes" />
+            <Tabs
+              value={viewMode}
+              onChange={handleViewModeChange}
+              sx={{
+                minHeight: "3.5rem",
+                "& .MuiTab-root": { minHeight: "3.5rem"},
+              }}
+            >
+              <Tab
+                icon={<Timeline fontSize="small" />}
+                iconPosition="start"
+                label="Traces"
+                value="traces"
+              />
+              <Tab
+                icon={<ViewList fontSize="small" />}
+                iconPosition="start"
+                label="Episodes"
+                value="episodes"
+              />
             </Tabs>
             <Tooltip title="Refresh">
               <IconButton onClick={handleRefresh}>

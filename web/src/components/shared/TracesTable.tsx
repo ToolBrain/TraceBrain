@@ -183,6 +183,7 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
             sx={{
               fontFamily: "monospace",
               fontSize: "0.75rem",
+              color: "text.secondary",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",

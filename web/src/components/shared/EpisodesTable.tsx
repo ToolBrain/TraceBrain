@@ -121,9 +121,6 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
           <StatusChip status={status} />
         </TableCell>
         <TableCell>
-          <Typography variant="body2" sx={{ color: "text.disabled" }}>
-            —
-          </Typography>
         </TableCell>
         <TableCell>
           <Typography
@@ -142,6 +139,7 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
             sx={{
               fontFamily: "monospace",
               fontSize: "0.75rem",
+              color: "text.secondary",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -151,9 +149,7 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
           </Typography>
         </TableCell>
         <TableCell>
-          <ConfidenceIndicator
-            confidence={avgConfidence}
-          />
+          <ConfidenceIndicator confidence={avgConfidence} />
         </TableCell>
       </TableRow>
       <TableRow>

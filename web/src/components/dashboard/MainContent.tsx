@@ -210,7 +210,7 @@ const MainContent: React.FC<MainContentProps> = ({ traces, view }) => {
           size="small"
           sx={{
             borderRadius: 1,
-            height: "40px",
+            height: "2.5rem",
             "&:hover": {
               borderColor: "text.primary",
               bgcolor: "action.hover",
@@ -230,7 +230,7 @@ const MainContent: React.FC<MainContentProps> = ({ traces, view }) => {
           }
           sx={{
             borderRadius: 1,
-            height: "40px",
+            height: "2.5rem",
             fontWeight: 600,
           }}
         >

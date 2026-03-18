@@ -119,7 +119,7 @@ const RecentHistory: React.FC = () => {
 
   return (
     <Box
-      sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}
+      sx={{ p: 2.5, height: "100%", display: "flex", flexDirection: "column" }}
     >
       <Card
         sx={{
@@ -147,15 +147,22 @@ const RecentHistory: React.FC = () => {
               justifyContent: "space-between",
             }}
           >
-            <Tabs value={viewMode} onChange={handleViewModeChange}>
+            <Tabs
+              value={viewMode}
+              onChange={handleViewModeChange}
+              sx={{
+                minHeight: "3.5rem",
+                "& .MuiTab-root": { minHeight: "3.5rem"},
+              }}
+            >
               <Tab
-                icon={<Timeline />}
+                icon={<Timeline fontSize="small" />}
                 iconPosition="start"
                 label="Traces"
                 value="traces"
               />
               <Tab
-                icon={<ViewList />}
+                icon={<ViewList fontSize="small" />}
                 iconPosition="start"
                 label="Episodes"
                 value="episodes"

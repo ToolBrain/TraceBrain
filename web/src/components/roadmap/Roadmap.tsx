@@ -354,9 +354,8 @@ const Roadmap: React.FC = () => {
               disabled={isLoading}
               size="small"
               sx={{
-                border: 1,
-                borderRadius: "4px",
-                height: "40px",
+                borderRadius: 1,
+                height: "2.5rem",
                 "&:hover": {
                   borderColor: "text.primary",
                   bgcolor: "action.hover",
@@ -370,7 +369,7 @@ const Roadmap: React.FC = () => {
             <Box
               sx={{
                 px: 1.5,
-                height: "40px",
+                height: "2.5rem",
                 display: "flex",
                 alignItems: "center",
                 userSelect: "none",
