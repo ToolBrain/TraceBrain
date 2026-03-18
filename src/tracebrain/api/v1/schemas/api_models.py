@@ -241,6 +241,7 @@ class AIEvaluationOut(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0, description="Judge confidence score")
     error_type: Optional[str] = Field(None, description="Error classification label")
     status: Optional[str] = Field(None, description="Evaluation status")
+    priority: Optional[int] = Field(None, ge=1, le=5, description="Priority level (1-5)")
     timestamp: Optional[str] = Field(None, description="When the evaluation was recorded")
 
 

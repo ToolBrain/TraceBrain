@@ -8,6 +8,7 @@
       "confidence": 0.95,
       "status": "pending_review",
       "error_type": "hallucination",
+      "priority": 5,
       "feedback": "The agent invented biographical details (Olympic medals) that were not present in the tool output."
     }
   },

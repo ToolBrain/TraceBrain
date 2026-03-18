@@ -10,6 +10,7 @@
       "confidence": 0.98,
       "status": "auto_verified",
       "error_type": "invalid_tool_usage",
+      "priority": 2,
       "feedback": "Detected division by zero; tool reported error."
     }
   },

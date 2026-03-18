@@ -12,7 +12,6 @@ import {
   Typography,
 } from "@mui/material";
 import { Flag, KeyboardArrowDown, KeyboardArrowRight, Layers, Token } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
 import type { Episode } from "../../types/trace";
 import TraceRows from "./TraceRows";
 import {
@@ -30,7 +29,6 @@ import ConfidenceIndicator from "./ConfidenceIndicator";
 
 const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
   const [open, setOpen] = useState(false);
-  const nav = useNavigate();
   const startTime = episodeGetStartTime(episode);
   const totalTokens = episodeGetTotalTokens(episode) ?? "N/A";
   const priority = episodeGetPriority(episode);
@@ -42,7 +40,7 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
     <React.Fragment>
       <TableRow
         hover
-        onClick={() => nav(`/trace/${episode.episode_id}?type=episode`)}
+        onClick={() => setOpen((v) => !v)}
         sx={{ cursor: "pointer", "& > td": { p: 1.75 } }}
       >
         <TableCell>
@@ -61,6 +59,7 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
             variant="body2"
             sx={{
               fontFamily: "monospace",
+              fontSize: "0.75rem",
             }}
           >
             {formatDateTime(startTime)}
@@ -131,6 +130,7 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
             variant="body2"
             sx={{
               fontFamily: "monospace",
+              fontSize: "0.75rem",
             }}
           >
             {formatDuration(duration)}
@@ -141,6 +141,7 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
             variant="body2"
             sx={{
               fontFamily: "monospace",
+              fontSize: "0.75rem",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -152,7 +153,6 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
         <TableCell>
           <ConfidenceIndicator
             confidence={avgConfidence}
-            isAnalyzing={avgConfidence === undefined}
           />
         </TableCell>
       </TableRow>

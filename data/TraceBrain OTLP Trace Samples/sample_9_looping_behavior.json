@@ -8,6 +8,7 @@
       "confidence": 0.98,
       "status": "auto_verified",
       "error_type": "none",
+      "priority": 1,
       "feedback": "Handled multi-order lookup and summarized results."
     }
   },

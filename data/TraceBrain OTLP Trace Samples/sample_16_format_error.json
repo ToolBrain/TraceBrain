@@ -8,6 +8,7 @@
       "confidence": 0.90,
       "status": "pending_review",
       "error_type": "format_error",
+      "priority": 1,
       "feedback": "Malformed JSON in tool call. Agent failed to close the arguments bracket."
     }
   },

@@ -231,39 +231,30 @@ export const addHistory = async (
 };
 
 export const clearHistory = async (): Promise<void> => {
-  try {
-    const response = await fetch("/api/v1/history", {
-      method: "DELETE",
-    });
+  const response = await fetch("/api/v1/history", {
+    method: "DELETE",
+  });
 
-    if (!response.ok) {
-      throw new Error(`Failed to clear history: ${response.status}`);
-    }
-  } catch (error) {
-    console.error(error);
-    throw error;
+  if (!response.ok) {
+    throw new Error(`Failed to clear history: ${response.status}`);
   }
 };
 
-export const batchEvaluateTraces = async () => {
-  try {
-    const response = await fetch(`/api/v1/ops/batch_evaluate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+export const batchEvaluateTraces = async (limit: number) => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const response = await fetch(`/api/v1/ops/batch_evaluate?${params.toString()}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Failed to batch evaluate traces");
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    throw error;
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to batch evaluate traces");
   }
+
+  return response.json();
 };
 
 export const deleteTraces = async (period: string) => {

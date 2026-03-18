@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Stack, TextField, Typography, Card, CardContent, MenuItem } from "@mui/material";
+import { Stack, TextField, Typography, Card, CardContent, MenuItem, Slider } from "@mui/material";
 import { useSettings } from "../../../contexts/SettingsContext";
 import Toggle from "../Toggle";
 
@@ -70,6 +70,32 @@ const AdvancedSection: React.FC = () => {
             }
             tooltip="Automatically evaluate incoming traces."
           />
+
+          <Stack spacing={0.5}>
+            <Typography variant="subtitle2">Batch Size</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Number of traces to evaluate at once.
+            </Typography>
+            <Slider
+              value={settings.llm.batchSize ?? 5}
+              onChange={(_, value) =>
+                updateSettings((draft) => {
+                  draft.llm.batchSize = value as number;
+                })
+              }
+              min={5}
+              max={25}
+              step={1}
+              marks={[
+                { value: 5, label: "5" },
+                { value: 10, label: "10" },
+                { value: 15, label: "15" },
+                { value: 20, label: "20" },
+                { value: 25, label: "25" },
+              ]}
+              valueLabelDisplay="auto"
+            />
+          </Stack>
         </Stack>
       </Stack>
 

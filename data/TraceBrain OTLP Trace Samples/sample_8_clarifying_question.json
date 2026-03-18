@@ -8,6 +8,7 @@
       "confidence": 0.98,
       "status": "auto_verified",
       "error_type": "none",
+      "priority": 5,
       "feedback": "Asked for missing details before tool use."
     }
   },

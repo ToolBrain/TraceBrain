@@ -8,6 +8,7 @@
       "confidence": 0.7,
       "status": "pending_review",
       "error_type": "invalid_tool_usage",
+      "priority": 2,
       "feedback": "Booking failed due to missing traveler name; asked for required info."
     }
   },

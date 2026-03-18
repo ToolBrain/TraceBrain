@@ -3,7 +3,6 @@ import {
   Box,
   Card,
   CardContent,
-  Typography,
   Tabs,
   Tab,
   TablePagination,
@@ -166,29 +165,6 @@ const Explorer: React.FC = () => {
 
   return (
     <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}>
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
-            Explorer
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Browse and search the <Box component="span" sx={{ fontWeight: "bold" }}>TraceStore</Box>
-          </Typography>
-        </Box>
-        <Tooltip title="Refresh">
-          <IconButton onClick={handleRefresh}>
-            <Refresh />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
       <Card
         sx={{
           flexGrow: 1,
@@ -205,13 +181,28 @@ const Explorer: React.FC = () => {
             minHeight: 0,
           }}
         >
-          <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+          <Box
+            sx={{
+              borderBottom: 1,
+              borderColor: "divider",
+              mb: 2,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
             <Tabs value={viewMode} onChange={handleViewModeChange}>
               <Tab icon={<Timeline />} iconPosition="start" label="Traces" value="traces" />
               <Tab icon={<ViewList />} iconPosition="start" label="Episodes" value="episodes" />
             </Tabs>
+            <Tooltip title="Refresh">
+              <IconButton onClick={handleRefresh}>
+                <Refresh />
+              </IconButton>
+            </Tooltip>
           </Box>
-          <Box sx={{ mb: 3 }}>
+
+          <Box sx={{ mb: 2.5 }}>
             <TextField
               fullWidth
               placeholder="Search ID..."

@@ -18,6 +18,7 @@ interface Settings {
   llm: {
     model: string;
     autoEvaluate: boolean;
+    batchSize: number;
   };
   chatLLM: {
     model: string;
@@ -33,7 +34,7 @@ interface SettingsContextType {
 const DEFAULT_SETTINGS: Settings = {
   appearance: { theme: "light" },
   refresh: { autoRefresh: false, refreshInterval: 30 },
-  llm: { model: "gemini-2.5-flash", autoEvaluate: true },
+  llm: { model: "gemini-2.5-flash", autoEvaluate: true, batchSize: 5 },
   chatLLM: { model: "gemini-2.5-flash" },
 };
 

@@ -84,11 +84,11 @@ export const getConfidenceColor = (
 
 export const getPriorityColor = (priority: number | null): string => {
   if (priority === null) return "error.light";
-  return priority >= 4
-    ? "error.main" // (4-5) High priority
-    : priority >= 3
+  return priority <= 2
+    ? "error.main" // (1-2) High priority
+    : priority <= 3
       ? "warning.main" // (3) Medium priority
-      : "error.light"; // (1-2) Low priority
+      : "error.light"; // (4-5) Low priority
 };
 
 export const toTitleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();

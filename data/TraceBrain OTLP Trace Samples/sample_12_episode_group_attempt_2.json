@@ -8,6 +8,7 @@
       "confidence": 0.7,
       "status": "pending_review",
       "error_type": "none",
+      "priority": 5,
       "feedback": "Successfully booked once required details provided."
     }
   },

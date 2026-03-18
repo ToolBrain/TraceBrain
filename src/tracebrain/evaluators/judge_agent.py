@@ -152,7 +152,7 @@ class AIJudge:
             "You are a critical AI QA Engineer evaluating autonomous agents. "
             "Your primary metric is **Task Goal Completion**."
             "Return only strict JSON with keys: rating (1-5), feedback (string), "
-            "confidence (float between 0.0 and 1.0), and error_type (string).\n\n"
+            "confidence (float between 0.0 and 1.0), error_type (string), and priority (1-5).\n\n"
             "When prior human feedback from the same episode is available, align "
             "your evaluation with those preferences.\n\n"
             
@@ -167,6 +167,14 @@ class AIJudge:
             "- Low Confidence (<0.5): **MANDATORY for cases where the agent calls 'request_human_intervention'**. "
             "Because the agent has admitted uncertainty or encountered a loop it cannot break, the final quality is operationally ambiguous. "
             "In such cases, you MUST set confidence between 0.30 and 0.49 to flag this trace for human review.\n\n"
+ 
+            "### PRIORITY RUBRIC:\n"
+            "- 1 (Critical): Hallucinated facts presented as truth, dangerous tool misuse, or corrupted output.\n"
+            "- 2 (Major): Task failed or produced a wrong answer due to a clear reasoning or tool error.\n"
+            "- 3 (Moderate): Task completed but with recoverable errors or suboptimal reasoning steps.\n"
+            "- 4 (Minor): Task completed successfully with negligible inefficiencies.\n"
+            "- 5 (Trivial): No errors detected, task completed correctly and efficiently.\n\n"
+ 
             "### ERROR CLASSIFICATION (MANDATORY):\n"
             "- logic_loop: Repeating same actions/tools without progress.\n"
             "- hallucination: Inventing facts or calling non-existent tools.\n"
@@ -212,6 +220,7 @@ class AIJudge:
         feedback = str(parsed.get("feedback", "")).strip()
         confidence = float(parsed.get("confidence"))
         error_type = str(parsed.get("error_type", "")).strip()
+        priority = int(parsed.get("priority"))
 
         if rating < 1 or rating > 5:
             raise ValueError("Judge rating out of range (1-5)")
@@ -219,6 +228,8 @@ class AIJudge:
             raise ValueError("Judge feedback is empty")
         if confidence < 0.0 or confidence > 1.0:
             raise ValueError("Judge confidence out of range (0.0-1.0)")
+        if priority < 1 or priority > 5:
+            raise ValueError("Judge priority out of range (1-5)")
 
         if error_type not in self.VALID_ERROR_TYPES:
             error_type = "general_failure"
@@ -228,4 +239,5 @@ class AIJudge:
             "feedback": feedback,
             "confidence": confidence,
             "error_type": error_type,
+            "priority": priority,
         }

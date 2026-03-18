@@ -8,6 +8,7 @@
       "confidence": 0.7,
       "status": "pending_review",
       "error_type": "misinterpretation",
+      "priority": 5,
       "feedback": "Comparison completed; check source accuracy."
     }
   },

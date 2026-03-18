@@ -8,6 +8,7 @@
       "confidence": 0.85,
       "status": "pending_review",
       "error_type": "context_overflow",
+      "priority": 3,
       "feedback": "The trace was truncated due to context window limits. The agent could not finish the final synthesis."
     }
   },

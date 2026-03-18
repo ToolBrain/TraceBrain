@@ -63,7 +63,7 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
               key={trace.trace_id}
               hover
               onClick={(e) => handleTraceClick(trace.trace_id, e)}
-              sx={{ cursor: "pointer", "& > td": { py: 1.5, px: 1.75 } }}
+              sx={{ cursor: "pointer", "& > td": { px: 1.75, py: 1.5 } }}
             >
               <TableCell />
               <TableCell>
@@ -137,13 +137,7 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                 <StatusChip status={status} secondary />
               </TableCell>
               <TableCell>
-                {errorType && errorType !== "none" ? (
-                  <ErrorTypeChip errorType={errorType} />
-                ) : (
-                  <Typography variant="body2" sx={{ color: "text.disabled" }}>
-                    —
-                  </Typography>
-                )}
+                {errorType && errorType !== "none" && <ErrorTypeChip errorType={errorType} />}
               </TableCell>
               <TableCell>
                 <Typography
@@ -172,10 +166,7 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                 </Typography>
               </TableCell>
               <TableCell>
-                <ConfidenceIndicator
-                  confidence={confidence}
-                  status={suggestion_status}
-                />
+                <ConfidenceIndicator confidence={confidence} status={suggestion_status} />
               </TableCell>
             </TableRow>
           );

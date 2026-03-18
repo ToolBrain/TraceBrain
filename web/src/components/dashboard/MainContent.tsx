@@ -19,6 +19,8 @@ import {
   Clear,
   Refresh,
   PlaylistAddCheck,
+  BarChart,
+  BarChartOutlined,
 } from "@mui/icons-material";
 import { useMemo, useState } from "react";
 import TraceList from "./TraceList";
@@ -26,6 +28,7 @@ import type { Trace } from "../../types/trace";
 import { traceGetEvaluation, traceGetPriority } from "../utils/traceUtils";
 import { batchEvaluateTraces } from "../utils/api";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSettings } from "../../contexts/SettingsContext";
 
 interface MainContentProps {
   traces: Trace[];
@@ -39,8 +42,6 @@ const sortOptions = [
   { value: "priority", label: "Priority" },
 ];
 
-const BATCH_EVALUATE_LIMIT = 5;
-
 const MainContent: React.FC<MainContentProps> = ({ traces, view }) => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -48,11 +49,13 @@ const MainContent: React.FC<MainContentProps> = ({ traces, view }) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
+  const [showView, setShowView] = useState(true);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success" as "success" | "error" | "info" | "warning",
   });
+  const { settings } = useSettings();
 
   const handleEvaluateTraces = async () => {
     setIsEvaluating(true);
@@ -60,12 +63,12 @@ const MainContent: React.FC<MainContentProps> = ({ traces, view }) => {
       new Set(
         traces
           .filter((t) => !traceGetEvaluation(t))
-          .slice(0, BATCH_EVALUATE_LIMIT)
+          .slice(0, settings.llm.batchSize)
           .map((t) => t.trace_id),
       ),
     );
     try {
-      const result = await batchEvaluateTraces();
+      const result = await batchEvaluateTraces(settings.llm.batchSize);
       const processed = Number(result?.processed ?? 0);
       const failed = Number(result?.failed ?? 0);
 
@@ -160,7 +163,8 @@ const MainContent: React.FC<MainContentProps> = ({ traces, view }) => {
 
   return (
     <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}>
-      {view}
+      <Box sx={{ display: showView ? "block" : "none" }}>{view}</Box>
+
       <Box
         sx={{
           display: "flex",
@@ -230,7 +234,7 @@ const MainContent: React.FC<MainContentProps> = ({ traces, view }) => {
             fontWeight: 600,
           }}
         >
-          {isEvaluating ? "Evaluating..." : "Evaluate Traces"}
+          {isEvaluating ? "Evaluating..." : "Batch Evaluate"}
         </Button>
 
         <TextField
@@ -261,6 +265,18 @@ const MainContent: React.FC<MainContentProps> = ({ traces, view }) => {
             },
           }}
         />
+
+        <IconButton
+          size="small"
+          onClick={() => setShowView((prev) => !prev)}
+          sx={{
+            color: showView ? "primary.main" : "text.secondary",
+            bgcolor: "action.hover",
+            "&:hover": { bgcolor: "action.selected" },
+          }}
+        >
+          {showView ? <BarChart fontSize="medium" /> : <BarChartOutlined fontSize="medium" />}
+        </IconButton>
       </Box>
 
       <TraceList traces={sortedTraces} loading={isEvaluating} />

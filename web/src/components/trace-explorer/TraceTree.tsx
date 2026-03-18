@@ -28,6 +28,7 @@ interface TraceTreeProps {
 
 const lineWidth = "0.075rem";
 const branchWidth = "0.75rem";
+const DEPTH_CAP = 4;
 
 const TraceTree: React.FC<TraceTreeProps> = ({
   traces,
@@ -65,6 +66,9 @@ const TraceTree: React.FC<TraceTreeProps> = ({
 
     const childAncestorLines = isLast ? ancestorLines : [...ancestorLines, depth];
 
+    const visualDepth = Math.min(depth, DEPTH_CAP);
+    const overCap = depth > DEPTH_CAP;
+
     return (
       <>
         <Box
@@ -89,7 +93,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
                 <Box
                   sx={{
                     position: "absolute",
-                    left: `${depth * 1.5}rem`,
+                    left: `${visualDepth * 1.5}rem`,
                     top: 0,
                     bottom: 0,
                     width: lineWidth,
@@ -102,7 +106,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
               <Box
                 sx={{
                   position: "absolute",
-                  left: `${depth * 1.5}rem`,
+                  left: `${visualDepth * 1.5}rem`,
                   top: isLast ? 0 : "calc(50% - 0.5rem)",
                   height: isLast ? "50%" : "0.5rem",
                   width: branchWidth,
@@ -122,7 +126,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
               key={ancestorDepth}
               sx={{
                 position: "absolute",
-                left: `${ancestorDepth * 1.5}rem`,
+                left: `${Math.min(ancestorDepth, DEPTH_CAP) * 1.5}rem`,
                 top: 0,
                 bottom: 0,
                 width: lineWidth,
@@ -132,7 +136,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
             />
           ))}
 
-          <Box sx={{ width: `${depth * 1.5}rem` }} />
+          <Box sx={{ width: `${visualDepth * 1.5}rem` }} />
 
           {children.length > 0 ? (
             <IconButton
@@ -155,11 +159,47 @@ const TraceTree: React.FC<TraceTreeProps> = ({
             <CheckCircleOutline fontSize="small" color="success" />
           )}
 
-          <Typography variant="body2" sx={{ fontWeight: 500, ml: 1, flex: 1 }}>
-            {span.name}
-          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              ml: 1,
+              flex: 1,
+              overflow: "hidden",
+              gap: 0.75,
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 500,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {span.name}
+            </Typography>
+            {overCap && (
+              <Typography
+                variant="caption"
+                sx={{
+                  ml: 0.75,
+                  mr: 1,
+                  px: 1,
+                  borderRadius: 2,
+                  bgcolor: "action.selected",
+                  color: "text.disabled",
+                  fontFamily: "monospace",
+                  flexShrink: 0,
+                }}
+              >
+                +{depth - DEPTH_CAP}
+              </Typography>
+            )}
+          </Box>
 
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" fontFamily="monospace">
             {formatDuration(parseFloat(spanGetDuration(span)))}
           </Typography>
         </Box>
@@ -203,13 +243,17 @@ const TraceTree: React.FC<TraceTreeProps> = ({
           alignItems: "center",
         }}
       >
-        <Typography variant="h5">Trace Details</Typography>
+        <Typography variant="h6">Trace Details</Typography>
         {!isEpisode && (
           <Button
             variant="text"
             size="small"
-            endIcon={<OpenInNew style={{ fontSize: 16 }} />}
-            sx={{ color: "text.secondary", fontSize: "0.75rem", "& .MuiButton-endIcon": { ml: 0.5 } }}
+            endIcon={<ChevronRight style={{ fontSize: 16 }} />}
+            sx={{
+              color: "text.secondary",
+              fontSize: "0.75rem",
+              "& .MuiButton-endIcon": { ml: 0.5 },
+            }}
             onClick={() => nav(`/trace/${episodeId}?type=episode`)}
           >
             View Episode
