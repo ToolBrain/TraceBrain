@@ -55,7 +55,7 @@ def batch_evaluate_traces(
 
 @router.delete("/ops/traces/cleanup", tags=["Operations"])
 def cleanup_traces(
-    within_last_hours: Optional[int] = Query(
+    older_than_hours: Optional[int] = Query(
         None,
         ge=1,
         description="Delete traces older than this many hours",
@@ -67,12 +67,12 @@ def cleanup_traces(
 ):
     """Delete traces that match cleanup filters."""
     deleted = store.cleanup_traces(
-        within_last_hours=within_last_hours,
+        older_than_hours=older_than_hours,
         status=status,
     )
     timestamp = datetime.utcnow().isoformat()
     filters = {
-        "within_last_hours": within_last_hours,
+        "older_than_hours": older_than_hours,
         "status": status,
     }
     return {

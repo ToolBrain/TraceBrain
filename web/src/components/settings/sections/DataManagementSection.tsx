@@ -8,11 +8,11 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { deleteTraces } from "../../utils/api";
 
 const TIME_RANGES = [
-  { value: "1h", label: "Last 1 hour" },
-  { value: "12h", label: "Last 12 hours" },
-  { value: "24h", label: "Last 24 hours" },
-  { value: "7d", label: "Last 7 days" },
-  { value: "30d", label: "Last 30 days" },
+  { value: "1h", label: "Older than 1 hour" },
+  { value: "12h", label: "Older than 12 hours" },
+  { value: "24h", label: "Older than 24 hours" },
+  { value: "7d", label: "Older than 7 days" },
+  { value: "30d", label: "Older than 30 days" },
   { value: "all", label: "All time" },
 ];
 
