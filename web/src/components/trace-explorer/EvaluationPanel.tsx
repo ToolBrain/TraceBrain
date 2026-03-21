@@ -274,7 +274,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
             </Box>
           </Box>
 
-          <Box sx={{mr: 0.5 }}>
+          <Box sx={{ mr: 0.5 }}>
             <Typography variant="caption" color="text.secondary">
               AI Rationale
             </Typography>
@@ -306,9 +306,10 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
         <Typography variant="h6">Evaluation and Governance</Typography>
         <Button
           size="small"
-          variant="outlined"
+          variant="text"
           onClick={() => setShowEvaluation((prev) => !prev)}
           startIcon={showEvaluation ? <ExpandLess /> : <ExpandMore />}
+          sx={{ color: "text.secondary" }}
         >
           {showEvaluation ? "Collapse" : "Expand"}
         </Button>

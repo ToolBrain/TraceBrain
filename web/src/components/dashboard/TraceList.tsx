@@ -106,8 +106,8 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
             <TableCell sx={{ width: "2%", fontWeight: 600 }}></TableCell>
             <TableCell sx={{ width: "13%", fontWeight: 600 }}>Timestamp</TableCell>
             <TableCell sx={{ width: "14%", fontWeight: 600 }}>Details</TableCell>
-            <TableCell sx={{ width: "11%", fontWeight: 600 }}>Status</TableCell>
-            <TableCell sx={{ width: "10%", fontWeight: 600 }}>Error Type</TableCell>
+            <TableCell sx={{ width: "10%", fontWeight: 600 }}>Status</TableCell>
+            <TableCell sx={{ width: "11%", fontWeight: 600 }}>Error Type</TableCell>
             <TableCell sx={{ width: "10%", fontWeight: 600 }}>Duration</TableCell>
             <TableCell sx={{ width: "15%", fontWeight: 600 }}>Trace ID</TableCell>
             <TableCell sx={{ width: "15%", fontWeight: 600 }}>AI Confidence</TableCell>
@@ -289,8 +289,8 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                               <col style={{ width: "2%" }} />
                               <col style={{ width: "13%" }} />
                               <col style={{ width: "14%" }} />
-                              <col style={{ width: "11%" }} />
                               <col style={{ width: "10%" }} />
+                              <col style={{ width: "11%" }} />
                               <col style={{ width: "10%" }} />
                               <col style={{ width: "15%" }} />
                               <col style={{ width: "15%" }} />
@@ -341,7 +341,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                                           color="text.secondary"
                                           sx={{ display: "block", ...truncate }}
                                         >
-                                          {spanGetOutput(span)}
+                                          {spanGetOutput(span) ?? "\u00A0"}
                                         </Typography>
                                       </Box>
                                     </TableCell>

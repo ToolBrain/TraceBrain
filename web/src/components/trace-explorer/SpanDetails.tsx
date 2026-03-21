@@ -12,6 +12,9 @@ import {
   spanGetInput,
   spanGetOutput,
   spanGetSystemPrompt,
+  spanGetThought,
+  spanGetToolCode,
+  spanGetErrorDescription,
 } from "../utils/spanUtils";
 import EvaluationPanel from "./EvaluationPanel";
 
@@ -25,9 +28,12 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
   const spanType = span ? spanGetType(span) : "unknown";
   const toolName = span ? spanGetToolName(span) : "";
   const hasError = span ? spanHasError(span) : false;
+  const errorDescription = span ? spanGetErrorDescription(span) : "";
   const usage = span ? spanGetUsage(span) : null;
   const input = span ? spanGetInput(span) : "";
   const output = span ? spanGetOutput(span) : "";
+  const thought = span ? spanGetThought(span) : "";
+  const toolCode = span ? spanGetToolCode(span) : "";
   const systemPrompt = spanGetSystemPrompt(span, trace);
 
   return (
@@ -114,6 +120,24 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
                         )
                       );
                     })()}
+                  {thought && (
+                    <SpanContent
+                      key={`${span.span_id}-thought`}
+                      title="Thought"
+                      subtitle="AI"
+                      content={thought}
+                      hasError={hasError}
+                    />
+                  )}
+                  {toolCode && (
+                    <SpanContent
+                      key={`${span.span_id}-tool-code`}
+                      title="Tool Call"
+                      subtitle="AI"
+                      content={toolCode}
+                      hasError={hasError}
+                    />
+                  )}
                   {output && (
                     <SpanContent
                       key={`${span.span_id}-output`}
@@ -124,6 +148,16 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
                     />
                   )}
                 </>
+              )}
+
+              {hasError && errorDescription && (
+                <SpanContent
+                  key={`${span.span_id}-error`}
+                  title="Error Description"
+                  subtitle="Tool"
+                  content={errorDescription}
+                  hasError={hasError}
+                />
               )}
 
               {usage && <TokenUsageBar usage={usage} hasError={hasError} />}

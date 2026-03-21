@@ -77,7 +77,7 @@ const SpanRows: React.FC<SpanRowsProps> = ({ spans, traceId }) => {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {spanGetOutput(span)}
+                  {spanGetOutput(span) ?? "\u00A0"}
                 </Typography>
               </TableCell>
               <TableCell>

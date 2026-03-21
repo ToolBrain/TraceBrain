@@ -76,7 +76,7 @@ const SpanNode: React.FC<SpanNodeProps> = ({
           px: 1.5,
           position: "relative",
           cursor: "pointer",
-          bgcolor: isSelected ? "primary.50" : "transparent",
+          bgcolor: isSelected ? "action.hover" : "transparent",
           borderLeft: "0.125rem solid",
           borderLeftColor: isSelected ? "primary.main" : "transparent",
           "&:hover": { bgcolor: isSelected ? "primary.50" : "action.hover" },
@@ -85,7 +85,7 @@ const SpanNode: React.FC<SpanNodeProps> = ({
         {depth > 0 && (
           <>
             {!isLast && (
-                // Not last child line keeps going
+              // Not last child line keeps going
               <Box
                 sx={{
                   position: "absolute",
@@ -98,7 +98,7 @@ const SpanNode: React.FC<SpanNodeProps> = ({
                 }}
               />
             )}
-              {/* Curve into node */}
+            {/* Curve into node */}
             <Box
               sx={{
                 position: "absolute",
@@ -116,7 +116,7 @@ const SpanNode: React.FC<SpanNodeProps> = ({
           </>
         )}
 
-          {/* Ancestor continuation lines */}
+        {/* Ancestor continuation lines */}
         {ancestorLines.map((ancestorDepth) => (
           <Box
             key={ancestorDepth}
@@ -143,10 +143,10 @@ const SpanNode: React.FC<SpanNodeProps> = ({
             }}
             sx={{ mr: 1, p: 0 }}
           >
-            {isExpanded ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />}
+            {isExpanded ? <ExpandMore fontSize="medium" /> : <ChevronRight fontSize="medium" />}
           </IconButton>
         ) : (
-          <Box sx={{ width: "1.25rem", mr: 1 }} />
+          <ChevronRight fontSize="medium" sx={{ mr: 1, color: "text.disabled", opacity: 0.7 }} />
         )}
 
         {hasError ? (
@@ -260,7 +260,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
           <Button
             variant="text"
             size="small"
-            endIcon={<ChevronRight style={{ fontSize: 16 }} />}
+            endIcon={<ChevronRight />}
             sx={{
               color: "text.secondary",
               fontSize: "0.75rem",

@@ -181,7 +181,7 @@ const TraceErrorChart: React.FC<TraceErrorChartProps> = ({ traces }) => {
             <Typography variant="caption" color="text.secondary">
               {label}
             </Typography>
-            <Typography variant="body1" lineHeight={1} color="text.primary">
+            <Typography variant="body1" fontWeight={600} lineHeight={1} color="text.primary">
               {value}
             </Typography>
           </Box>
