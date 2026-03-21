@@ -79,6 +79,7 @@ export const fetchEpisodes = async (
     throw error;
   }
 };
+
 export const submitTraceFeedback = async (
   id: string,
   rating: number,
@@ -273,6 +274,18 @@ export const deleteTraces = async (period: string) => {
 
   const res = await fetch(`/api/v1/ops/traces/cleanup?${params}`, { method: "DELETE" });
   return res.json();
+};
+
+export const deleteTrace = async (id: string): Promise<void> => {
+  const response = await fetch(`/api/v1/traces/${id}`, { method: "DELETE" });
+  if (!response.ok)
+    throw new Error(`Failed to delete trace: ${response.status}`);
+};
+
+export const deleteEpisode = async (id: string): Promise<void> => {
+  const response = await fetch(`/api/v1/episodes/${id}`, { method: "DELETE" });
+  if (!response.ok)
+    throw new Error(`Failed to delete episode: ${response.status}`);
 };
 
 export const deleteCurriculumTask = async (id: number): Promise<void> => {

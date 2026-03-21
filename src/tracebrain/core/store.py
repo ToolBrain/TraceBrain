@@ -933,6 +933,38 @@ class BaseStorageBackend:
         finally:
             session.close()
 
+    def delete_trace(self, trace_id: str) -> None:
+        """Delete a single trace and its history entry."""
+        session = self.get_session()
+        try:
+            session.query(History).filter(History.id == trace_id).delete(synchronize_session=False)
+            session.query(Trace).filter(Trace.id == trace_id).delete(synchronize_session=False)
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to delete trace")
+            raise
+        finally:
+            session.close()
+
+    def delete_episode(self, episode_id: str) -> None:
+        """Delete all traces in an episode and their history entries."""
+        session = self.get_session()
+        try:
+            traces = session.query(Trace).filter(Trace.episode_id == episode_id).all()
+            trace_ids = [t.id for t in traces]
+            if trace_ids:
+                session.query(History).filter(History.id.in_(trace_ids)).delete(synchronize_session=False)
+            session.query(History).filter(History.id == episode_id).delete(synchronize_session=False)
+            session.query(Trace).filter(Trace.episode_id == episode_id).delete(synchronize_session=False)
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to delete episode")
+            raise
+        finally:
+            session.close()
+
     def add_feedback(self, trace_id: str, feedback_data: Dict[str, Any]) -> bool:
         """Add or update feedback for a trace."""
         session = self.get_session()

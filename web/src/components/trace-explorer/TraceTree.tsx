@@ -1,16 +1,33 @@
-import React from "react";
-import { Box, Typography, IconButton, Button, useTheme } from "@mui/material";
+import React, { useState } from "react";
+import {
+  Box,
+  Typography,
+  IconButton,
+  Button,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Snackbar,
+  Alert,
+  useTheme,
+} from "@mui/material";
 import {
   ChevronRight,
   ExpandMore,
   ErrorOutline,
   CheckCircleOutline,
+  DeleteOutline,
+  Polyline,
 } from "@mui/icons-material";
 import type { Span, Trace } from "../../types/trace";
 import { spanGetDuration, spanHasError } from "../utils/spanUtils";
 import { formatDuration } from "../utils/utils";
 import { traceGetEpisodeId } from "../utils/traceUtils";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { deleteEpisode, deleteTrace } from "../utils/api";
 
 interface SelectedSpan {
   traceId: string;
@@ -228,9 +245,32 @@ const TraceTree: React.FC<TraceTreeProps> = ({
   onSelectSpan,
 }) => {
   const [searchParams] = useSearchParams();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
   const isEpisode = searchParams.get("type") === "episode";
   const episodeId = traceGetEpisodeId(traces[0]);
   const nav = useNavigate();
+  const { id } = useParams<{ id: string }>() as { id: string };
+
+  const deleteLabel = isEpisode ? "Delete Episode" : "Delete Trace";
+  const deleteBody = isEpisode
+      ? <>This episode and all its traces will be <Box component="span" sx={{ fontWeight: "bold" }}>permanently deleted and cannot be recovered.</Box></>
+      : <>This trace will be <Box component="span" sx={{ fontWeight: "bold" }}>permanently deleted and cannot be recovered.</Box></>;
+
+  const handleDelete = async () => {
+    try {
+      isEpisode ? await deleteEpisode(id) : await deleteTrace(id);
+      setConfirmOpen(false);
+      nav("/dashboard");
+    } catch {
+      setConfirmOpen(false);
+      setSnackbar({ open: true, message: `Failed to delete ${isEpisode ? "episode" : "trace"}`, severity: "error" });
+    }
+  };
 
   return (
     <Box
@@ -256,22 +296,51 @@ const TraceTree: React.FC<TraceTreeProps> = ({
         }}
       >
         <Typography variant="h6">Trace Details</Typography>
-        {!isEpisode && (
-          <Button
-            variant="text"
-            size="small"
-            endIcon={<ChevronRight />}
-            sx={{
-              color: "text.secondary",
-              fontSize: "0.75rem",
-              "& .MuiButton-endIcon": { ml: 0.5 },
-            }}
-            onClick={() => nav(`/trace/${episodeId}?type=episode`)}
-          >
-            View Episode
-          </Button>
-        )}
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          {!isEpisode && (
+            <Tooltip title="View Episode">
+              <IconButton
+                onClick={() => nav(`/trace/${episodeId}?type=episode`)}
+                sx={{ color: "text.secondary" }}
+              >
+                <Polyline fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title={deleteLabel}>
+            <IconButton
+              onClick={() => setConfirmOpen(true)}
+              sx={{ color: "text.secondary", "&:hover": { color: "error.main" } }}
+            >
+              <DeleteOutline fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
+
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <DialogTitle>{deleteLabel}?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{deleteBody}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
+          <Button onClick={handleDelete} color="error" variant="contained" disableElevation>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
 
       <Box sx={{ flex: 1, overflowY: "auto" }}>
         {traces.map((t) => {

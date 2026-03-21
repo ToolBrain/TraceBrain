@@ -112,6 +112,13 @@ def list_traces(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to list traces: {str(exc)}")
 
+@router.delete("/traces/{trace_id}", tags=["Traces"])
+def delete_trace(trace_id: str):
+    """Delete a specific trace."""
+    try:
+        store.delete_trace(trace_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete trace: {str(exc)}")
 
 @router.get("/traces/search", response_model=ExperienceSearchResponse, tags=["Traces"])
 def search_traces(
