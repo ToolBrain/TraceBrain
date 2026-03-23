@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableRow, Typography } from "@mui/material
 import { useNavigate } from "react-router-dom";
 import type { Span } from "../../types/trace";
 import { formatDateTime, formatDuration } from "../utils/utils";
-import { spanGetDuration, spanGetOutput, spanHasError } from "../utils/spanUtils";
+import { spanGetDuration, spanGetOutput, spanGetToolCode, spanHasError } from "../utils/spanUtils";
 import StatusChip from "./StatusChip";
 
 interface SpanRowsProps {
@@ -77,7 +77,7 @@ const SpanRows: React.FC<SpanRowsProps> = ({ spans, traceId }) => {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {spanGetOutput(span) ?? "\u00A0"}
+                  {(spanGetOutput(span) || spanGetToolCode(span)) ?? "\u00A0"}
                 </Typography>
               </TableCell>
               <TableCell>

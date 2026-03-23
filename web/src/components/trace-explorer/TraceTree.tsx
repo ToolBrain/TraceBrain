@@ -23,7 +23,7 @@ import {
   Polyline,
 } from "@mui/icons-material";
 import type { Span, Trace } from "../../types/trace";
-import { spanGetDuration, spanHasError } from "../utils/spanUtils";
+import { spanGetDuration, spanHasError, spanGetType } from "../utils/spanUtils";
 import { formatDuration } from "../utils/utils";
 import { traceGetEpisodeId } from "../utils/traceUtils";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -77,10 +77,17 @@ const SpanNode: React.FC<SpanNodeProps> = ({
   const isExpanded = expandedNodes.has(`${traceId}:${span.span_id}`);
   const isSelected = selectedSpan?.traceId === traceId && selectedSpan?.spanId === span.span_id;
   const hasError = spanHasError(span);
+  const spanType = spanGetType(span);
 
   const childAncestorLines = isLast ? ancestorLines : [...ancestorLines, depth];
   const visualDepth = Math.min(depth, DEPTH_CAP);
   const overCap = depth > DEPTH_CAP;
+
+  const spanTypeLabel = spanType === "llm_inference" ? "LLM" : spanType === "tool_execution" ? "TOOL" : null;
+  const spanTypeBg = spanType === "llm_inference"
+    ? theme.palette.mode === "dark" ? "rgba(99,102,241,0.15)" : "rgba(99,102,241,0.08)"
+    : theme.palette.mode === "dark" ? "rgba(20,184,166,0.15)" : "rgba(20,184,166,0.08)";
+  const spanTypeColor = spanType === "llm_inference" ? "#6366f1" : "#14b8a6";
 
   return (
     <>
@@ -158,12 +165,12 @@ const SpanNode: React.FC<SpanNodeProps> = ({
               e.stopPropagation();
               onToggleExpand(traceId, span.span_id);
             }}
-            sx={{ mr: 1, p: 0 }}
+            sx={{ mr: 0.5, p: 0 }}
           >
             {isExpanded ? <ExpandMore fontSize="medium" /> : <ChevronRight fontSize="medium" />}
           </IconButton>
         ) : (
-          <ChevronRight fontSize="medium" sx={{ mr: 1, color: "text.disabled", opacity: 0.7 }} />
+          <Box sx={{ mr: 0.5, width: "1.5rem", flexShrink: 0 }} />
         )}
 
         {hasError ? (
@@ -183,28 +190,49 @@ const SpanNode: React.FC<SpanNodeProps> = ({
           }}
         >
           <Typography
-            variant="body2"
+            variant="subtitle1"
             sx={{
-              fontWeight: 500,
+              fontWeight: 600,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
+              color: isSelected ? "text.primary" : "text.secondary",
+              fontSize: "0.75rem",
             }}
           >
             {span.name}
           </Typography>
+
+          {spanTypeLabel && (
+            <Typography
+              variant="caption"
+              sx={{
+                px: 0.75,
+                py: 0.1,
+                mr: 0.5,
+                borderRadius: 0.75,
+                bgcolor: spanTypeBg,
+                color: spanTypeColor,
+                fontFamily: "monospace",
+                fontSize: "0.625rem",
+                fontWeight: 600,
+              }}
+            >
+              {spanTypeLabel}
+            </Typography>
+          )}
+
           {overCap && (
             <Typography
               variant="caption"
               sx={{
-                ml: 0.75,
-                mr: 1,
-                px: 1,
+                px: 0.75,
+                mr: 0.5,
                 borderRadius: 2,
                 bgcolor: "action.selected",
                 color: "text.disabled",
                 fontFamily: "monospace",
-                flexShrink: 0,
+                fontSize: "0.625rem",
               }}
             >
               +{depth - DEPTH_CAP}
@@ -258,8 +286,8 @@ const TraceTree: React.FC<TraceTreeProps> = ({
 
   const deleteLabel = isEpisode ? "Delete Episode" : "Delete Trace";
   const deleteBody = isEpisode
-      ? <>This episode and all its traces will be <Box component="span" sx={{ fontWeight: "bold" }}>permanently deleted and cannot be recovered.</Box></>
-      : <>This trace will be <Box component="span" sx={{ fontWeight: "bold" }}>permanently deleted and cannot be recovered.</Box></>;
+    ? <>This episode and all its traces will be <Box component="span" sx={{ fontWeight: "bold" }}>permanently deleted and cannot be recovered.</Box></>
+    : <>This trace will be <Box component="span" sx={{ fontWeight: "bold" }}>permanently deleted and cannot be recovered.</Box></>;
 
   const handleDelete = async () => {
     try {
@@ -301,7 +329,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
             <Tooltip title="View Episode">
               <IconButton
                 onClick={() => nav(`/trace/${episodeId}?type=episode`)}
-                sx={{ color: "text.secondary" }}
+                sx={{ color: "text.secondary", py: 0 }}
               >
                 <Polyline fontSize="small" />
               </IconButton>
@@ -310,7 +338,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
           <Tooltip title={deleteLabel}>
             <IconButton
               onClick={() => setConfirmOpen(true)}
-              sx={{ color: "text.secondary", "&:hover": { color: "error.main" } }}
+              sx={{ color: "text.secondary", "&:hover": { color: "error.main" }, py: 0 }}
             >
               <DeleteOutline fontSize="small" />
             </IconButton>

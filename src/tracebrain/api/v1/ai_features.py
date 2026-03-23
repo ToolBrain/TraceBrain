@@ -52,7 +52,8 @@ def natural_language_query(query: NaturalLanguageQuery):
             answer="Librarian is not available. Please check LLM provider configuration and API keys.",
             session_id=session_id,
             suggestions=[],
-            sources=None,
+            sources=[],
+            filters={},
         )
 
     try:

@@ -24,7 +24,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import type { Trace } from "../../types/trace";
 import React from "react";
-import { spanGetDuration, spanGetOutput, spanHasError } from "../utils/spanUtils";
+import { spanGetDuration, spanGetOutput, spanGetToolCode, spanHasError } from "../utils/spanUtils";
 import StatusChip, { ALLOWED_STATUSES, type ChipStatus } from "../shared/StatusChip";
 import {
   traceGetDuration,
@@ -341,7 +341,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                                           color="text.secondary"
                                           sx={{ display: "block", ...truncate }}
                                         >
-                                          {spanGetOutput(span) ?? "\u00A0"}
+                                          {(spanGetOutput(span) || spanGetToolCode(span)) ?? "\u00A0"}
                                         </Typography>
                                       </Box>
                                     </TableCell>

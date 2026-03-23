@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Typography } from "@mui/material";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import type { Span, Trace } from "../../types/trace";
 import { parseLLMContent } from "../utils/utils";
 import SpanContent from "./SpanContent";
@@ -55,6 +56,9 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
             borderBottom: 1,
             borderColor: "divider",
             bgcolor: "background.default",
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
           }}
         >
           <Typography variant="h6">Span Properties</Typography>
@@ -69,98 +73,112 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span, trace }) => {
 
           {span && (
             <>
-              <SpanContent
-                key={`${span.span_id}-system-prompt`}
-                title="System Prompt"
-                subtitle="System"
-                content={systemPrompt}
-                hasError={hasError}
-              />
-
-              {spanType === "tool_execution" && (
-                <>
-                  <SpanContent
-                    key={`${span.span_id}-tool`}
-                    title="Tool"
-                    subtitle="Tool"
-                    content={toolName}
-                    hasError={hasError}
-                  />
-                  <SpanContent
-                    key={`${span.span_id}-input`}
-                    title="Input"
-                    subtitle="AI"
-                    content={input}
-                    hasError={hasError}
-                  />
-                  <SpanContent
-                    key={`${span.span_id}-output`}
-                    title="Output"
-                    subtitle="Tool"
-                    content={output}
-                    hasError={hasError}
-                  />
-                </>
-              )}
-
-              {spanType === "llm_inference" && (
-                <>
-                  {input &&
-                    (() => {
-                      const parsed = parseLLMContent(input);
-                      return (
-                        parsed && (
-                          <SpanContent
-                            key={`${span.span_id}-input`}
-                            title="Input"
-                            subtitle={parsed.subtitle}
-                            content={parsed.content}
-                            hasError={hasError}
-                          />
-                        )
-                      );
-                    })()}
-                  {thought && (
-                    <SpanContent
-                      key={`${span.span_id}-thought`}
-                      title="Thought"
-                      subtitle="AI"
-                      content={thought}
-                      hasError={hasError}
-                    />
-                  )}
-                  {toolCode && (
-                    <SpanContent
-                      key={`${span.span_id}-tool-code`}
-                      title="Tool Call"
-                      subtitle="AI"
-                      content={toolCode}
-                      hasError={hasError}
-                    />
-                  )}
-                  {output && (
-                    <SpanContent
-                      key={`${span.span_id}-output`}
-                      title="Output"
-                      subtitle="AI"
-                      content={output}
-                      hasError={hasError}
-                    />
-                  )}
-                </>
-              )}
-
               {hasError && errorDescription && (
-                <SpanContent
-                  key={`${span.span_id}-error`}
-                  title="Error Description"
-                  subtitle="Tool"
-                  content={errorDescription}
-                  hasError={hasError}
-                />
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    px: 1.5,
+                    py: 1,
+                    mb: 2,
+                    bgcolor: "rgba(220, 38, 38, 0.04)",
+                    border: "1px solid",
+                    borderColor: "rgba(220, 38, 38, 0.15)",
+                    borderRadius: 1,
+                  }}
+                >
+                  <ErrorOutlineIcon fontSize="small" sx={{ color: "error.main" }} />
+                  <Typography variant="caption" sx={{ color: "error.main", lineHeight: 1 }}>
+                    {errorDescription}
+                  </Typography>
+                </Box>
               )}
 
-              {usage && <TokenUsageBar usage={usage} hasError={hasError} />}
+              {spanType !== "llm_inference" && spanType !== "tool_execution" ? (
+                <Box sx={{ textAlign: "center", color: "text.secondary" }}>
+                  No properties to display for this span
+                </Box>
+              ) : (
+                <>
+                  <SpanContent
+                    key={`${span.span_id}-system-prompt`}
+                    title="System Prompt"
+                    subtitle="System"
+                    content={systemPrompt}
+                    hasError={hasError}
+                  />
+
+                  {spanType === "tool_execution" && (
+                    <>
+                      <SpanContent
+                        key={`${span.span_id}-tool`}
+                        title="Tool"
+                        subtitle="Tool"
+                        content={toolName}
+                        hasError={hasError}
+                      />
+                      <SpanContent
+                        key={`${span.span_id}-input`}
+                        title="Input"
+                        subtitle="AI"
+                        content={input}
+                        hasError={hasError}
+                      />
+                      <SpanContent
+                        key={`${span.span_id}-output`}
+                        title="Output"
+                        subtitle="Tool"
+                        content={output}
+                        hasError={hasError}
+                      />
+                    </>
+                  )}
+
+                  {spanType === "llm_inference" && (
+                    <>
+                      {input &&
+                        (() => {
+                          const parsed = parseLLMContent(input);
+                          return (
+                            parsed && (
+                              <SpanContent
+                                key={`${span.span_id}-input`}
+                                title="Input"
+                                subtitle={parsed.subtitle}
+                                content={parsed.content}
+                                hasError={hasError}
+                              />
+                            )
+                          );
+                        })()}
+                      <SpanContent
+                        key={`${span.span_id}-thought`}
+                        title="Thought"
+                        subtitle="AI"
+                        content={thought}
+                        hasError={hasError}
+                      />
+                      <SpanContent
+                        key={`${span.span_id}-tool-code`}
+                        title="Tool Call"
+                        subtitle="AI"
+                        content={toolCode}
+                        hasError={hasError}
+                      />
+                      <SpanContent
+                        key={`${span.span_id}-output`}
+                        title="Output"
+                        subtitle="AI"
+                        content={output}
+                        hasError={hasError}
+                      />
+                    </>
+                  )}
+
+                  {usage && <TokenUsageBar usage={usage} hasError={hasError} />}
+                </>
+              )}
             </>
           )}
         </Box>

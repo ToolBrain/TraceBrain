@@ -199,7 +199,7 @@ const CurriculumList: React.FC<CurriculumListProps> = ({
             >
               Description
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-wrap"}}>
               {task.task_description}
             </Typography>
           </Box>
@@ -227,7 +227,7 @@ const CurriculumList: React.FC<CurriculumListProps> = ({
             >
               Reasoning
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-wrap"}}>
               {task.reasoning}
             </Typography>
           </Box>
