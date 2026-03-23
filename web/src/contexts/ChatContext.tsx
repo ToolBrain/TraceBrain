@@ -45,6 +45,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   async function sendMessage(content: string) {
     setIsLoading(true);
+    setMessages((prev) => [...prev, chatEngine.buildUserMessage(content)]);
     try {
       const result = await chatEngine.sendMessage({
         content,
@@ -55,7 +56,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setSessionId(result.sessionId);
       setMessages((prev) => [
         ...prev,
-        chatEngine.buildUserMessage(content),
         chatEngine.buildAssistantMessage(result),
       ]);
       setSuggestions(result.suggestions ?? []);
@@ -63,7 +63,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       console.error("Chat error:", err);
       setMessages((prev) => [
         ...prev,
-        chatEngine.buildUserMessage(content),
         chatEngine.buildAssistantMessage({
           sessionId: "",
           answer: "Something went wrong. Please try again.",
@@ -76,7 +75,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }
-  
+
   function clearMessages() {
     setSessionId(null);
     setMessages([]);
