@@ -21,6 +21,7 @@
       "end_time": "2025-11-25T10:10:06.500Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Who is John Doe from local bakery?\"}]",
         "tracebrain.llm.tool_code": "web_search({'query': 'John Doe local bakery'})",
         "tracebrain.usage": {
@@ -49,6 +50,7 @@
       "end_time": "2025-11-25T10:10:08.000Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.completion": "John Doe is a world-renowned baker and a former NASA astronaut who won 3 gold medals in the Olympics.",
         "tracebrain.llm.final_answer": "John Doe is a world-renowned baker and a former NASA astronaut who won 3 gold medals in the Olympics.",
         "tracebrain.usage": {

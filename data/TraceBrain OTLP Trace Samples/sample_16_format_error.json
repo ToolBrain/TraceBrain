@@ -21,6 +21,7 @@
       "end_time": "2025-11-26T11:45:31.200Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Add 5 and 10\"}]",
         "tracebrain.llm.completion": "{\"tool\": \"add\", \"args\": {\"a\": 5, \"b\": 10 ",
         "tracebrain.usage": {

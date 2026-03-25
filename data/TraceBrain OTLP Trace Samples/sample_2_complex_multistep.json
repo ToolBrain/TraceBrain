@@ -21,6 +21,7 @@
       "end_time": "2025-11-21T09:15:02.400Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the P/E ratio of Apple and what was their last quarter revenue?\"}]",
         "tracebrain.llm.completion": "Thought: I need to answer two questions. I will start with the P/E ratio.\n{\"tool_call\": {\"name\": \"get_stock_pe_ratio\", \"arguments\": {\"ticker\": \"AAPL\"}}}",
         "tracebrain.llm.thought": "I need to answer two questions. I will start with the P/E ratio.",
@@ -53,6 +54,7 @@
       "end_time": "2025-11-21T09:15:04.000Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_stock_pe_ratio\", \"arguments\": {\"ticker\": \"AAPL\"}, \"id\": \"call_def456\"}]}, {\"role\": \"tool\", \"content\": \"29.5\", \"tool_call_id\": \"call_def456\"}]",
         "tracebrain.llm.completion": "Thought: I have the P/E ratio. Now I need to find the last quarter's revenue.\n{\"tool_call\": {\"name\": \"get_quarterly_revenue\", \"arguments\": {\"ticker\": \"AAPL\", \"quarter\": \"Q3 2025\"}}}",
         "tracebrain.llm.thought": "I have the P/E ratio. Now I need to find the last quarter's revenue.",
@@ -85,6 +87,7 @@
       "end_time": "2025-11-21T09:15:05.300Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_quarterly_revenue\", \"arguments\": {\"ticker\": \"AAPL\", \"quarter\": \"Q3 2025\"}, \"id\": \"call_ghi789\"}]}, {\"role\": \"tool\", \"content\": \"89.5 billion USD\", \"tool_call_id\": \"call_ghi789\"}]",
         "tracebrain.llm.completion": "Apple (AAPL) has a P/E ratio of 29.5 and their last quarter revenue was $89.5 billion.",
         "tracebrain.llm.final_answer": "Apple (AAPL) has a P/E ratio of 29.5 and their last quarter revenue was $89.5 billion.",

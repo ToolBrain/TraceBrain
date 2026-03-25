@@ -24,6 +24,10 @@ export function spanGetToolCode(span: Span) {
   return span?.attributes["tracebrain.llm.tool_code"];
 }
 
+export function spanGetModel(span: Span) {
+  return span?.attributes["tracebrain.llm.model"];
+}
+
 export function spanGetDuration(span: Span) {
   return (
     (new Date(span.end_time).getTime() - new Date(span.start_time).getTime()) /

@@ -21,6 +21,7 @@
       "end_time": "2025-11-20T10:00:02.500Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the capital of France?\"}]",
         "tracebrain.llm.completion": "Thought: The user is asking for a capital city. I should use the get_capital_city tool.\n{\"tool_call\": {\"name\": \"get_capital_city\", \"arguments\": {\"country\": \"France\"}}}",
         "tracebrain.llm.thought": "The user is asking for a capital city. I should use the get_capital_city tool.",
@@ -54,6 +55,7 @@
       "end_time": "2025-11-20T10:00:03.500Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_capital_city\", \"arguments\": {\"country\": \"France\"}, \"id\": \"call_abc123\"}]}, {\"role\": \"tool\", \"content\": \"Paris\", \"tool_call_id\": \"call_abc123\"}]",
         "tracebrain.llm.completion": "The capital of France is Paris.",
         "tracebrain.llm.thought": null,

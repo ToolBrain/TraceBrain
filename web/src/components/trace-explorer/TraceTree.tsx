@@ -23,7 +23,7 @@ import {
   Polyline,
 } from "@mui/icons-material";
 import type { Span, Trace } from "../../types/trace";
-import { spanGetDuration, spanHasError, spanGetType } from "../utils/spanUtils";
+import { spanGetDuration, spanHasError, spanGetType, spanGetModel } from "../utils/spanUtils";
 import { formatDuration } from "../utils/utils";
 import { traceGetEpisodeId } from "../utils/traceUtils";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -57,6 +57,7 @@ interface SpanNodeProps {
 
 const lineWidth = "0.075rem";
 const branchWidth = "0.75rem";
+const rowPx = "0.5rem";
 const DEPTH_CAP = 4;
 
 const SpanNode: React.FC<SpanNodeProps> = ({
@@ -78,6 +79,7 @@ const SpanNode: React.FC<SpanNodeProps> = ({
   const isSelected = selectedSpan?.traceId === traceId && selectedSpan?.spanId === span.span_id;
   const hasError = spanHasError(span);
   const spanType = spanGetType(span);
+  const model = spanGetModel(span);
 
   const childAncestorLines = isLast ? ancestorLines : [...ancestorLines, depth];
   const visualDepth = Math.min(depth, DEPTH_CAP);
@@ -89,6 +91,9 @@ const SpanNode: React.FC<SpanNodeProps> = ({
     : theme.palette.mode === "dark" ? "rgba(20,184,166,0.15)" : "rgba(20,184,166,0.08)";
   const spanTypeColor = spanType === "llm_inference" ? "#6366f1" : "#14b8a6";
 
+  const lineLeft = (d: number) =>
+    `calc(${rowPx} + ${Math.min(d, DEPTH_CAP) * 1.5}rem - ${branchWidth})`;
+
   return (
     <>
       <Box
@@ -97,7 +102,7 @@ const SpanNode: React.FC<SpanNodeProps> = ({
           display: "flex",
           alignItems: "center",
           py: 1,
-          px: 1.5,
+          px: 1,
           position: "relative",
           cursor: "pointer",
           bgcolor: isSelected ? "action.hover" : "transparent",
@@ -113,7 +118,7 @@ const SpanNode: React.FC<SpanNodeProps> = ({
               <Box
                 sx={{
                   position: "absolute",
-                  left: `${visualDepth * 1.5}rem`,
+                  left: lineLeft(depth),
                   top: 0,
                   bottom: 0,
                   width: lineWidth,
@@ -126,7 +131,7 @@ const SpanNode: React.FC<SpanNodeProps> = ({
             <Box
               sx={{
                 position: "absolute",
-                left: `${visualDepth * 1.5}rem`,
+                left: lineLeft(depth),
                 top: isLast ? 0 : "calc(50% - 0.5rem)",
                 height: isLast ? "50%" : "0.5rem",
                 width: branchWidth,
@@ -146,7 +151,7 @@ const SpanNode: React.FC<SpanNodeProps> = ({
             key={ancestorDepth}
             sx={{
               position: "absolute",
-              left: `${Math.min(ancestorDepth, DEPTH_CAP) * 1.5}rem`,
+              left: lineLeft(ancestorDepth),
               top: 0,
               bottom: 0,
               width: lineWidth,
@@ -165,12 +170,12 @@ const SpanNode: React.FC<SpanNodeProps> = ({
               e.stopPropagation();
               onToggleExpand(traceId, span.span_id);
             }}
-            sx={{ mr: 0.5, p: 0 }}
+            sx={{ mr: 0.25, p: 0 }}
           >
             {isExpanded ? <ExpandMore fontSize="medium" /> : <ChevronRight fontSize="medium" />}
           </IconButton>
         ) : (
-          <Box sx={{ mr: 0.5, width: "1.5rem", flexShrink: 0 }} />
+          <Box sx={{ mr: 0.25, width: "1.5rem", flexShrink: 0 }} />
         )}
 
         {hasError ? (
@@ -219,6 +224,22 @@ const SpanNode: React.FC<SpanNodeProps> = ({
               }}
             >
               {spanTypeLabel}
+            </Typography>
+          )}
+
+          {spanType === "llm_inference" && model && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.disabled",
+                fontFamily: "monospace",
+                fontSize: "0.625rem",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {model}
             </Typography>
           )}
 
@@ -313,8 +334,9 @@ const TraceTree: React.FC<TraceTreeProps> = ({
     >
       <Box
         sx={{
-          py: 1,
-          px: 2,
+          py: 0.75,
+          pl: 2,
+          pr: 1,
           borderBottom: 1,
           borderColor: "divider",
           bgcolor: "background.default",
@@ -329,7 +351,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
             <Tooltip title="View Episode">
               <IconButton
                 onClick={() => nav(`/trace/${episodeId}?type=episode`)}
-                sx={{ color: "text.secondary", py: 0 }}
+                sx={{ color: "text.secondary" }}
               >
                 <Polyline fontSize="small" />
               </IconButton>
@@ -338,7 +360,7 @@ const TraceTree: React.FC<TraceTreeProps> = ({
           <Tooltip title={deleteLabel}>
             <IconButton
               onClick={() => setConfirmOpen(true)}
-              sx={{ color: "text.secondary", "&:hover": { color: "error.main" }, py: 0 }}
+              sx={{ color: "text.secondary", "&:hover": { color: "error.main" } }}
             >
               <DeleteOutline fontSize="small" />
             </IconButton>

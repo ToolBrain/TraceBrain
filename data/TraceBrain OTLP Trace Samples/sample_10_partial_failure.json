@@ -21,6 +21,7 @@
       "end_time": "2025-11-25T15:00:03.000Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the market cap of NVIDIA and who is its CEO?\"}]",
         "tracebrain.llm.completion": "Thought: The user is asking for two distinct pieces of information about NVIDIA: its market cap and its CEO. I can retrieve these concurrently using two different tools. I will call `get_market_cap` and `get_ceo` in parallel.\n{\"tool_calls\": [{\"name\": \"get_market_cap\", \"arguments\": {\"ticker\": \"NVDA\"}}, {\"name\": \"get_ceo\", \"arguments\": {\"ticker\": \"NVDA\"}}]}",
         "tracebrain.llm.thought": "The user is asking for two distinct pieces of information about NVIDIA: its market cap and its CEO. I can retrieve these concurrently using two different tools. I will call `get_market_cap` and `get_ceo` in parallel.",
@@ -68,6 +69,7 @@
       "end_time": "2025-11-25T15:00:06.000Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_market_cap\", \"arguments\": {\"ticker\": \"NVDA\"}, \"id\": \"call_mc\"}, {\"name\": \"get_ceo\", \"arguments\": {\"ticker\": \"NVDA\"}, \"id\": \"call_ceo\"}]}, {\"role\": \"tool\", \"content\": \"2.1 Trillion USD\", \"tool_call_id\": \"call_mc\"}, {\"role\": \"tool\", \"content\": \"Error: Internal API 'get_ceo' is currently unavailable. Code: 503.\", \"tool_call_id\": \"call_ceo\"}]",
         "tracebrain.llm.completion": "Thought: I have successfully retrieved the market cap, but the `get_ceo` tool failed. I need to find another way to get the CEO's name. I will use the `web_search` tool as a fallback.\n{\"tool_call\": {\"name\": \"web_search\", \"arguments\": {\"query\": \"who is the CEO of NVIDIA\"}}}",
         "tracebrain.llm.thought": "I have successfully retrieved the market cap, but the `get_ceo` tool failed. I need to find another way to get the CEO's name. I will use the `web_search` tool as a fallback.",
@@ -100,6 +102,7 @@
       "end_time": "2025-11-25T15:00:08.800Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"web_search\", \"arguments\": {\"query\": \"who is the CEO of NVIDIA\"}, \"id\": \"call_search\"}]}, {\"role\": \"tool\", \"content\": \"Jensen Huang is the founder and CEO of NVIDIA.\", \"tool_call_id\": \"call_search\"}]",
         "tracebrain.llm.completion": "Thought: I have now successfully gathered both pieces of information: the market cap from the first tool and the CEO's name from the fallback search. I can now synthesize the final answer.\nNVIDIA's market cap is $2.1 Trillion, and its CEO is Jensen Huang.",
         "tracebrain.llm.thought": "I have now successfully gathered both pieces of information: the market cap from the first tool and the CEO's name from the fallback search. I can now synthesize the final answer.",

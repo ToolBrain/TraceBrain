@@ -23,6 +23,7 @@
       "end_time": "2025-11-20T11:00:02.200Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"I need a legal opinion about contracts in Japan.\"}]",
         "tracebrain.llm.completion": "Thought: This is a legal request. I should escalate.\n{\"tool_call\": {\"name\": \"request_human_intervention\", \"arguments\": {\"reason\": \"Legal advice request\"}}}",
         "tracebrain.llm.thought": "This is a legal request. I should escalate.",
