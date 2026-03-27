@@ -1,5 +1,5 @@
 """
-TraceBrain Tracing Configuration Module
+TraceBrain Configuration Module
 
 This module provides centralized configuration management using pydantic-settings.
 It handles environment variables, defaults, and configuration validation.
@@ -11,9 +11,14 @@ Usage:
     app.run(host=settings.HOST, port=settings.PORT)
 """
 
+import os
 from typing import Optional
+
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
+
+load_dotenv()
 
 
 class Settings(BaseSettings):
@@ -174,6 +179,31 @@ class Settings(BaseSettings):
             cleaned = [v.strip() for v in value.split(",") if v.strip()]
             return cleaned or ["*"]
         return value
+
+    @model_validator(mode="after")
+    def _validate_required_keys(self):
+        provider = (self.LLM_PROVIDER or "").lower()
+        mode = (self.LIBRARIAN_MODE or "").lower()
+        if provider == "gemini" and not self.LLM_API_KEY:
+            gemini_key = os.getenv("GEMINI_API_KEY")
+            if gemini_key:
+                self.LLM_API_KEY = gemini_key
+            else:
+                raise ValueError(
+                    "LLM_API_KEY (or GEMINI_API_KEY) is required when LLM_PROVIDER=gemini."
+                )
+
+        if mode == "api" and provider in {"openai", "anthropic", "azure_openai", "openai_compatible"}:
+            if not self.LLM_API_KEY:
+                raise ValueError("LLM_API_KEY is required for the selected LLM provider.")
+
+        embedding_provider = (self.EMBEDDING_PROVIDER or "").lower()
+        if embedding_provider in {"openai", "gemini"} and not self.EMBEDDING_API_KEY:
+            raise ValueError(
+                "EMBEDDING_API_KEY is required when EMBEDDING_PROVIDER is openai or gemini."
+            )
+
+        return self
     
     @property
     def is_sqlite(self) -> bool:

@@ -3,13 +3,24 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tracebrain-tracing"
+name = "tracebrain"
 version = "1.0.0"
-description = "Observability platform for Agentic AI - Collect, store, and visualize execution traces"
+description = "A standalone trace management platform for observability and continuous improvement of LLM-based agents."
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
-keywords = ["ai", "agents", "tracing", "observability", "opentelemetry", "langchain"]
+keywords = [
+  "llm",
+  "llm-agents",
+  "agent-observability",
+  "tracing",
+  "trace-management",
+  "opentelemetry",
+  "langchain",
+  "agent-evaluation",
+  "debugging",
+  "monitoring"
+]
 authors = [
     {name = "TraceBrain Team"}
 ]
@@ -36,16 +47,25 @@ dependencies = [
     "requests>=2.31,<3",
     "sqlparse>=0.5",
     "pgvector>=0.2",
-    "openai>=2.26,<3",
     "google-genai>=1.60,<2",
-    "anthropic>=0.34,<1",
+    "python-dotenv>=1.0.0",
     "platformdirs>=4.0",
 ]
 
 [project.optional-dependencies]
-ai = [
-    "google-genai>=1.60,<2",
-    "python-dotenv>=1.0.0",
+llm-openai = [
+    "openai>=2.26,<3",
+]
+llm-anthropic = [
+    "anthropic>=0.34,<1",
+]
+llm-huggingface = [
+    "huggingface_hub>=1.0,<2",
+]
+all-llms = [
+    "openai>=2.26,<3",
+    "anthropic>=0.34,<1",
+    "huggingface_hub>=1.0,<2",
 ]
 embeddings-local = [
     "sentence-transformers>=2.7.0",
@@ -59,13 +79,12 @@ dev = [
 ]
 
 [project.scripts]
-tracebrain-trace = "tracebrain.cli:main"
+tracebrain = "tracebrain.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/tracebrain/tracebrain-tracing"
-Documentation = "https://github.com/tracebrain/tracebrain-tracing#readme"
-Repository = "https://github.com/tracebrain/tracebrain-tracing"
-Issues = "https://github.com/tracebrain/tracebrain-tracing/issues"
+Homepage = "https://github.com/ToolBrain/TraceBrain"
+Repository = "https://github.com/ToolBrain/TraceBrain"
+Issues = "https://github.com/ToolBrain/TraceBrain/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -78,13 +97,8 @@ include = ["tracebrain*"]
 tracebrain = [
     "static/**/*",
     "configs/*.json",
-    "../docker/docker-compose.yml",  # Include compose file in package
-    "../docker/Dockerfile",
-    "../docker/.dockerignore"
+    "resources/**/*"
 ]
-
-# Note: Docker files are in docker/ directory at project root
-# Also included in package-data for deployment convenience
 
 [tool.black]
 line-length = 100

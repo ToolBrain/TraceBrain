@@ -3,7 +3,7 @@
 # --- User's own imports ---
 from smolagents import CodeAgent, tool, TransformersModel
 
-# --- TraceBrain Tracing import ---
+# --- TraceBrain import ---
 from tracebrain import TraceClient
 # from tracebrain.sdk.agent_tools import request_human_intervention, search_past_experiences
 
@@ -31,7 +31,7 @@ my_agent = CodeAgent(
 )
 print("✅ Agent is ready.")
 
-# PART 2: RUN AND LOG TRACE TO TRACEBRAIN TRACING
+# PART 2: RUN AND LOG TRACE TO TRACEBRAIN
 
 if __name__ == "__main__":
     # 1. Initialize TraceClient
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     
     # 2. Check if the server is running
     if not client.health_check():
-        print("\n❌ TraceBrain Tracing server is not running. Please run 'tracebrain-trace up' first.")
+        print("\n❌ TraceBrain server is not running. Please run 'tracebrain up' first.")
     else:
         # 3. Run the agent inside trace_scope so tool calls attach to a trace_id.
         # This is required for Active Help Request and recommended for all runs.

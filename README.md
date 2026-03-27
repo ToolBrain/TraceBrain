@@ -42,90 +42,114 @@ By organizing historical traces as structured artifacts, TraceBrain supports age
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- Docker & Docker Compose
-- Python 3.8+ (for local development)
-- PostgreSQL 15+ (if running without Docker)
+Choose one of three installation paths based on your needs. Each option ends with the
+same user experience: a unified UI + API at http://localhost:8000.
 
 ### Option 1: Docker (Recommended)
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/ToolBrain/TraceBrain.git
-   cd TraceBrain
-   ```
+This is the default path for most users. It automatically provisions a production-ready
+PostgreSQL + pgvector environment.
 
-2. **Start the services**
-   ```bash
-   # Install the CLI tool
-   pip install -e .
-   
-    # Start PostgreSQL + API server (multi-stage build bundles frontend)
-   tracebrain-trace up
-   ```
-
-3. **Access the services**
-    - Frontend UI: http://localhost:8000/
-    - API: http://localhost:8000/api/v1/
-    - API Docs: http://localhost:8000/docs
-
-4. **Seed sample data** (optional)
-   ```bash
-    # Data is auto-seeded once on first start (Docker only).
-    # If you want to re-seed, remove the volume then bring it up again:
-    docker compose -f docker/docker-compose.yml down -v
-    tracebrain-trace up
-   ```
-
-### Option 2: Local Development
-
-1. **Create and activate a virtual environment**
+1. **Install the CLI**
     ```bash
-    python -m venv .venv
-    # Windows (PowerShell)
-    .\.venv\Scripts\Activate.ps1
-    # macOS/Linux
-    source .venv/bin/activate
+    pip install tracebrain
     ```
 
-2. **Install dependencies**
+2. **Initialize**
+    ```bash
+    tracebrain init
+    ```
+    This creates a template `.env` file for API keys and configuration.
+
+3. **Start the platform**
+    ```bash
+    tracebrain up
+    ```
+
+**Access:** http://localhost:8000 (UI + API)
+
+### Option 2: Local with SQLite (Portable Mode)
+
+Best for fast evaluation without Docker.
+
+1. **Install the CLI**
+    ```bash
+    pip install tracebrain
+    ```
+
+2. **Initialize**
+    ```bash
+    tracebrain init
+    ```
+
+3. **Create local DB**
+    ```bash
+    tracebrain init-db
+    ```
+    This creates a local SQLite file and prepares tables.
+
+4. **Launch**
+    ```bash
+    tracebrain start
+    ```
+
+**Access:** http://localhost:8000 (UI + API)
+
+**Technical note:** the Python backend serves the bundled React build from its internal
+static directory, so no separate frontend build step is required.
+
+### Option 3: Development Setup (Contributor Mode)
+
+For contributors who plan to modify TraceBrain source code.
+
+1. **Clone the repository**
+    ```bash
+    git clone https://github.com/ToolBrain/TraceBrain.git
+    cd TraceBrain
+    ```
+
+2. **Backend (editable install)**
     ```bash
     pip install -e .
-    # Optional local embeddings
-    # pip install -e .[embeddings-local]
+    tracebrain start
     ```
 
-3. **Run the API server** (SQLite mode)
-    ```bash
-    tracebrain-trace init-db
-    tracebrain-trace start
-    ```
-
-4. **Run the React frontend**
+3. **Frontend (HMR)**
     ```bash
     cd web
     npm install
     npm run dev
     ```
 
+**Access:**
+- Frontend: http://localhost:5173 (Hot Module Replacement)
+- API: http://localhost:8000
+
+## 📦 Installation
+
+TraceBrain supports optional extras to minimize dependencies. Install only what you need.
+
+```bash
+pip install tracebrain
+
+# Optional extras
+pip install tracebrain[embeddings-local]   # local embeddings
+pip install tracebrain[llm-openai]         # OpenAI provider
+pip install tracebrain[llm-anthropic]      # Anthropic provider
+pip install tracebrain[llm-huggingface]    # Hugging Face provider SDK
+pip install tracebrain[all-llms]           # OpenAI + Anthropic + Hugging Face
+```
+
 ## 📖 Usage
 
 ### CLI Commands
 
-```bash
-# Start Docker services
-tracebrain-trace up
-
-# Start with rebuild (after code changes)
-tracebrain-trace up --build
-
-# Stop services
-tracebrain-trace down
-
-# Manual Docker rebuild (if changes aren't picked up)
-docker compose -f docker/docker-compose.yml build --no-cache
-```
+| Command | Description |
+| --- | --- |
+| `tracebrain init` | Create a template `.env` file in the current directory. |
+| `tracebrain init-db` | Initialize a local SQLite database. |
+| `tracebrain up` | Launch Docker-based infrastructure. |
+| `tracebrain start` | Run the standalone FastAPI server. |
 
 ### API Endpoints
 
@@ -140,6 +164,7 @@ docker compose -f docker/docker-compose.yml build --no-cache
 - `GET /api/v1/traces` - List all traces
 - `GET /api/v1/traces/{trace_id}` - Get trace details
 - `POST /api/v1/traces/{trace_id}/feedback` - Add feedback to a trace
+- `GET /api/v1/export/traces` - Export raw OTLP traces as JSONL (supports status, min_rating, error_type, min_confidence, max_confidence, start_time, end_time)
 
 **Episodes**
 - `GET /api/v1/episodes` - List all episodes along with their full traces
@@ -179,9 +204,6 @@ docker compose -f docker/docker-compose.yml build --no-cache
 - `DELETE /api/v1/curriculum` - Delete all curriculum tasks
 - `PATCH /api/v1/curriculum/{task_id}/complete` - Mark a curriculum task as complete
 - `PATCH /api/v1/curriculum/complete` - Mark all curriculum tasks as complete
-
-**Exports**
-- `GET /api/v1/export/traces` - Export raw OTLP traces as JSONL
 
 **History**
 - `GET /api/v1/history` - Retrieve history of viewed traces and episodes
@@ -226,6 +248,22 @@ LLM_API_KEY=your-key
 # Embeddings (semantic search)
 EMBEDDING_PROVIDER=local
 EMBEDDING_MODEL=all-MiniLM-L6-v2
+```
+
+**Cloud provider setup (LLM + embeddings):**
+- Set these environment variables before starting the server (`tracebrain start` or `tracebrain up`).
+- Recommended: put them in a `.env` file at the project root for local development.
+
+```bash
+# LLM providers
+LLM_PROVIDER=openai|anthropic|gemini
+LLM_MODEL=your-model-id
+LLM_API_KEY=your-key
+
+# Embeddings providers
+EMBEDDING_PROVIDER=openai|gemini
+EMBEDDING_MODEL=your-embedding-model-id
+EMBEDDING_API_KEY=your-key
 ```
 
 **Example API Usage:**
@@ -300,6 +338,8 @@ EMBEDDING_MODEL=text-embedding-3-small
 # optional for OpenAI-compatible endpoints
 EMBEDDING_BASE_URL=https://your-endpoint/v1
 ```
+
+**When embeddings run:** embeddings are created at trace ingest time, not during server startup. If no embedding provider is configured, traces still ingest; only vector search is unavailable.
 
 ## 🔌 Integration with Your Agent
 
@@ -446,37 +486,18 @@ def convert_my_agent_to_otlp(agent_data):
 ```
 TraceBrain/
 ├── src/
-│   ├── tracebrain/          # Main package
-│   │   ├── api/v1/                 # FastAPI REST endpoints
-│   │   │   ├── ai_features.py      # AI evaluation + librarian endpoints
-│   │   │   ├── api_router.py       # Main v1 router
-│   │   │   ├── common.py           # Shared store/helpers
-│   │   │   ├── curriculum.py       # Curriculum endpoints
-│   │   │   ├── episodes.py         # Episode endpoints
-│   │   │   ├── operations.py       # Ops + analytics endpoints
-│   │   │   ├── system.py           # Root, health, settings, history
-│   │   │   ├── traces.py           # Trace endpoints
-│   │   │   └── schemas/            # Shared Pydantic models
-│   │   │       └── api_models.py
-│   │   ├── core/                   # TraceStore, schema, agent logic
-│   │   ├── db/                     # Database session management
-│   │   ├── sdk/                    # Client SDK
-│   │   ├── static/                 # Frontend assets
-│   │   ├── cli.py                  # CLI commands
-│   │   ├── config.py               # Settings management
-│   │   └── main.py                 # FastAPI app entry
-│   └── examples/                   # Example implementations
-│       └── seed_tracestore_samples.py  # Sample data seeder
-├── data/                           # Sample OTLP traces
-│   └── TraceBrain OTLP Trace Samples/
-├── docker/                         # Docker configuration
-│   ├── docker-compose.yml
-│   ├── Dockerfile
-│   └── README.md
-├── docs/                           # Documentation
-│   └── Converter.md
-├── web/                            # React frontend
-├── pyproject.toml                  # Project metadata
+│   ├── tracebrain/                  # Core package logic
+│   │   ├── api/v1/                   # FastAPI REST endpoints
+│   │   ├── core/                     # TraceStore, schema, agent logic
+│   │   ├── db/                       # Database session management
+│   │   ├── resources/                # Bundled Docker + sample data
+│   │   ├── static/                   # Bundled React build artifacts
+│   │   ├── sdk/                      # Client SDK
+│   │   ├── cli.py                    # CLI commands
+│   │   └── main.py                   # FastAPI app entry
+├── docs/                            # Documentation
+├── web/                             # React source code (contributors)
+├── pyproject.toml                   # Project metadata
 └── README.md
 ```
 
@@ -489,16 +510,7 @@ No automated test suite is included yet.
 ### Seeding Sample Data
 
 ```bash
-cd src/examples
-
-# SQLite (development)
-python seed_tracestore_samples.py --backend sqlite
-
-# PostgreSQL (Docker)
-python seed_tracestore_samples.py \
-    --backend postgresql \
-    --db-url "postgresql://traceuser:tracepass@localhost:5432/tracedb" \
-    --samples-dir "../../data/TraceBrain OTLP Trace Samples"
+tracebrain seed
 ```
 
 ### Database Migrations
@@ -507,8 +519,8 @@ No migration tooling is included yet. For schema changes:
 
 1. Update models in `src/tracebrain/db/base.py`
 2. Recreate the database:
-    - **SQLite (local):** delete `tracebrain_traces.db`, then run `tracebrain-trace init-db`
-    - **PostgreSQL (Docker):** `docker compose -f docker/docker-compose.yml down -v` then `tracebrain-trace up`
+    - **SQLite (local):** delete `tracebrain_traces.db`, then run `tracebrain init-db`
+    - **PostgreSQL (Docker):** `docker compose -f docker/docker-compose.yml down -v` then `tracebrain up`
 
 ### Working with JSONB Queries (PostgreSQL)
 
@@ -555,12 +567,12 @@ Contributions are welcome! Here's how to get started:
 
 ### Docker changes not reflected
 
-If code changes aren't picked up after `tracebrain-trace up --build`:
+If code changes aren't picked up after `tracebrain up --build`:
 
 ```bash
-tracebrain-trace down
+tracebrain down
 docker compose -f docker/docker-compose.yml build --no-cache
-tracebrain-trace up
+tracebrain up
 ```
 
 ### PostgreSQL connection errors

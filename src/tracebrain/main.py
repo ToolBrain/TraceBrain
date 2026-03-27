@@ -1,5 +1,5 @@
 """
-TraceBrain Tracing - Main Application Entry Point
+TraceBrain - Main Application Entry Point
 
 This module initializes the FastAPI application and configures all middleware,
 routers, and static file serving. It implements the "pip install and run"
@@ -12,10 +12,11 @@ Usage:
     uvicorn tracebrain.main:app --host 0.0.0.0 --port 8000
     
     # Or use the CLI
-    tracebrain-trace start
+    tracebrain start
 """
 
 from pathlib import Path
+import os
 import logging
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
@@ -66,7 +67,7 @@ async def lifespan(app: FastAPI):
     # STARTUP LOGIC
     # ========================================================================
     logger.info("=" * 70)
-    logger.info("TraceBrain Tracing API - Starting Up")
+    logger.info("TraceBrain API - Starting Up")
     logger.info("=" * 70)
     logger.info(f"Database: {_redact_db_url(settings.DATABASE_URL)}")
     logger.info(f"Backend Type: {settings.get_backend_type()}")
@@ -77,12 +78,21 @@ async def lifespan(app: FastAPI):
     # Initialize database engine and create tables
     try:
         from .db.session import get_engine, create_tables
+        from .core.seeder import seed_if_empty
         logger.info("Initializing database engine...")
         app_state["db_engine"] = get_engine()
         
         logger.info("Creating database tables if not exist...")
         create_tables()
         logger.info("Database initialized successfully")
+
+        if os.getenv("TRACEBRAIN_AUTO_SEED", "").lower() == "true":
+            try:
+                from .core.store import TraceStore
+                store = TraceStore(backend=settings.get_backend_type(), db_url=settings.DATABASE_URL)
+                seed_if_empty(store)
+            except Exception:
+                logger.exception("Failed to seed sample traces")
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
         raise
@@ -107,7 +117,7 @@ async def lifespan(app: FastAPI):
     # SHUTDOWN LOGIC
     # ========================================================================
     logger.info("=" * 70)
-    logger.info("TraceBrain Tracing API - Shutting Down")
+    logger.info("TraceBrain API - Shutting Down")
     logger.info("=" * 70)
     
     # Close database connections
@@ -126,7 +136,7 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI application with lifespan
 app = FastAPI(
-    title="TraceBrain Tracing API",
+    title="TraceBrain API",
     description="Observability platform for Agentic AI - Collect, store, and visualize execution traces",
     version="1.0.0",
     docs_url="/docs",
@@ -237,7 +247,7 @@ else:
     async def root_message():
         """Root endpoint when frontend is not available"""
         return {
-            "message": "TraceBrain Tracing API",
+            "message": "TraceBrain API",
             "version": "1.0.0",
             "status": "API only (frontend not built)",
             "api_docs": "/docs",

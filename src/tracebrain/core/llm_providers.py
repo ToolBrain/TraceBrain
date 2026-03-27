@@ -645,7 +645,7 @@ class GeminiProvider(BaseProvider):
 
 class HuggingFaceProvider(BaseProvider):
     name = "huggingface"
-    supports_tools = False
+    supports_tools = True
 
     def __init__(self, api_key: Optional[str], model: str, base_url: Optional[str] = None):
         super().__init__()
@@ -653,52 +653,96 @@ class HuggingFaceProvider(BaseProvider):
         self.model = model
         self.base_url = (base_url or "https://api-inference.huggingface.co").rstrip("/")
 
+        try:
+            from huggingface_hub import InferenceClient
+        except ImportError as exc:
+            raise ProviderError("huggingface_hub SDK not available") from exc
+
+        if base_url:
+            self.client = InferenceClient(base_url=self.base_url, token=self.api_key)
+        else:
+            self.client = InferenceClient(model=self.model, token=self.api_key)
+
+        self._tools: List[Dict[str, Any]] = []
+
     def start_chat(self, system_instruction: str, tools: List[Dict[str, Any]]):
+        self._tools = list(tools or [])
         return {"system": system_instruction, "history": []}
 
-    def _headers(self) -> Dict[str, str]:
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        return headers
+    def _create_completion(self, messages: List[Dict[str, Any]]):
+        kwargs: Dict[str, Any] = {
+            "messages": messages,
+            "temperature": self.temperature,
+        }
+        if self.max_tokens is not None:
+            kwargs["max_tokens"] = self.max_tokens
+        if self._tools:
+            kwargs["tools"] = self._tools
+            kwargs["tool_choice"] = "auto"
+
+        try:
+            return self.client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            raise ProviderError(str(exc)) from exc
 
     def send_user_message(self, session, content: str):
         session["history"].append({"role": "user", "content": content})
-        prompt = session["system"] + "\n\n"
-        for message in session["history"]:
-            role = message.get("role", "user")
-            prompt += f"{role.capitalize()}: {message.get('content', '')}\n"
-        prompt += "Assistant:"
+        messages = [{"role": "system", "content": session["system"]}, *session["history"]]
+        response = self._create_completion(messages)
 
-        payload: Dict[str, Any] = {
-            "inputs": prompt,
-            "parameters": {
-                "temperature": self.temperature,
-            },
-        }
-        if self.max_tokens:
-            payload["parameters"]["max_new_tokens"] = self.max_tokens
-
-        url = f"{self.base_url}/models/{self.model}"
-        response = requests.post(url, headers=self._headers(), json=payload, timeout=self.timeout)
-        if response.status_code >= 400:
-            raise ProviderError(f"Provider error {response.status_code}: {response.text[:200]}")
-
-        data = response.json()
-        session["history"].append({"role": "assistant", "content": self.extract_text(data)})
-        return data
+        assistant_text = self.extract_text(response)
+        session["history"].append({"role": "assistant", "content": assistant_text})
+        return response
 
     def send_tool_result(self, session, tool_name: str, tool_result: str, tool_call_id: Optional[str]):
-        raise ProviderError("Hugging Face provider does not support tool calling")
+        if not isinstance(tool_result, str):
+            tool_result = json.dumps(tool_result)
+        session["history"].append(
+            {
+                "role": "tool",
+                "tool_call_id": tool_call_id,
+                "name": tool_name,
+                "content": tool_result,
+            }
+        )
+        messages = [{"role": "system", "content": session["system"]}, *session["history"]]
+        response = self._create_completion(messages)
+
+        assistant_text = self.extract_text(response)
+        session["history"].append({"role": "assistant", "content": assistant_text})
+        return response
 
     def extract_text(self, response) -> str:
-        if isinstance(response, list) and response:
-            if isinstance(response[0], dict):
-                return response[0].get("generated_text", "") or ""
-            return str(response[0])
         if isinstance(response, dict):
-            return response.get("generated_text", "") or response.get("text", "") or ""
-        return ""
+            choices = response.get("choices") or []
+            if choices:
+                message = choices[0].get("message") or {}
+                content = message.get("content")
+                return content or ""
+            return ""
+
+        choices = getattr(response, "choices", None) or []
+        if not choices:
+            return ""
+        message = getattr(choices[0], "message", None)
+        content = getattr(message, "content", None) if message else None
+        return content or ""
+
+    def extract_tool_calls(self, response) -> List[Dict[str, Any]]:
+        if isinstance(response, dict):
+            choices = response.get("choices") or []
+            if not choices:
+                return []
+            message = choices[0].get("message") or {}
+            tool_calls = message.get("tool_calls") or []
+            return list(tool_calls)
+
+        choices = getattr(response, "choices", None) or []
+        if not choices:
+            return []
+        message = getattr(choices[0], "message", None)
+        tool_calls = getattr(message, "tool_calls", None) or []
+        return list(tool_calls)
 
 
 def select_provider(

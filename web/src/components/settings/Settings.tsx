@@ -39,8 +39,16 @@ const Settings: React.FC = () => {
   const CurrentSection = SECTIONS[selectedSection].component;
 
   return (
-    <Box sx={{ display: "flex", height: "100%" }}>
-      <Box sx={{ width: 240, borderRight: 1, pr: 2, borderColor: "divider" }}>
+    <Box sx={{ display: "flex", height: "100%", minHeight: 0 }}>
+      <Box
+        sx={{
+          width: 240,
+          borderRight: 1,
+          pr: 2,
+          borderColor: "divider",
+          overflowY: "auto",
+        }}
+      >
         <List>
           {SECTION_KEYS.map((key) => (
             <ListItemButton
@@ -66,7 +74,7 @@ const Settings: React.FC = () => {
           ))}
         </List>
       </Box>
-      <Box sx={{ flex: 1, p: 3 }}>
+      <Box sx={{ flex: 1, p: 3, minHeight: 0, overflowY: "auto" }}>
         <CurrentSection />
       </Box>
     </Box>

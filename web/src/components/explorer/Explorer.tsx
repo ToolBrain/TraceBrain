@@ -11,8 +11,9 @@ import {
   InputAdornment,
   IconButton,
   Tooltip,
+  Button,
 } from "@mui/material";
-import { Search, Timeline, ViewList, Refresh } from "@mui/icons-material";
+import { Search, Timeline, ViewList, Refresh, FileDownloadOutlined } from "@mui/icons-material";
 import { useSearchParams } from "react-router-dom";
 import { fetchTraces, fetchEpisodes } from "../utils/api";
 import TracesTable from "../shared/TracesTable";
@@ -96,6 +97,7 @@ const Explorer: React.FC = () => {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [totalEpisodes, setTotalEpisodes] = useState(0);
   const [episodesLoading, setEpisodesLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const updateParams = (patch: Record<string, string | null>, resetPage = true) => {
     setSearchParams((prev) => {
@@ -164,6 +166,31 @@ const Explorer: React.FC = () => {
     updateParams({ page: "0" }, false);
   };
 
+  const buildExportUrl = () => {
+    const params = new URLSearchParams();
+    const filterParams = traceFiltersToParams(traceFilters);
+    Object.entries(filterParams).forEach(([key, value]) => {
+      if (value != null && value !== "") {
+        params.set(key, value);
+      }
+    });
+    params.set("format", "jsonl");
+    return `/api/v1/export/traces?${params.toString()}`;
+  };
+
+  const handleExport = () => {
+    if (isExporting || viewMode !== "traces") return;
+    setIsExporting(true);
+    const url = buildExportUrl();
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "tracebrain_export.jsonl";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.setTimeout(() => setIsExporting(false), 1200);
+  };
+
   return (
     <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}>
       <Box
@@ -211,7 +238,15 @@ const Explorer: React.FC = () => {
               <Tab icon={<ViewList />} iconPosition="start" label="Episodes" value="episodes" />
             </Tabs>
           </Box>
-          <Box sx={{ mb: 3 }}>
+          <Box
+            sx={{
+              mb: 3,
+              display: "grid",
+              gap: 2,
+              alignItems: "center",
+              gridTemplateColumns: { xs: "1fr", md: "1fr auto" },
+            }}
+          >
             <TextField
               fullWidth
               placeholder="Search ID..."
@@ -227,6 +262,30 @@ const Explorer: React.FC = () => {
                 },
               }}
             />
+            <Tooltip title={isExporting ? "Downloading..." : "Export current filters"}>
+              <span>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<FileDownloadOutlined />}
+                  onClick={handleExport}
+                  disabled={viewMode !== "traces" || isExporting}
+                  sx={{
+                    textTransform: "none",
+                    fontWeight: 600,
+                    py: 1.2,
+                    px: 2.5,
+                    minWidth: 170,
+                    boxShadow: "none",
+                    bgcolor: "primary.light",
+                    color: "primary.contrastText",
+                    "&:hover": { bgcolor: "primary.main", boxShadow: "none" },
+                  }}
+                >
+                  Export JSONL
+                </Button>
+              </span>
+            </Tooltip>
           </Box>
 
           <FiltersPanel
