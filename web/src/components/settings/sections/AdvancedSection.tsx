@@ -17,18 +17,8 @@ const CHAT_MODELS = [
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
 ];
 
-type FilterType = "automatic" | "manual";
-
 const AdvancedSection: React.FC = () => {
   const { settings, updateSettings } = useSettings();
-
-  const [activeFilter, setActiveFilter] = useState<FilterType | null>(null);
-  const [minSpans, setMinSpans] = useState<number | "">("");
-  const [maxDuration, setMaxDuration] = useState<number | "">("");
-
-  const handleFilterToggle = (filter: FilterType) => (checked: boolean) => {
-    setActiveFilter(checked ? filter : null);
-  };
 
   return (
     <Stack spacing={3}>
@@ -125,62 +115,6 @@ const AdvancedSection: React.FC = () => {
             </MenuItem>
           ))}
         </TextField>
-      </Stack>
-
-      {/* Filters */}
-      <Stack>
-        <Stack>
-          <Typography variant="h6">Trace Filtering</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Flag traces based on configurable criteria.
-          </Typography>
-        </Stack>
-
-        <Toggle
-          label="Automatic Trace Filtering"
-          checked={activeFilter === "automatic"}
-          onChange={handleFilterToggle("automatic")}
-          tooltip="Filter traces automatically using adaptive metrics."
-        />
-
-        <Toggle
-          label="Manual Trace Filtering"
-          checked={activeFilter === "manual"}
-          onChange={handleFilterToggle("manual")}
-          tooltip="Define your own filtering criteria using the fields below."
-        />
-
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="subtitle1" gutterBottom>
-              Manual Trace Filters
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Traces exceeding these thresholds will be flagged.
-            </Typography>
-
-            <TextField
-              type="number"
-              label="Maximum Spans"
-              value={minSpans}
-              onChange={(e) => setMinSpans(Number(e.target.value))}
-              fullWidth
-              slotProps={{ htmlInput: { min: 0 } }}
-              disabled={activeFilter !== "manual"}
-              sx={{ mb: 2 }}
-            />
-
-            <TextField
-              type="number"
-              label="Maximum Duration (ms)"
-              value={maxDuration}
-              onChange={(e) => setMaxDuration(Number(e.target.value))}
-              fullWidth
-              slotProps={{ htmlInput: { min: 0 } }}
-              disabled={activeFilter !== "manual"}
-            />
-          </CardContent>
-        </Card>
       </Stack>
     </Stack>
   );
