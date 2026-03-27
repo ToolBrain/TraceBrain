@@ -16,8 +16,8 @@
       "span_id": "2001a2b3c4d5e6f7",
       "parent_id": null,
       "name": "LLM Inference (Tool Call)",
-      "start_time": "2026-03-27T09:00:00.000Z",
-      "end_time": "2026-03-27T09:00:01.500Z",
+      "start_time": "2025-11-26T09:00:00.000Z",
+      "end_time": "2025-11-26T09:00:01.500Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Convert 'one hundred' dollars to EUR.\"}]",
@@ -30,8 +30,8 @@
       "span_id": "2002b3c4d5e6f7a8",
       "parent_id": "2001a2b3c4d5e6f7",
       "name": "Tool Execution: convert_currency",
-      "start_time": "2026-03-27T09:00:01.505Z",
-      "end_time": "2026-03-27T09:00:01.605Z",
+      "start_time": "2025-11-26T09:00:01.505Z",
+      "end_time": "2025-11-26T09:00:01.605Z",
       "attributes": {
         "tracebrain.span.type": "tool_execution",
         "tracebrain.tool.name": "convert_currency",
@@ -43,8 +43,8 @@
       "span_id": "2003c4d5e6f7a8b9",
       "parent_id": "2002b3c4d5e6f7a8",
       "name": "LLM Inference (Final Answer)",
-      "start_time": "2026-03-27T09:00:01.700Z",
-      "end_time": "2026-03-27T09:00:02.500Z",
+      "start_time": "2025-11-26T09:00:01.700Z",
+      "end_time": "2025-11-26T09:00:02.500Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"tool\", \"content\": \"TypeError: amount must be a float, not 'str'\"}]",

@@ -275,7 +275,7 @@ web/.next/
 web/out/
 
 # Static files (generated from frontend build)
-# src/tracebrain/static/*
+src/tracebrain/static/*
 # Uncomment above if you don't want to track built frontend
 
 # ============================================================================

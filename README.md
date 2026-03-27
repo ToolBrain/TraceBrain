@@ -323,6 +323,11 @@ npm run dev
 
 ### Embeddings and Semantic Search
 
+Semantic search is used in these places:
+- **API:** `GET /api/v1/traces/search` for vector similarity over traces
+- **Experience Retrieval:** `search_similar_traces` and `search_past_experiences` agent tools
+- **AI Librarian:** uses semantic search to surface relevant past traces when enabled
+
 Configure embeddings for vector search and experience retrieval:
 
 ```bash
@@ -339,7 +344,9 @@ EMBEDDING_MODEL=text-embedding-3-small
 EMBEDDING_BASE_URL=https://your-endpoint/v1
 ```
 
-**When embeddings run:** embeddings are created at trace ingest time, not during server startup. If no embedding provider is configured, traces still ingest; only vector search is unavailable.
+**When embeddings run:** embeddings are created at trace ingest time, not during server startup.
+
+**Do I need local embeddings?** No. You can skip `embeddings-local` entirely and still run the platform. If no embedding provider is configured, traces still ingest and all non-semantic features work normally; only vector search (and features that rely on it) are unavailable.
 
 ## 🔌 Integration with Your Agent
 

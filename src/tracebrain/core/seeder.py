@@ -30,13 +30,25 @@ def seed_data(store) -> None:
         logger.warning("No sample traces found to seed.")
         return
 
+    success_count = 0
+    failure_count = 0
+
     for sample in sample_files:
         try:
             logger.info("Ingesting sample %s...", sample.name)
             payload = json.loads(sample.read_text(encoding="utf-8"))
             store.add_trace_from_dict(payload)
-        except Exception:
-            logger.exception("Failed to seed sample trace: %s", sample.name)
+            success_count += 1
+        except Exception as exc:
+            failure_count += 1
+            logger.exception("Failed to seed sample trace %s: %s", sample.name, exc)
+
+    logger.info(
+        "Seeding summary: %s succeeded, %s failed (total %s)",
+        success_count,
+        failure_count,
+        len(sample_files),
+    )
 
 
 def seed_if_empty(store) -> None:

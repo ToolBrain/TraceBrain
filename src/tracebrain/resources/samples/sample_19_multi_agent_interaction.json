@@ -16,8 +16,8 @@
       "span_id": "3001a2b3c4d5e6f7",
       "parent_id": null,
       "name": "LLM Inference (Tool Call)",
-      "start_time": "2026-03-27T10:30:00.000Z",
-      "end_time": "2026-03-27T10:30:02.000Z",
+      "start_time": "2025-11-27T10:30:00.000Z",
+      "end_time": "2025-11-27T10:30:02.000Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Coder: Write a search function.\"}]",
@@ -29,8 +29,8 @@
       "span_id": "3002b3c4d5e6f7a8",
       "parent_id": "3001a2b3c4d5e6f7",
       "name": "LLM Inference (Final Answer)",
-      "start_time": "2026-03-27T10:30:02.100Z",
-      "end_time": "2026-03-27T10:30:04.000Z",
+      "start_time": "2025-11-27T10:30:02.100Z",
+      "end_time": "2025-11-27T10:30:04.000Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"reviewer\", \"content\": \"Review: Please add type hints for better stability.\"}]",
