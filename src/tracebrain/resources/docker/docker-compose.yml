@@ -5,7 +5,7 @@ services:
     container_name: tracebrain-postgres
     restart: unless-stopped
     env_file:
-      - ../.env
+      - ../../../../.env
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-tracebrain}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tracebrain_2026_secure}
@@ -25,15 +25,15 @@ services:
       retries: 5
       start_period: 10s
 
-  # TraceBrain Tracing API
-  tracing-api:
+  # TraceBrain API
+  tracebrain-api:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    container_name: tracebrain-tracing-api
+      context: ../../../../
+      dockerfile: src/tracebrain/resources/docker/Dockerfile
+    container_name: tracebrain-api
     restart: unless-stopped
     env_file:
-      - ../.env
+      - ../../../../.env
     environment:
       # Database Configuration
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
@@ -68,18 +68,18 @@ services:
   # Seed sample data once (skips if DB already has traces)
   tracebrain-seed:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: ../../../../
+      dockerfile: src/tracebrain/resources/docker/Dockerfile
     container_name: tracebrain-seed
     restart: "no"
     env_file:
-      - ../.env
+      - ../../../../.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
     depends_on:
-      tracing-api:
+      tracebrain-api:
         condition: service_healthy
-    command: ["python", "/app/scripts/seed_if_empty.py"]
+    command: ["tracebrain", "seed"]
     networks:
       - tracebrain-network
 

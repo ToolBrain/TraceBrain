@@ -1,6 +1,6 @@
-# Docker Configuration for TraceBrain Tracing
+# Docker Configuration for TraceBrain
 
-This directory contains all Docker-related files for running TraceBrain Tracing in containers.
+This directory contains all Docker-related files for running TraceBrain in containers.
 
 ## 📁 Files
 
@@ -14,26 +14,26 @@ This directory contains all Docker-related files for running TraceBrain Tracing 
 
 ```bash
 # From project root
-tracebrain-trace up          # Start all services
-tracebrain-trace status      # Check status
-tracebrain-trace down        # Stop all services
+tracebrain up          # Start all services
+tracebrain status      # Check status
+tracebrain down        # Stop all services
 ```
 
 ### Using Docker Compose Directly
 
 ```bash
 # From project root
-docker compose -f docker/docker-compose.yml up -d --build
-docker compose -f docker/docker-compose.yml ps
-docker compose -f docker/docker-compose.yml logs -f
-docker compose -f docker/docker-compose.yml down
+docker compose -f src/tracebrain/resources/docker/docker-compose.yml up -d --build
+docker compose -f src/tracebrain/resources/docker/docker-compose.yml ps
+docker compose -f src/tracebrain/resources/docker/docker-compose.yml logs -f
+docker compose -f src/tracebrain/resources/docker/docker-compose.yml down
 ```
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────────┐
-│   tracing-api       │
+│   tracebrain-api    │
 │   (FastAPI + UI)    │
 │   Port: 8000        │
 └──────────┬──────────┘
@@ -79,7 +79,7 @@ LLM_API_KEY=your_key_here
 Note: The database port is not exposed by default in production. Uncomment the
 `ports` section in docker-compose.yml for local development only.
 
-### tracing-api
+### tracebrain-api
 - **Build**: Multi-stage optimized image
 - **Port**: `8000`
 - **Depends on**: postgres (healthy)
@@ -88,7 +88,7 @@ Note: The database port is not exposed by default in production. Uncomment the
 
 ### tracebrain-seed
 - **Purpose**: One-time seed of sample traces
-- **Runs**: After `tracing-api` is healthy
+- **Runs**: After `tracebrain-api` is healthy
 - **Behavior**: Skips if traces already exist
 
 ## ✅ Access URLs
@@ -101,18 +101,18 @@ Note: The database port is not exposed by default in production. Uncomment the
 
 ### Check logs
 ```bash
-docker compose -f docker/docker-compose.yml logs tracing-api
-docker compose -f docker/docker-compose.yml logs postgres
+docker compose -f src/tracebrain/resources/docker/docker-compose.yml logs tracebrain-api
+docker compose -f src/tracebrain/resources/docker/docker-compose.yml logs postgres
 ```
 
 ### Rebuild images
 ```bash
-docker compose -f docker/docker-compose.yml up --build
+docker compose -f src/tracebrain/resources/docker/docker-compose.yml up --build
 ```
 
 ### Reset everything (⚠️ deletes data)
 ```bash
-docker compose -f docker/docker-compose.yml down -v
+docker compose -f src/tracebrain/resources/docker/docker-compose.yml down -v
 ```
 
 ## 🏭 Production Considerations

@@ -1,0 +1,56 @@
+{
+  "trace_id": "e8f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5",
+  "attributes": {
+    "system_prompt": "You are a financial assistant with access to currency conversion tools.",
+    "tracebrain.episode.id": "ep-invalid-args-001",
+    "tracebrain.ai_evaluation": {
+      "rating": 2,
+      "confidence": 0.48,
+      "status": "pending_review",
+      "error_type": "invalid_tool_usage",
+      "feedback": "Agent passed a string instead of a float to the amount parameter."
+    }
+  },
+  "spans": [
+    {
+      "span_id": "2001a2b3c4d5e6f7",
+      "parent_id": null,
+      "name": "LLM Inference (Tool Call)",
+      "start_time": "2025-11-26T09:00:00.000Z",
+      "end_time": "2025-11-26T09:00:01.500Z",
+      "attributes": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Convert 'one hundred' dollars to EUR.\"}]",
+        "tracebrain.llm.completion": "Thought: I will call convert_currency.\n{\"tool_call\": {\"name\": \"convert_currency\", \"arguments\": {\"amount\": \"one hundred\"}}}",
+        "tracebrain.llm.thought": "I will call convert_currency.",
+        "tracebrain.llm.tool_code": "convert_currency({'amount': 'one hundred'})"
+      }
+    },
+    {
+      "span_id": "2002b3c4d5e6f7a8",
+      "parent_id": "2001a2b3c4d5e6f7",
+      "name": "Tool Execution: convert_currency",
+      "start_time": "2025-11-26T09:00:01.505Z",
+      "end_time": "2025-11-26T09:00:01.605Z",
+      "attributes": {
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.name": "convert_currency",
+        "tracebrain.tool.input": "{'amount': 'one hundred'}",
+        "tracebrain.tool.output": "TypeError: amount must be a float, not 'str'"
+      }
+    },
+    {
+      "span_id": "2003c4d5e6f7a8b9",
+      "parent_id": "2002b3c4d5e6f7a8",
+      "name": "LLM Inference (Final Answer)",
+      "start_time": "2025-11-26T09:00:01.700Z",
+      "end_time": "2025-11-26T09:00:02.500Z",
+      "attributes": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"tool\", \"content\": \"TypeError: amount must be a float, not 'str'\"}]",
+        "tracebrain.llm.completion": "I'm sorry, I encountered a technical error and cannot perform the conversion.",
+        "tracebrain.llm.final_answer": "I'm sorry, I encountered a technical error and cannot perform the conversion."
+      }
+    }
+  ]
+}

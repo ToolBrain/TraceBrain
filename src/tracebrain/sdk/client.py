@@ -1,7 +1,7 @@
 """
-TraceBrain Tracing SDK - Client
+TraceBrain SDK - Client
 
-This module provides a robust client for interacting with the TraceBrain Tracing API.
+This module provides a robust client for interacting with the TraceBrain API.
 It includes automatic retries, connection pooling, and fail-safe error handling.
 
 Usage:
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 class TraceClient:
     """
-    Robust HTTP client for TraceBrain Tracing API.
+    Robust HTTP client for TraceBrain API.
     
     Features:
     - Connection pooling via requests.Session
@@ -120,7 +120,7 @@ class TraceClient:
         self.session.headers.update({
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": "TraceBrain-Tracing-SDK/1.0.0"
+            "User-Agent": "TraceBrain-SDK/1.0.0"
         })
         
         # Add API key if provided

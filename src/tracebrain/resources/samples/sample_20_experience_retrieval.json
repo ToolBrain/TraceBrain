@@ -1,0 +1,55 @@
+{
+  "trace_id": "d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0",
+  "attributes": {
+    "system_prompt": "You are an expert analyst with access to prior experiences.",
+    "tracebrain.episode.id": "ep-retrieval-success-88",
+    "tracebrain.ai_evaluation": {
+      "rating": 5,
+      "confidence": 0.96,
+      "status": "auto_verified",
+      "error_type": "none",
+      "feedback": "Agent used historical memory to avoid a formatting error."
+    }
+  },
+  "spans": [
+    {
+      "span_id": "4001a2b3c4d5e6f7",
+      "parent_id": null,
+      "name": "LLM Inference (Tool Call)",
+      "start_time": "2025-11-28T11:00:00.000Z",
+      "end_time": "2025-11-28T11:00:01.200Z",
+      "attributes": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Generate TechCorp report.\"}]",
+        "tracebrain.llm.thought": "I should check past traces for formatting rules.",
+        "tracebrain.llm.tool_code": "search_past_experiences('TechCorp report')"
+      }
+    },
+    {
+      "span_id": "4002b3c4d5e6f7a8",
+      "parent_id": "4001a2b3c4d5e6f7",
+      "name": "Tool Execution: search_past_experiences",
+      "start_time": "2025-11-28T11:00:01.205Z",
+      "end_time": "2025-11-28T11:00:01.305Z",
+      "attributes": {
+        "tracebrain.span.type": "tool_execution",
+        "tracebrain.tool.name": "search_past_experiences",
+        "tracebrain.tool.input": "{'query': 'TechCorp report'}",
+        "tracebrain.tool.output": "Found Trace x7y8: 'Always wrap financials in a markdown table'."
+      }
+    },
+    {
+      "span_id": "4003c4d5e6f7a8b9",
+      "parent_id": "4002b3c4d5e6f7a8",
+      "name": "LLM Inference (Final Answer)",
+      "start_time": "2025-11-28T11:00:01.400Z",
+      "end_time": "2025-11-28T11:00:02.500Z",
+      "attributes": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"tool\", \"content\": \"Found Trace x7y8: Always wrap financials in a markdown table\"}]",
+        "tracebrain.llm.completion": "Based on past experience, here is your report in a table: ...",
+        "tracebrain.llm.final_answer": "Based on past experience, here is your report in a table: ..."
+      }
+    }
+  ]
+}

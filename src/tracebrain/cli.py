@@ -1,28 +1,29 @@
 """
-TraceBrain Tracing Command-Line Interface
+TraceBrain Command-Line Interface
 
-This module provides a CLI for managing the TraceBrain Tracing service.
+This module provides a CLI for managing the TraceBrain service.
 It allows users to start the API server, manage the database, perform
 administrative tasks, and orchestrate Docker infrastructure.
 
 Usage:
     # Docker orchestration (recommended for production)
-    tracebrain-trace up              # Start infrastructure with Docker
+    tracebrain up              # Start infrastructure with Docker
     # If code changes are not picked up by Docker, rebuild without cache:
     #   docker compose -f docker/docker-compose.yml build --no-cache
-    #   tracebrain-trace up
-    tracebrain-trace down            # Stop infrastructure
-    tracebrain-trace status          # Check container status
+    #   tracebrain up
+    tracebrain down            # Stop infrastructure
+    tracebrain status          # Check container status
     
     # Development mode (local Python server)
-    tracebrain-trace start           # Start Python server directly
-    tracebrain-trace start --host 0.0.0.0 --port 3000
+    tracebrain start           # Start Python server directly
+    tracebrain start --host 0.0.0.0 --port 3000
     
     # Database management
-    tracebrain-trace init-db         # Initialize database tables
+    tracebrain init            # Create a local .env template
+    tracebrain init-db         # Initialize database tables
     
     # System information
-    tracebrain-trace info            # Show current configuration
+    tracebrain info            # Show current configuration
 """
 
 import sys
@@ -37,8 +38,8 @@ from .config import settings
 
 # Create Typer app
 app = typer.Typer(
-    name="tracebrain-trace",
-    help="TraceBrain Tracing - Observability platform for Agentic AI",
+    name="tracebrain",
+    help="TraceBrain - Trace management and observability for LLM-based agents",
     add_completion=False
 )
 
@@ -50,39 +51,12 @@ app = typer.Typer(
 def find_docker_compose_file() -> Optional[Path]:
     """
     Locate the docker-compose.yml file in the package.
-    
-    Production standard: docker/docker-compose.yml in project root.
-    This follows industry best practices for organizing infrastructure files.
-    
+
     Returns:
         Optional[Path]: Path to docker-compose.yml if found, None otherwise
     """
-    # Start from the current file location (cli.py)
-    current_file = Path(__file__).resolve()
-    
-    # Try multiple locations (in order of preference)
-    search_paths = [
-        # 1. Project root docker/ directory (RECOMMENDED for production)
-        current_file.parent.parent.parent / "docker" / "docker-compose.yml",
-        
-        # 2. Current working directory docker/
-        Path.cwd() / "docker" / "docker-compose.yml",
-        
-        # 3. Legacy: same directory as cli.py (backward compatibility)
-        current_file.parent / "docker-compose.yml",
-        
-        # 4. Legacy: project root (backward compatibility)
-        current_file.parent.parent.parent / "docker-compose.yml",
-        
-        # 5. Fallback: current directory
-        Path.cwd() / "docker-compose.yml",
-    ]
-    
-    for path in search_paths:
-        if path.exists() and path.is_file():
-            return path
-    
-    return None
+    compose_file = Path(__file__).resolve().parent / "resources" / "docker" / "docker-compose.yml"
+    return compose_file if compose_file.is_file() else None
 
 
 def check_docker_installed() -> bool:
@@ -144,6 +118,44 @@ def wait_for_health_check(
 # ============================================================================
 
 @app.command()
+def init():
+    """Create a local .env template in the current working directory."""
+    env_path = Path.cwd() / ".env"
+    if env_path.exists():
+        typer.echo(".env already exists in the current directory.")
+        return
+
+    template = """# TraceBrain Configuration
+# Copy this file to .env and customize as needed
+
+# Database Configuration
+# SQLite (default for development)
+DATABASE_URL=sqlite:///./tracebrain_traces.db
+
+# PostgreSQL (for production)
+# DATABASE_URL=postgresql://user:password@localhost:5432/tracestore
+
+# Server Configuration
+HOST=127.0.0.1
+PORT=8000
+LOG_LEVEL=info
+
+# LLM Configuration
+LLM_PROVIDER=gemini
+LLM_MODEL=gemini-2.5-flash
+LLM_API_KEY=your-key-here
+
+# Embeddings Configuration
+EMBEDDING_PROVIDER=local
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+EMBEDDING_API_KEY=your-key-here
+"""
+
+    env_path.write_text(template, encoding="utf-8")
+    typer.echo(typer.style("Created .env in the current directory.", fg=typer.colors.GREEN, bold=True))
+    typer.echo("Edit the .env file before running 'tracebrain up'.")
+
+@app.command()
 def up(
     build: bool = typer.Option(
         False,
@@ -163,19 +175,19 @@ def up(
     )
 ):
     """
-    Start the TraceBrain Tracing infrastructure using Docker Compose.
+    Start the TraceBrain infrastructure using Docker Compose.
     
     This command locates the docker-compose.yml file and starts all services
     (PostgreSQL database, FastAPI backend, etc.) in containers.
     
     Examples:
-        tracebrain-trace up                 # Start in background
-        tracebrain-trace up --build         # Rebuild and start
-        tracebrain-trace up --no-detach     # Start in foreground (see logs)
-        tracebrain-trace up --no-wait       # Don't wait for health check
+        tracebrain up                 # Start in background
+        tracebrain up --build         # Rebuild and start
+        tracebrain up --no-detach     # Start in foreground (see logs)
+        tracebrain up --no-wait       # Don't wait for health check
     """
     typer.echo("=" * 70)
-    typer.echo("TraceBrain Tracing - Starting Infrastructure")
+    typer.echo("TraceBrain - Starting Infrastructure")
     typer.echo("=" * 70)
     
     # Check if Docker is installed
@@ -193,11 +205,10 @@ def up(
     if not compose_file:
         typer.echo("Error: docker-compose.yml not found", err=True)
         typer.echo("")
-        typer.echo("Searched locations:")
-        typer.echo("  - Project root directory")
-        typer.echo("  - Package installation directory")
+        typer.echo("Expected path:")
+        typer.echo("  - tracebrain/resources/docker/docker-compose.yml")
         typer.echo("")
-        typer.echo("Please ensure docker-compose.yml exists in your project root.")
+        typer.echo("Please ensure the packaged resources are present.")
         sys.exit(1)
     
     typer.echo(f"Using: {compose_file}")
@@ -232,12 +243,12 @@ def up(
             if detach and wait:
                 if wait_for_health_check():
                     typer.echo("")
-                    typer.echo("TraceBrain Tracing is ready")
+                    typer.echo("TraceBrain is ready")
                     typer.echo("")
                     typer.echo("Next steps:")
                     typer.echo("  -> API docs:  http://localhost:8000/docs")
                     typer.echo("  -> Frontend:  http://localhost:8000/")
-                    typer.echo("  -> Check status: tracebrain-trace status")
+                    typer.echo("  -> Check status: tracebrain status")
                     typer.echo(f"  -> View logs: docker compose -f {compose_file} logs -f")
                     typer.echo("")
                 else:
@@ -263,17 +274,17 @@ def down(
     )
 ):
     """
-    Stop and remove the TraceBrain Tracing infrastructure.
+    Stop and remove the TraceBrain infrastructure.
     
     This command stops all Docker containers and removes them.
     By default, data volumes are preserved.
     
     Examples:
-        tracebrain-trace down           # Stop and remove containers
-        tracebrain-trace down --volumes # WARNING: Also delete data volumes
+        tracebrain down           # Stop and remove containers
+        tracebrain down --volumes # WARNING: Also delete data volumes
     """
     typer.echo("=" * 70)
-    typer.echo("TraceBrain Tracing - Stopping Infrastructure")
+    typer.echo("TraceBrain - Stopping Infrastructure")
     typer.echo("=" * 70)
     
     # Check if Docker is installed
@@ -332,18 +343,29 @@ def down(
 
 
 @app.command()
+def seed():
+    """Seed the database with bundled sample traces if empty."""
+    from .core.store import TraceStore
+    from .core.seeder import seed_if_empty
+
+    store = TraceStore(backend=settings.get_backend_type(), db_url=settings.DATABASE_URL)
+    seed_if_empty(store)
+    typer.echo("Seeding complete (or skipped if traces already exist).")
+
+
+@app.command()
 def status():
     """
-    Check the status of TraceBrain Tracing Docker containers.
+    Check the status of TraceBrain Docker containers.
     
     This command shows which containers are running, their status,
     and port mappings.
     
     Example:
-        tracebrain-trace status
+        tracebrain status
     """
     typer.echo("=" * 70)
-    typer.echo("TraceBrain Tracing - Container Status")
+    typer.echo("TraceBrain - Container Status")
     typer.echo("=" * 70)
     typer.echo("")
     
@@ -408,15 +430,15 @@ def start(
     )
 ):
     """
-    Start the TraceBrain Tracing API server.
+    Start the TraceBrain API server.
     
     This command starts the FastAPI server with uvicorn. The server will
     serve both the REST API and the React frontend (if built).
     
     Examples:
-        tracebrain-trace start
-        tracebrain-trace start --host 0.0.0.0 --port 8080
-        tracebrain-trace start --reload --log-level debug
+        tracebrain start
+        tracebrain start --host 0.0.0.0 --port 8080
+        tracebrain start --reload --log-level debug
     """
     # Use provided values or fall back to settings
     server_host = host or settings.HOST
@@ -424,7 +446,7 @@ def start(
     server_log_level = (log_level or settings.LOG_LEVEL).lower()
     
     typer.echo("=" * 70)
-    typer.echo("TraceBrain Tracing - Starting API Server")
+    typer.echo("TraceBrain - Starting API Server")
     typer.echo("=" * 70)
     typer.echo(f"Host:           {server_host}")
     typer.echo(f"Port:           {server_port}")
@@ -471,13 +493,15 @@ def init_db(
     only creates tables that don't exist.
     
     Examples:
-        tracebrain-trace init-db
-        tracebrain-trace init-db --drop  # WARNING: Deletes all data!
+        tracebrain init-db
+        tracebrain init-db --drop  # WARNING: Deletes all data!
     """
     from .db.session import create_tables, drop_tables
+    from .core.store import TraceStore
+    from .core.seeder import seed_data
     
     typer.echo("=" * 70)
-    typer.echo("TraceBrain Tracing - Database Initialization")
+    typer.echo("TraceBrain - Database Initialization")
     typer.echo("=" * 70)
     typer.echo(f"Database:       {settings.DATABASE_URL}")
     typer.echo(f"Backend Type:   {settings.get_backend_type()}")
@@ -501,7 +525,19 @@ def init_db(
         create_tables()
         typer.echo("Database tables created successfully")
         typer.echo("")
-        typer.echo("You can now start the server with: tracebrain-trace start")
+        store = TraceStore(backend=settings.get_backend_type(), db_url=settings.DATABASE_URL)
+        existing = store.count_traces()
+        if existing == 0:
+            prompt = typer.style(
+                "Database is empty. Would you like to seed 20 sample traces for a better initial experience?",
+                fg=typer.colors.GREEN,
+                bold=True,
+            )
+            if typer.confirm(prompt):
+                seed_data(store)
+            else:
+                typer.echo("Skipping sample ingestion. Your TraceStore is ready for clean data.")
+        typer.echo("You can now start the server with: tracebrain start")
     except Exception as e:
         typer.echo(f"Error creating tables: {e}", err=True)
         sys.exit(1)
@@ -513,13 +549,13 @@ def generate_curriculum():
     Generate curriculum tasks from failed traces.
 
     Example:
-        tracebrain-trace generate-curriculum
+        tracebrain generate-curriculum
     """
     from .core.curator import CurriculumCurator
     from .core.store import TraceStore
 
     typer.echo("=" * 70)
-    typer.echo("TraceBrain Tracing - Curriculum Generation")
+    typer.echo("TraceBrain - Curriculum Generation")
     typer.echo("=" * 70)
     typer.echo(f"Database:       {settings.DATABASE_URL}")
     typer.echo(f"Backend Type:   {settings.get_backend_type()}")
@@ -548,13 +584,13 @@ def info():
     database connection, server settings, and available features.
     
     Example:
-        tracebrain-trace info
+        tracebrain info
     """
     import platform
     from pathlib import Path
     
     typer.echo("=" * 70)
-    typer.echo("TraceBrain Tracing - System Information")
+    typer.echo("TraceBrain - System Information")
     typer.echo("=" * 70)
     typer.echo("")
     
@@ -588,8 +624,8 @@ def info():
     typer.echo("")
     
     typer.echo("[Quick Start]")
-    typer.echo("  1. Initialize database:  tracebrain-trace init-db")
-    typer.echo("  2. Start server:         tracebrain-trace start")
+    typer.echo("  1. Initialize database:  tracebrain init-db")
+    typer.echo("  2. Start server:         tracebrain start")
     typer.echo("  3. Open browser:         http://localhost:8000/docs")
     typer.echo("")
 
@@ -597,19 +633,19 @@ def info():
 @app.command()
 def version():
     """
-    Display the TraceBrain Tracing version.
+    Display the TraceBrain version.
     
     Example:
-        tracebrain-trace version
+        tracebrain version
     """
-    typer.echo("TraceBrain Tracing v1.0.0")
+    typer.echo("TraceBrain v1.0.0")
 
 
 def main():
     """
     Main entry point for the CLI.
     
-    This function is called when the user runs the 'tracebrain-trace' command.
+    This function is called when the user runs the 'tracebrain' command.
     It's registered as a console script entry point in setup.py/pyproject.toml.
     """
     app()

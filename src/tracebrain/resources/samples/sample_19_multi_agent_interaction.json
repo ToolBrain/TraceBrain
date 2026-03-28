@@ -1,0 +1,42 @@
+{
+  "trace_id": "f9e8d7c6b5a4f9e8d7c6b5a4f9e8d7c6",
+  "attributes": {
+    "system_prompt": "You are a coding coordinator managing a multi-agent workflow.",
+    "tracebrain.episode.id": "ep-multiagent-001",
+    "tracebrain.ai_evaluation": {
+      "rating": 4,
+      "confidence": 0.85,
+      "status": "auto_verified",
+      "error_type": "none",
+      "feedback": "Successful cross-agent feedback loop for code optimization."
+    }
+  },
+  "spans": [
+    {
+      "span_id": "3001a2b3c4d5e6f7",
+      "parent_id": null,
+      "name": "LLM Inference (Tool Call)",
+      "start_time": "2025-11-27T10:30:00.000Z",
+      "end_time": "2025-11-27T10:30:02.000Z",
+      "attributes": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Coder: Write a search function.\"}]",
+        "tracebrain.llm.completion": "```python\ndef search(q): return [x for x in data if q in x]\n```",
+        "tracebrain.llm.tool_code": "submit_to_reviewer()"
+      }
+    },
+    {
+      "span_id": "3002b3c4d5e6f7a8",
+      "parent_id": "3001a2b3c4d5e6f7",
+      "name": "LLM Inference (Final Answer)",
+      "start_time": "2025-11-27T10:30:02.100Z",
+      "end_time": "2025-11-27T10:30:04.000Z",
+      "attributes": {
+        "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.new_content": "[{\"role\": \"reviewer\", \"content\": \"Review: Please add type hints for better stability.\"}]",
+        "tracebrain.llm.completion": "Revised: def search(q: str) -> list: ...",
+        "tracebrain.llm.final_answer": "Final optimized code with type hints submitted."
+      }
+    }
+  ]
+}

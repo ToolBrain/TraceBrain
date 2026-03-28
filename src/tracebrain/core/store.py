@@ -626,6 +626,44 @@ class BaseStorageBackend:
         finally:
             session.close()
 
+    def iter_traces_filtered(
+        self,
+        query: Optional[str] = None,
+        status: Optional[str] = None,
+        min_rating: Optional[int] = None,
+        error_type: Optional[str] = None,
+        min_confidence: Optional[float] = None,
+        max_confidence: Optional[float] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        limit: Optional[int] = None,
+        batch_size: int = 500,
+    ):
+        """Yield traces matching filters without loading all rows into memory."""
+        session = self.get_session()
+        try:
+            q = self._build_traces_query(
+                session=session,
+                query=query,
+                status=status,
+                min_rating=min_rating,
+                error_type=error_type,
+                min_confidence=min_confidence,
+                max_confidence=max_confidence,
+                start_time=start_time,
+                end_time=end_time,
+            )
+            q = q.yield_per(batch_size)
+
+            count = 0
+            for trace in q:
+                yield trace
+                count += 1
+                if limit is not None and count >= limit:
+                    break
+        finally:
+            session.close()
+
     def count_traces_filtered(
         self,
         query: Optional[str] = None,

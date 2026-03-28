@@ -1,5 +1,5 @@
 """
-TraceBrain Tracing - Observability Platform for Agentic AI
+TraceBrain - Observability Platform for Agentic AI
 
 This package provides a complete observability solution for AI agents,
 allowing users to collect, store, and visualize execution traces.
@@ -12,14 +12,14 @@ Philosophy: "Pip install and run"
 
 Quick Start:
     # Install
-    pip install tracebrain-tracing
+    pip install tracebrain
     
     # Start infrastructure with Docker (recommended)
-    tracebrain-trace up
+    tracebrain up
     
     # Or use Python server directly for development
-    tracebrain-trace init-db
-    tracebrain-trace start
+    tracebrain init-db
+    tracebrain start
     
     # Use the SDK client in your code
     from tracebrain import TraceClient

@@ -28,8 +28,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy backend source
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
-COPY data/ ./data/
-COPY scripts/ ./scripts/
 
 # Copy frontend build artifacts into static directory
 COPY --from=frontend-builder /app/web/dist /app/src/tracebrain/static
@@ -50,4 +48,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/healthz || exit 1
 
-CMD ["tracebrain-trace", "start", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["tracebrain", "start", "--host", "0.0.0.0", "--port", "8000"]
