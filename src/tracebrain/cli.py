@@ -60,6 +60,33 @@ def find_docker_compose_file() -> Optional[Path]:
     return compose_file if compose_file.is_file() else None
 
 
+def get_user_env_file() -> Path:
+    """
+    Get the user project .env file from the current working directory.
+
+    Returns:
+        Path: The expected .env path in current working directory.
+    """
+    return Path.cwd() / ".env"
+
+
+def build_compose_base_command(compose_file: Path, env_file: Path) -> list[str]:
+    """
+    Build the base docker compose command and inject --env-file when available.
+
+    Args:
+        compose_file: Path to docker-compose.yml bundled with the package
+        env_file: User .env file path in current working directory
+
+    Returns:
+        list[str]: Base command parts for docker compose invocation
+    """
+    cmd = ["docker", "compose", "-f", str(compose_file)]
+    if env_file.exists():
+        cmd.extend(["--env-file", str(env_file)])
+    return cmd
+
+
 def check_docker_installed() -> bool:
     """
     Check if Docker is installed and accessible.
@@ -236,11 +263,21 @@ def up(
         typer.echo("Please ensure the packaged resources are present.")
         sys.exit(1)
     
+    env_file = get_user_env_file()
+
     typer.echo(f"Using: {compose_file}")
+    if env_file.exists():
+        typer.echo(f"Env file: {env_file}")
+    else:
+        typer.secho(
+            "Warning: No .env found in current directory. Run 'tracebrain init' first.",
+            fg=typer.colors.YELLOW,
+        )
     typer.echo("")
     
     # Build docker compose command
-    cmd = ["docker", "compose", "-f", str(compose_file), "up"]
+    cmd = build_compose_base_command(compose_file, env_file)
+    cmd.append("up")
     
     if build:
         cmd.append("--build")
@@ -274,12 +311,20 @@ def up(
                     typer.echo("  -> API docs:  http://localhost:8000/docs")
                     typer.echo("  -> Frontend:  http://localhost:8000/")
                     typer.echo("  -> Check status: tracebrain status")
-                    typer.echo(f"  -> View logs: docker compose -f {compose_file} logs -f")
+                    logs_cmd = f"docker compose -f {compose_file}"
+                    if env_file.exists():
+                        logs_cmd += f" --env-file {env_file}"
+                    logs_cmd += " logs -f"
+                    typer.echo(f"  -> View logs: {logs_cmd}")
                     typer.echo("")
                 else:
                     typer.echo("")
                     typer.echo("Warning: services started but health check timed out")
-                    typer.echo(f"Check logs with: docker compose -f {compose_file} logs")
+                    logs_cmd = f"docker compose -f {compose_file}"
+                    if env_file.exists():
+                        logs_cmd += f" --env-file {env_file}"
+                    logs_cmd += " logs"
+                    typer.echo(f"Check logs with: {logs_cmd}")
             
     except subprocess.CalledProcessError as e:
         typer.echo(f"\nError starting infrastructure: {e}", err=True)
@@ -323,7 +368,11 @@ def down(
         typer.echo("Error: docker-compose.yml not found", err=True)
         sys.exit(1)
     
+    env_file = get_user_env_file()
+
     typer.echo(f"Using: {compose_file}")
+    if env_file.exists():
+        typer.echo(f"Env file: {env_file}")
     typer.echo("")
     
     # Confirm if volumes flag is used
@@ -336,7 +385,8 @@ def down(
         typer.echo("")
     
     # Build docker compose command
-    cmd = ["docker", "compose", "-f", str(compose_file), "down"]
+    cmd = build_compose_base_command(compose_file, env_file)
+    cmd.append("down")
     
     if volumes:
         cmd.append("--volumes")
@@ -404,9 +454,17 @@ def status():
     if not compose_file:
         typer.echo("Error: docker-compose.yml not found", err=True)
         sys.exit(1)
+
+    env_file = get_user_env_file()
+
+    typer.echo(f"Using: {compose_file}")
+    if env_file.exists():
+        typer.echo(f"Env file: {env_file}")
+    typer.echo("")
     
     # Build docker compose command
-    cmd = ["docker", "compose", "-f", str(compose_file), "ps"]
+    cmd = build_compose_base_command(compose_file, env_file)
+    cmd.append("ps")
     
     # Execute docker compose ps
     try:
