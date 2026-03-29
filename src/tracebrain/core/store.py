@@ -17,7 +17,7 @@ import sqlparse
 from sqlalchemy import create_engine, event, func, cast, text, Integer, Float, case, inspect
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError, ProgrammingError, TimeoutError
-from sqlalchemy.orm import sessionmaker, Session, selectinload
+from sqlalchemy.orm import joinedload, sessionmaker, Session, selectinload
 
 from tracebrain.config import settings
 from tracebrain.core.services.embedding import EmbeddingFactory
@@ -577,6 +577,22 @@ class BaseStorageBackend:
         finally:
             session.close()
 
+    def get_traces_by_start_time(self, limit: int) -> list[Trace]:
+        """Retrieve traces based on the start time of its first span."""
+        session = self.get_session()
+        try:
+            return (
+                session.query(Trace)
+                .options(joinedload(Trace.spans))
+                .join(Trace.spans)
+                .filter(Span.parent_id == None)
+                .order_by(Span.start_time.desc())
+                .limit(limit)
+                .all()
+            )
+        finally:
+            session.close()
+
     def get_full_trace(self, trace_id: str) -> Optional[Dict[str, Any]]:
         """Return a full OTLP trace with spans ordered by start_time."""
         trace = self.get_trace(trace_id)
@@ -975,15 +991,15 @@ class BaseStorageBackend:
 
     def cleanup_traces(
         self,
-        within_last_hours: Optional[int] = None,
+        older_than_hours: Optional[int] = None,
         status: Optional[str] = None,
     ) -> int:
         """Delete traces matching cleanup filters and return count."""
         session = self.get_session()
         try:
             q = session.query(Trace)
-            if within_last_hours is not None:
-                cutoff = datetime.utcnow() - timedelta(hours=within_last_hours)
+            if older_than_hours is not None:
+                cutoff = datetime.utcnow() - timedelta(hours=older_than_hours)
                 q = q.filter(Trace.created_at <= cutoff)
             if status:
                 q = q.filter(Trace.status == status)
@@ -1004,6 +1020,38 @@ class BaseStorageBackend:
         except Exception:
             session.rollback()
             logger.exception("Failed to cleanup traces")
+            raise
+        finally:
+            session.close()
+
+    def delete_trace(self, trace_id: str) -> None:
+        """Delete a single trace and its history entry."""
+        session = self.get_session()
+        try:
+            session.query(History).filter(History.id == trace_id).delete(synchronize_session=False)
+            session.query(Trace).filter(Trace.id == trace_id).delete(synchronize_session=False)
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to delete trace")
+            raise
+        finally:
+            session.close()
+
+    def delete_episode(self, episode_id: str) -> None:
+        """Delete all traces in an episode and their history entries."""
+        session = self.get_session()
+        try:
+            traces = session.query(Trace).filter(Trace.episode_id == episode_id).all()
+            trace_ids = [t.id for t in traces]
+            if trace_ids:
+                session.query(History).filter(History.id.in_(trace_ids)).delete(synchronize_session=False)
+            session.query(History).filter(History.id == episode_id).delete(synchronize_session=False)
+            session.query(Trace).filter(Trace.episode_id == episode_id).delete(synchronize_session=False)
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to delete episode")
             raise
         finally:
             session.close()

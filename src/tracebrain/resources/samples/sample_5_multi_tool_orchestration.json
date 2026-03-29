@@ -8,6 +8,7 @@
       "confidence": 0.98,
       "status": "auto_verified",
       "error_type": "none",
+      "priority": 5,
       "feedback": "Chained tools correctly to compute final value."
     }
   },
@@ -20,6 +21,7 @@
       "end_time": "2025-11-23T08:42:02.600Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"If I have 10 shares of NVDA stock, what is their total value?\"}]",
         "tracebrain.llm.completion": "Thought: First, I need to find the current stock price of NVDA. I will use the `get_stock_price` tool.\n{\"tool_call\": {\"name\": \"get_stock_price\", \"arguments\": {\"ticker\": \"NVDA\"}}}",
         "tracebrain.llm.thought": "First, I need to find the current stock price of NVDA. I will use the `get_stock_price` tool.",
@@ -52,6 +54,7 @@
       "end_time": "2025-11-23T08:42:04.400Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"get_stock_price\", \"arguments\": {\"ticker\": \"NVDA\"}, \"id\": \"call_price1\"}]}, {\"role\": \"tool\", \"content\": \"125.50\", \"tool_call_id\": \"call_price1\"}]",
         "tracebrain.llm.completion": "Thought: I have the price per share ($125.50). Now I need to calculate the total value for 10 shares. I will use the `multiply` tool.\n{\"tool_call\": {\"name\": \"multiply\", \"arguments\": {\"a\": 125.50, \"b\": 10}}}",
         "tracebrain.llm.thought": "I have the price per share ($125.50). Now I need to calculate the total value for 10 shares. I will use the `multiply` tool.",
@@ -84,6 +87,7 @@
       "end_time": "2025-11-23T08:42:05.600Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"multiply\", \"arguments\": {\"a\": 125.50, \"b\": 10}, \"id\": \"call_calc2\"}]}, {\"role\": \"tool\", \"content\": \"1255.0\", \"tool_call_id\": \"call_calc2\"}]",
         "tracebrain.llm.completion": "The total value of 10 shares of NVDA is $1255.0.",
         "tracebrain.llm.final_answer": "The total value of 10 shares of NVDA is $1255.0.",

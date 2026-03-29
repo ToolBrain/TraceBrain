@@ -35,6 +35,7 @@ interface Settings {
     provider: ProviderName;
     model: string;
     autoEvaluate: boolean;
+    batchSize: number;
   };
   chatLLM: {
     provider: ProviderName;

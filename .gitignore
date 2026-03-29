@@ -245,6 +245,7 @@ $RECYCLE.BIN/
 data/traces/
 data/exports/
 data/backups/
+src/examples
 
 # Logs
 logs/

@@ -38,6 +38,7 @@ def build_ai_evaluation(result: Dict[str, Any]) -> Dict[str, Any]:
         "confidence": confidence,
         "error_type": result.get("error_type", "none"),
         "status": status_value,
+        "priority": result.get("priority"),
         "timestamp": datetime.utcnow().isoformat(),
     }
 

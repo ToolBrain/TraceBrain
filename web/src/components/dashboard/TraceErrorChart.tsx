@@ -59,27 +59,27 @@ const TraceErrorChart: React.FC<TraceErrorChartProps> = ({ traces }) => {
   }, [traces]);
 
   const traceSummary = [
-    { label: "Total Traces", value: stats.total, color: "text.primary" },
-    { label: "Failed Traces", value: stats.failedCount, color: "text.primary" },
-    { label: "Success Rate", value: `${stats.successRate}%`, color: "success.light" },
-    { label: "Failure Rate", value: `${stats.failureRate}%`, color: "error.light" },
+    { label: "Total Traces", value: stats.total },
+    { label: "Failed Traces", value: stats.failedCount },
+    { label: "Success Rate", value: `${stats.successRate}%` },
+    { label: "Failure Rate", value: `${stats.failureRate}%` },
     {
       label: "Average Confidence",
       value: stats.avgConfidence !== "N/A" ? `${stats.avgConfidence}%` : "N/A",
-      color: "text.primary",
     },
-    { label: "Error Types", value: stats.errorTypeCount, color: "text.primary" },
+    { label: "Error Types", value: stats.errorTypeCount },
   ];
 
   return (
     <Box
       sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 3,
+        display: "grid",
+        gridTemplateColumns: { xs: "1fr", md: "auto 1fr" },
+        gap: 2,
         px: 2,
         py: 1,
-        height: "100%",
+        minHeight: 160,
+        alignItems: "stretch",
       }}
     >
       <Box
@@ -90,9 +90,9 @@ const TraceErrorChart: React.FC<TraceErrorChartProps> = ({ traces }) => {
           bgcolor: "action.hover",
           borderRadius: 2,
           p: 1.5,
-          flexShrink: 0,
           outline: "1px solid",
           outlineColor: "divider",
+          flexWrap: "wrap",
         }}
       >
         {/* Pie Chart */}
@@ -110,39 +110,27 @@ const TraceErrorChart: React.FC<TraceErrorChartProps> = ({ traces }) => {
               series={[
                 {
                   data: pieData,
-                  innerRadius: 60,
-                  outerRadius: 90,
+                  innerRadius: 55,
+                  outerRadius: 80,
                   paddingAngle: 2,
                   cornerRadius: 4,
                 },
               ]}
-              width={200}
-              height={200}
+              width={160}
+              height={160}
               sx={{ "& .MuiChartsLegend-root": { display: "none" } }}
             />
           ) : (
-            <Box sx={{ width: 200, height: 200 }} />
+            <Box sx={{ width: 160, height: 160 }} />
           )}
         </Box>
 
         {/* Legend */}
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 0.75,
-            minWidth: 160,
-          }}
-        >
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, minWidth: 140 }}>
           {pieData.map((item) => (
             <Box
               key={item.id}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 1,
-              }}
+              sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
                 <Box
@@ -154,7 +142,7 @@ const TraceErrorChart: React.FC<TraceErrorChartProps> = ({ traces }) => {
                     flexShrink: 0,
                   }}
                 />
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" noWrap>
                   {item.label}
                 </Typography>
               </Box>
@@ -172,27 +160,28 @@ const TraceErrorChart: React.FC<TraceErrorChartProps> = ({ traces }) => {
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           gap: 1.5,
-          flex: 1,
+          height: "100%",
         }}
       >
-        {traceSummary.map(({ label, value, color }) => (
+        {traceSummary.map(({ label, value }) => (
           <Box
             key={label}
             sx={{
               bgcolor: "action.hover",
               borderRadius: 2,
-              p: 2,
+              p: 1.5,
               display: "flex",
               flexDirection: "column",
               gap: 0.5,
               outline: "1px solid",
               outlineColor: "divider",
+              height: "100%",
             }}
           >
             <Typography variant="caption" color="text.secondary">
               {label}
             </Typography>
-            <Typography variant="h6" fontWeight={600} lineHeight={1} color={color}>
+            <Typography variant="body1" fontWeight={600} lineHeight={1} color="text.primary">
               {value}
             </Typography>
           </Box>

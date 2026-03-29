@@ -25,7 +25,7 @@ const FILTER_CONFIG = {
     ],
     getValue: (trace: Trace) => traceGetStatus(trace) || "running",
   },
-  Error_Type: {
+  "Error Type": {
     options: [
       { key: "logic_loop", label: "Logic Loop" },
       { key: "hallucination", label: "Hallucination" },

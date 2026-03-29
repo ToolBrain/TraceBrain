@@ -54,16 +54,8 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: "flex", height: "100%", minHeight: 0 }}>
-      <Box
-        sx={{
-          width: 240,
-          borderRight: 1,
-          pr: 2,
-          borderColor: "divider",
-          overflowY: "auto",
-        }}
-      >
+    <Box sx={{ display: "flex", height: "100%", overflow: "hidden" }}>
+      <Box sx={{ width: 240, borderRight: 1, pr: 2, borderColor: "divider" }}>
         <List>
           {SECTION_KEYS.map((key) => (
             <ListItemButton

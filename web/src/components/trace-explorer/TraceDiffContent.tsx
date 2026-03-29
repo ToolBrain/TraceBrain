@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Box, Chip, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { CheckCircleOutline, ErrorOutline, RemoveCircleOutline } from "@mui/icons-material";
 import type { Span, Trace } from "../../types/trace";
 import {
@@ -59,10 +59,6 @@ const flattenSpans = (spans: Span[]): { span: Span; depth: number }[] => {
   return ordered;
 };
 
-// Normalize tool name for comparison by stripping error indicators
-const normalizeToolName = (name: string) =>
-  name.replace(/\s*\(ERROR\)/gi, "").replace(/\s*with Error/gi, "").trim();
-
 // Align spans from two traces
 const alignSpans = (spansA: Span[], spansB: Span[]): AlignedRow[] => {
   const flatA = flattenSpans(spansA);
@@ -77,7 +73,7 @@ const alignSpans = (spansA: Span[], spansB: Span[]): AlignedRow[] => {
       const isMismatch =
         spanHasError(spanA) !== spanHasError(matchEntry.span) ||
         (spanGetType(spanA) === "tool_execution" &&
-          normalizeToolName(spanGetToolName(spanA)) !== normalizeToolName(spanGetToolName(matchEntry.span)));
+          spanGetToolName(spanA) !== spanGetToolName(matchEntry.span));
       rows.push({
         key: `a-${spanA.span_id}`,
         spanA,
@@ -229,25 +225,18 @@ if (!span) {
   );
 };
 
-// Chip showing summary counts
-const SummaryChip: React.FC<{ status: RowStatus; count: number }> = ({ status, count }) => {
+// Diff stat summary
+const DiffStat: React.FC<{ status: RowStatus; count: number }> = ({ status, count }) => {
   const config = STATUS_CONFIG[status];
   return (
-    <Chip
-      variant="outlined"
-      size="medium"
-      label={
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-          <Typography variant="caption" sx={{ fontWeight: 700, color: config.labelColor }}>
-            {count}
-          </Typography>
-          <Typography variant="caption" sx={{ color: "text.secondary" }}>
-            {config.label.charAt(0) + config.label.slice(1).toLowerCase()}
-          </Typography>
-        </Box>
-      }
-      sx={{ bgcolor: config.bg, borderColor: config.border, borderRadius: 2 }}
-    />
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+      <Typography variant="caption" sx={{ fontWeight: 700, color: config.labelColor }}>
+        {count}
+      </Typography>
+      <Typography variant="caption" sx={{ color: "text.secondary" }}>
+        {config.label.charAt(0) + config.label.slice(1).toLowerCase()}
+      </Typography>
+    </Box>
   );
 };
 
@@ -270,7 +259,7 @@ const TraceDiffContent: React.FC<TraceDiffContentProps> = ({ traceA, traceB, lab
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden", m: 2, border: 1, borderColor: "divider", borderRadius: 2 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
       <Box sx={{ flexShrink: 0 }}>
 
         {/* Summary counts */}
@@ -285,9 +274,9 @@ const TraceDiffContent: React.FC<TraceDiffContentProps> = ({ traceA, traceB, lab
             borderColor: "divider",
           }}
         >
-          <SummaryChip status="match" count={counts.match} />
-          <SummaryChip status="mismatch" count={counts.mismatch} />
-          <SummaryChip status="unique" count={counts.unique} />
+          <DiffStat status="match" count={counts.match} />
+          <DiffStat status="mismatch" count={counts.mismatch} />
+          <DiffStat status="unique" count={counts.unique} />
         </Box>
 
       </Box>

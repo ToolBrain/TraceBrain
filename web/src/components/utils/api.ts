@@ -79,6 +79,7 @@ export const fetchEpisodes = async (
     throw error;
   }
 };
+
 export const submitTraceFeedback = async (
   id: string,
   rating: number,
@@ -229,39 +230,30 @@ export const addHistory = async (
 };
 
 export const clearHistory = async (): Promise<void> => {
-  try {
-    const response = await fetch("/api/v1/history", {
-      method: "DELETE",
-    });
+  const response = await fetch("/api/v1/history", {
+    method: "DELETE",
+  });
 
-    if (!response.ok) {
-      throw new Error(`Failed to clear history: ${response.status}`);
-    }
-  } catch (error) {
-    console.error(error);
-    throw error;
+  if (!response.ok) {
+    throw new Error(`Failed to clear history: ${response.status}`);
   }
 };
 
-export const batchEvaluateTraces = async () => {
-  try {
-    const response = await fetch(`/api/v1/ops/batch_evaluate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+export const batchEvaluateTraces = async (limit: number) => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const response = await fetch(`/api/v1/ops/batch_evaluate?${params.toString()}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Failed to batch evaluate traces");
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    throw error;
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to batch evaluate traces");
   }
+
+  return response.json();
 };
 
 export const deleteTraces = async (period: string) => {
@@ -275,11 +267,23 @@ export const deleteTraces = async (period: string) => {
 
   const params = new URLSearchParams();
   if (period !== "all") {
-    params.set("within_last_hours", String(hoursMap[period]));
+    params.set("older_than_hours", String(hoursMap[period]));
   }
 
   const res = await fetch(`/api/v1/ops/traces/cleanup?${params}`, { method: "DELETE" });
   return res.json();
+};
+
+export const deleteTrace = async (id: string): Promise<void> => {
+  const response = await fetch(`/api/v1/traces/${id}`, { method: "DELETE" });
+  if (!response.ok)
+    throw new Error(`Failed to delete trace: ${response.status}`);
+};
+
+export const deleteEpisode = async (id: string): Promise<void> => {
+  const response = await fetch(`/api/v1/episodes/${id}`, { method: "DELETE" });
+  if (!response.ok)
+    throw new Error(`Failed to delete episode: ${response.status}`);
 };
 
 export const deleteCurriculumTask = async (id: number): Promise<void> => {

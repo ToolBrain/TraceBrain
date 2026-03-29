@@ -8,6 +8,7 @@
       "confidence": 0.98,
       "status": "auto_verified",
       "error_type": "tool_execution_error",
+      "priority": 2,
       "feedback": "Tool error handled and user notified appropriately."
     }
   },
@@ -20,6 +21,7 @@
       "end_time": "2025-11-22T14:05:11.800Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Find the total sales for product ID 'XYZ-123'.\"}]",
         "tracebrain.llm.completion": "Thought: I need to query the sales database for the given product ID.\n{\"tool_call\": {\"name\": \"query_sales_db\", \"arguments\": {\"product_id\": \"XYZ-123\"}}}",
         "tracebrain.llm.thought": "I need to query the sales database for the given product ID.",
@@ -39,6 +41,7 @@
       "end_time": "2025-11-22T14:05:12.200Z",
       "attributes": {
         "tracebrain.span.type": "tool_execution",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.tool.name": "query_sales_db",
         "tracebrain.tool.input": "{'product_id': 'XYZ-123'}",
         "tracebrain.tool.output": "Error: Connection to database failed. Timeout expired.",
@@ -54,6 +57,7 @@
       "end_time": "2025-11-22T14:05:13.100Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"query_sales_db\", \"arguments\": {\"product_id\": \"XYZ-123\"}, \"id\": \"call_jkl012\"}]}, {\"role\": \"tool\", \"content\": \"Error: Connection to database failed. Timeout expired.\", \"tool_call_id\": \"call_jkl012\"}]",
         "tracebrain.llm.completion": "I'm sorry, I was unable to connect to the sales database at this time. Please try again later.",
         "tracebrain.llm.final_answer": "I'm sorry, I was unable to connect to the sales database at this time. Please try again later.",

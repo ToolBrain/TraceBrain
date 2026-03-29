@@ -3,7 +3,6 @@ import {
   Box,
   Card,
   CardContent,
-  Typography,
   Tabs,
   Tab,
   TablePagination,
@@ -120,31 +119,8 @@ const RecentHistory: React.FC = () => {
 
   return (
     <Box
-      sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}
+      sx={{ p: 2.5, height: "100%", display: "flex", flexDirection: "column" }}
     >
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
-            Recent History
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Browse your recently viewed
-          </Typography>
-        </Box>
-        <Tooltip title="Clear History">
-          <IconButton onClick={handleClearHistory}>
-            <Delete />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
       <Card
         sx={{
           flexGrow: 1,
@@ -161,24 +137,45 @@ const RecentHistory: React.FC = () => {
             minHeight: 0,
           }}
         >
-          <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
-            <Tabs value={viewMode} onChange={handleViewModeChange}>
+          <Box
+            sx={{
+              borderBottom: 1,
+              borderColor: "divider",
+              mb: 2,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Tabs
+              value={viewMode}
+              onChange={handleViewModeChange}
+              sx={{
+                minHeight: "3.5rem",
+                "& .MuiTab-root": { minHeight: "3.5rem"},
+              }}
+            >
               <Tab
-                icon={<Timeline />}
+                icon={<Timeline fontSize="small" />}
                 iconPosition="start"
                 label="Traces"
                 value="traces"
               />
               <Tab
-                icon={<ViewList />}
+                icon={<ViewList fontSize="small" />}
                 iconPosition="start"
                 label="Episodes"
                 value="episodes"
               />
             </Tabs>
+            <Tooltip title="Clear History">
+              <IconButton onClick={handleClearHistory}>
+                <Delete />
+              </IconButton>
+            </Tooltip>
           </Box>
 
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ mb: 2.5 }}>
             <TextField
               fullWidth
               placeholder="Search ID..."

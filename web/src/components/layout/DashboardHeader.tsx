@@ -74,7 +74,7 @@ const DashboardHeader: React.FC = () => {
                   key={page.path}
                   onClick={() => navigate(page.path)}
                   sx={{
-                    my: 2,
+                    my: 1.5,
                     color: "white",
                     display: "block",
                     fontSize: "1rem",

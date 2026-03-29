@@ -3,7 +3,6 @@ import {
   Box,
   Card,
   CardContent,
-  Typography,
   Tabs,
   Tab,
   TablePagination,
@@ -100,15 +99,18 @@ const Explorer: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
 
   const updateParams = (patch: Record<string, string | null>, resetPage = true) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      Object.entries(patch).forEach(([k, v]) => {
-        if (v == null || v === "") next.delete(k);
-        else next.set(k, v);
-      });
-      if (resetPage) next.set("page", "0");
-      return next;
-    }, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        Object.entries(patch).forEach(([k, v]) => {
+          if (v == null || v === "") next.delete(k);
+          else next.set(k, v);
+        });
+        if (resetPage) next.set("page", "0");
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   // Debounce search query and reset pagination on change
@@ -135,7 +137,12 @@ const Explorer: React.FC = () => {
   useEffect(() => {
     if (viewMode !== "episodes") return;
     setEpisodesLoading(true);
-    fetchEpisodes(episodePage * rowsPerPage, rowsPerPage, debouncedQuery || undefined, episodeFilters)
+    fetchEpisodes(
+      episodePage * rowsPerPage,
+      rowsPerPage,
+      debouncedQuery || undefined,
+      episodeFilters,
+    )
       .then((data) => {
         setEpisodes(data.episodes);
         setTotalEpisodes(data.total);
@@ -153,11 +160,14 @@ const Explorer: React.FC = () => {
 
   // Handles page change
   const handleChangePage = (_: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("page", String(newPage));
-      return next;
-    }, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("page", String(newPage));
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   // Resets pagination and refetches
@@ -192,30 +202,7 @@ const Explorer: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}>
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
-            Explorer
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Browse and search the <Box component="span" sx={{ fontWeight: "bold" }}>TraceStore</Box>
-          </Typography>
-        </Box>
-        <Tooltip title="Refresh">
-          <IconButton onClick={handleRefresh}>
-            <Refresh />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
+    <Box sx={{ p: 2.5, height: "100%", display: "flex", flexDirection: "column" }}>
       <Card
         sx={{
           flexGrow: 1,
@@ -232,21 +219,45 @@ const Explorer: React.FC = () => {
             minHeight: 0,
           }}
         >
-          <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
-            <Tabs value={viewMode} onChange={handleViewModeChange}>
-              <Tab icon={<Timeline />} iconPosition="start" label="Traces" value="traces" />
-              <Tab icon={<ViewList />} iconPosition="start" label="Episodes" value="episodes" />
-            </Tabs>
-          </Box>
           <Box
             sx={{
-              mb: 3,
-              display: "grid",
-              gap: 2,
+              borderBottom: 1,
+              borderColor: "divider",
+              mb: 2,
+              display: "flex",
               alignItems: "center",
-              gridTemplateColumns: { xs: "1fr", md: "1fr auto" },
+              justifyContent: "space-between",
             }}
           >
+            <Tabs
+              value={viewMode}
+              onChange={handleViewModeChange}
+              sx={{
+                minHeight: "3.5rem",
+                "& .MuiTab-root": { minHeight: "3.5rem" },
+              }}
+            >
+              <Tab
+                icon={<Timeline fontSize="small" />}
+                iconPosition="start"
+                label="Traces"
+                value="traces"
+              />
+              <Tab
+                icon={<ViewList fontSize="small" />}
+                iconPosition="start"
+                label="Episodes"
+                value="episodes"
+              />
+            </Tabs>
+            <Tooltip title="Refresh">
+              <IconButton onClick={handleRefresh}>
+                <Refresh />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          <Box sx={{ mb: 1 }}>
             <TextField
               fullWidth
               placeholder="Search ID..."
@@ -262,38 +273,29 @@ const Explorer: React.FC = () => {
                 },
               }}
             />
-            <Tooltip title={isExporting ? "Downloading..." : "Export current filters"}>
-              <span>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<FileDownloadOutlined />}
-                  onClick={handleExport}
-                  disabled={viewMode !== "traces" || isExporting}
-                  sx={{
-                    textTransform: "none",
-                    fontWeight: 600,
-                    py: 1.2,
-                    px: 2.5,
-                    minWidth: 170,
-                    boxShadow: "none",
-                    bgcolor: "primary.light",
-                    color: "primary.contrastText",
-                    "&:hover": { bgcolor: "primary.main", boxShadow: "none" },
-                  }}
-                >
-                  Export JSONL
-                </Button>
-              </span>
-            </Tooltip>
+          </Box>
+
+          <Box sx={{ mb: 1.5 }}>
+            <Button
+              variant="contained"
+              startIcon={<FileDownloadOutlined />}
+              onClick={handleExport}
+              disabled={viewMode !== "traces" || isExporting}
+            >
+              Export JSONL
+            </Button>
           </Box>
 
           <FiltersPanel
             mode={viewMode}
             traceFilters={traceFilters}
             episodeFilters={episodeFilters}
-            onTraceFiltersChange={(filters) => updateParams({ ...traceFiltersToParams(filters), type: "traces" })}
-            onEpisodeFiltersChange={(filters) => updateParams({ ...episodeFiltersToParams(filters), type: "episodes" })}
+            onTraceFiltersChange={(filters) =>
+              updateParams({ ...traceFiltersToParams(filters), type: "traces" })
+            }
+            onEpisodeFiltersChange={(filters) =>
+              updateParams({ ...episodeFiltersToParams(filters), type: "episodes" })
+            }
           />
 
           <Box sx={{ flexGrow: 1, overflow: "auto", minHeight: 0 }}>

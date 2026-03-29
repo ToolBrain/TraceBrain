@@ -216,6 +216,9 @@ class LibrarianAgent:
 
                 "User: \"List tool execution spans for a specific trace\"\n"
                 f"SQL: SELECT span_id, name FROM spans WHERE trace_id = 'trace_123' AND json_extract(attributes, '$.\"{span_type}\"') = 'tool_execution';\n"
+
+                "User: \"What was the AI confidence for traces with hallucination errors?\"\n"
+                f"SQL: SELECT id, CAST(json_extract(attributes, '$.\"{ai_eval_key}\".\"{ai_conf}\"') AS REAL) AS confidence FROM traces WHERE json_extract(attributes, '$.\"{ai_eval_key}\".\"{ai_error_type}\"') = 'hallucination';\n\n"
             )
         else:
             json_examples = (
@@ -234,6 +237,9 @@ class LibrarianAgent:
 
                 "User: \"List tool execution spans for a specific trace\"\n"
                 f"SQL: SELECT span_id, name FROM spans WHERE trace_id = 'trace_123' AND spans.attributes->>'{span_type}' = 'tool_execution';\n"
+
+                "User: \"What was the AI confidence for traces with hallucination errors?\"\n"
+                f"SQL: SELECT id, (attributes->'{ai_eval_key}'->>'{ai_conf}')::float AS confidence FROM traces WHERE attributes->'{ai_eval_key}'->>'{ai_error_type}' = 'hallucination';\n\n"
             )
 
         return (

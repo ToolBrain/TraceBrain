@@ -8,6 +8,7 @@
       "confidence": 0.98,
       "status": "auto_verified",
       "error_type": "none",
+      "priority": 3,
       "feedback": "Recovered from failed search and returned correct answer."
     }
   },
@@ -20,6 +21,7 @@
       "end_time": "2025-11-21T11:00:02.000Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Who was the lead architect of the Eiffel Tower?\"}]",
         "tracebrain.llm.completion": "Thought: The user is asking a specific factual question. I will use the web_search tool with a very specific query.\n{\"tool_call\": {\"name\": \"web_search\", \"arguments\": {\"query\": \"lead architect of Eiffel Tower Gustave Eiffel's company\"}}}",
         "tracebrain.llm.thought": "The user is asking a specific factual question. I will use the web_search tool with a very specific query.",
@@ -52,6 +54,7 @@
       "end_time": "2025-11-21T11:00:04.500Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"web_search\", \"arguments\": {\"query\": \"lead architect of Eiffel Tower Gustave Eiffel's company\"}, \"id\": \"call_err123\"}]}, {\"role\": \"tool\", \"content\": \"No results found.\", \"tool_call_id\": \"call_err123\"}]",
         "tracebrain.llm.completion": "Thought: The previous search was too specific and failed. I should broaden my query to find the lead architect.\n{\"tool_call\": {\"name\": \"web_search\", \"arguments\": {\"query\": \"Eiffel Tower lead architect\"}}}",
         "tracebrain.llm.thought": "The previous search was too specific and failed. I should broaden my query to find the lead architect.",
@@ -84,6 +87,7 @@
       "end_time": "2025-11-21T11:00:06.500Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"assistant\", \"content\": null, \"tool_calls\": [{\"name\": \"web_search\", \"arguments\": {\"query\": \"Eiffel Tower lead architect\"}, \"id\": \"call_succ456\"}]}, {\"role\": \"tool\", \"content\": \"Stephen Sauvestre was the principal architect of the Eiffel Tower.\", \"tool_call_id\": \"call_succ456\"}]",
         "tracebrain.llm.completion": "The principal architect of the Eiffel Tower was Stephen Sauvestre.",
         "tracebrain.llm.final_answer": "The principal architect of the Eiffel Tower was Stephen Sauvestre.",

@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Typography, Skeleton, IconButton, Tooltip } from "@mui/material";
-import { DeleteOutline, TaskAlt } from "@mui/icons-material";
+import { Assignment, DeleteOutline, TaskAlt } from "@mui/icons-material";
 import StatusChip from "../shared/StatusChip";
 import type { CurriculumTask } from "./types";
 
@@ -86,10 +86,8 @@ const CurriculumList: React.FC<CurriculumListProps> = ({
           p: 4,
         }}
       >
-        <Typography variant="h6" color="text.secondary">
-          No tasks yet
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Assignment sx={{ fontSize: 40, color: "text.disabled" }} />
+        <Typography variant="body2" color="text.disabled">
           Generate sample tasks to get started
         </Typography>
       </Box>
@@ -201,7 +199,7 @@ const CurriculumList: React.FC<CurriculumListProps> = ({
             >
               Description
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-wrap"}}>
               {task.task_description}
             </Typography>
           </Box>
@@ -229,7 +227,7 @@ const CurriculumList: React.FC<CurriculumListProps> = ({
             >
               Reasoning
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-wrap"}}>
               {task.reasoning}
             </Typography>
           </Box>

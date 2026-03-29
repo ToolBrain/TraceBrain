@@ -1,17 +1,33 @@
-import React from "react";
-import { Box, Typography, IconButton, Button, useTheme } from "@mui/material";
+import React, { useState } from "react";
+import {
+  Box,
+  Typography,
+  IconButton,
+  Button,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Snackbar,
+  Alert,
+  useTheme,
+} from "@mui/material";
 import {
   ChevronRight,
   ExpandMore,
   ErrorOutline,
   CheckCircleOutline,
-  OpenInNew,
+  DeleteOutline,
+  Polyline,
 } from "@mui/icons-material";
 import type { Span, Trace } from "../../types/trace";
-import { spanGetDuration, spanHasError } from "../utils/spanUtils";
+import { spanGetDuration, spanHasError, spanGetType, spanGetModel } from "../utils/spanUtils";
 import { formatDuration } from "../utils/utils";
 import { traceGetEpisodeId } from "../utils/traceUtils";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { deleteEpisode, deleteTrace } from "../utils/api";
 
 interface SelectedSpan {
   traceId: string;
@@ -26,8 +42,249 @@ interface TraceTreeProps {
   onSelectSpan: (span: SelectedSpan) => void;
 }
 
+interface SpanNodeProps {
+  span: Span;
+  traceId: string;
+  depth: number;
+  isLast?: boolean;
+  spansByParent: Map<string | null, Span[]>;
+  ancestorLines: number[];
+  expandedNodes: Set<string>;
+  selectedSpan: SelectedSpan | null;
+  onToggleExpand: (traceId: string, spanId: string) => void;
+  onSelectSpan: (span: SelectedSpan) => void;
+}
+
 const lineWidth = "0.075rem";
 const branchWidth = "0.75rem";
+const rowPx = "0.5rem";
+const DEPTH_CAP = 4;
+
+const SpanNode: React.FC<SpanNodeProps> = ({
+  span,
+  traceId,
+  depth,
+  isLast,
+  spansByParent,
+  ancestorLines,
+  expandedNodes,
+  selectedSpan,
+  onToggleExpand,
+  onSelectSpan,
+}) => {
+  const theme = useTheme();
+  const connectorColor = theme.palette.grey[600];
+  const children = spansByParent.get(span.span_id) || [];
+  const isExpanded = expandedNodes.has(`${traceId}:${span.span_id}`);
+  const isSelected = selectedSpan?.traceId === traceId && selectedSpan?.spanId === span.span_id;
+  const hasError = spanHasError(span);
+  const spanType = spanGetType(span);
+  const model = spanGetModel(span);
+
+  const childAncestorLines = isLast ? ancestorLines : [...ancestorLines, depth];
+  const visualDepth = Math.min(depth, DEPTH_CAP);
+  const overCap = depth > DEPTH_CAP;
+
+  const spanTypeLabel = spanType === "llm_inference" ? "LLM" : spanType === "tool_execution" ? "TOOL" : null;
+  const spanTypeBg = spanType === "llm_inference"
+    ? theme.palette.mode === "dark" ? "rgba(99,102,241,0.15)" : "rgba(99,102,241,0.08)"
+    : theme.palette.mode === "dark" ? "rgba(20,184,166,0.15)" : "rgba(20,184,166,0.08)";
+  const spanTypeColor = spanType === "llm_inference" ? "#6366f1" : "#14b8a6";
+
+  const lineLeft = (d: number) =>
+    `calc(${rowPx} + ${Math.min(d, DEPTH_CAP) * 1.5}rem - ${branchWidth})`;
+
+  return (
+    <>
+      <Box
+        onClick={() => onSelectSpan({ traceId, spanId: span.span_id })}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          py: 1,
+          px: 1,
+          position: "relative",
+          cursor: "pointer",
+          bgcolor: isSelected ? "action.hover" : "transparent",
+          borderLeft: "0.125rem solid",
+          borderLeftColor: isSelected ? "primary.main" : "transparent",
+          "&:hover": { bgcolor: isSelected ? "primary.50" : "action.hover" },
+        }}
+      >
+        {depth > 0 && (
+          <>
+            {!isLast && (
+              // Not last child line keeps going
+              <Box
+                sx={{
+                  position: "absolute",
+                  left: lineLeft(depth),
+                  top: 0,
+                  bottom: 0,
+                  width: lineWidth,
+                  bgcolor: connectorColor,
+                  pointerEvents: "none",
+                }}
+              />
+            )}
+            {/* Curve into node */}
+            <Box
+              sx={{
+                position: "absolute",
+                left: lineLeft(depth),
+                top: isLast ? 0 : "calc(50% - 0.5rem)",
+                height: isLast ? "50%" : "0.5rem",
+                width: branchWidth,
+                ...(isLast && { borderLeft: `${lineWidth} solid` }),
+                borderBottom: `${lineWidth} solid`,
+                borderColor: connectorColor,
+                borderBottomLeftRadius: "0.5rem",
+                pointerEvents: "none",
+              }}
+            />
+          </>
+        )}
+
+        {/* Ancestor continuation lines */}
+        {ancestorLines.map((ancestorDepth) => (
+          <Box
+            key={ancestorDepth}
+            sx={{
+              position: "absolute",
+              left: lineLeft(ancestorDepth),
+              top: 0,
+              bottom: 0,
+              width: lineWidth,
+              bgcolor: connectorColor,
+              pointerEvents: "none",
+            }}
+          />
+        ))}
+
+        <Box sx={{ width: `${visualDepth * 1.5}rem` }} />
+
+        {children.length > 0 ? (
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleExpand(traceId, span.span_id);
+            }}
+            sx={{ mr: 0.25, p: 0 }}
+          >
+            {isExpanded ? <ExpandMore fontSize="medium" /> : <ChevronRight fontSize="medium" />}
+          </IconButton>
+        ) : (
+          <Box sx={{ mr: 0.25, width: "1.5rem", flexShrink: 0 }} />
+        )}
+
+        {hasError ? (
+          <ErrorOutline fontSize="small" color="error" />
+        ) : (
+          <CheckCircleOutline fontSize="small" color="success" />
+        )}
+
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            ml: 1,
+            flex: 1,
+            overflow: "hidden",
+            gap: 0.75,
+          }}
+        >
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              color: isSelected ? "text.primary" : "text.secondary",
+              fontSize: "0.75rem",
+            }}
+          >
+            {span.name}
+          </Typography>
+
+          {spanTypeLabel && (
+            <Typography
+              variant="caption"
+              sx={{
+                px: 0.75,
+                py: 0.1,
+                mr: 0.5,
+                borderRadius: 0.75,
+                bgcolor: spanTypeBg,
+                color: spanTypeColor,
+                fontFamily: "monospace",
+                fontSize: "0.625rem",
+                fontWeight: 600,
+              }}
+            >
+              {spanTypeLabel}
+            </Typography>
+          )}
+
+          {spanType === "llm_inference" && model && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.disabled",
+                fontFamily: "monospace",
+                fontSize: "0.625rem",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {model}
+            </Typography>
+          )}
+
+          {overCap && (
+            <Typography
+              variant="caption"
+              sx={{
+                px: 0.75,
+                mr: 0.5,
+                borderRadius: 2,
+                bgcolor: "action.selected",
+                color: "text.disabled",
+                fontFamily: "monospace",
+                fontSize: "0.625rem",
+              }}
+            >
+              +{depth - DEPTH_CAP}
+            </Typography>
+          )}
+        </Box>
+
+        <Typography variant="caption" color="text.secondary" fontFamily="monospace">
+          {formatDuration(parseFloat(spanGetDuration(span)))}
+        </Typography>
+      </Box>
+
+      {isExpanded &&
+        children.map((child, idx) => (
+          <SpanNode
+            key={child.span_id}
+            span={child}
+            traceId={traceId}
+            depth={depth + 1}
+            isLast={idx === children.length - 1}
+            spansByParent={spansByParent}
+            ancestorLines={childAncestorLines}
+            expandedNodes={expandedNodes}
+            selectedSpan={selectedSpan}
+            onToggleExpand={onToggleExpand}
+            onSelectSpan={onSelectSpan}
+          />
+        ))}
+    </>
+  );
+};
 
 const TraceTree: React.FC<TraceTreeProps> = ({
   traces,
@@ -37,126 +294,31 @@ const TraceTree: React.FC<TraceTreeProps> = ({
   onSelectSpan,
 }) => {
   const [searchParams] = useSearchParams();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
   const isEpisode = searchParams.get("type") === "episode";
   const episodeId = traceGetEpisodeId(traces[0]);
   const nav = useNavigate();
+  const { id } = useParams<{ id: string }>() as { id: string };
 
-  const SpanRow = ({
-    span,
-    traceId,
-    depth,
-    isLast,
-    spansByParent,
-  }: {
-    span: Span;
-    traceId: string;
-    depth: number;
-    isLast?: boolean;
-    spansByParent: Map<string | null, Span[]>;
-  }) => {
-    const children = spansByParent.get(span.span_id) || [];
-    const isExpanded = expandedNodes.has(`${traceId}:${span.span_id}`);
-    const isSelected = selectedSpan?.traceId === traceId && selectedSpan?.spanId === span.span_id;
-    const hasError = spanHasError(span);
-    const theme = useTheme();
-    const connectorColor = theme.palette.grey[600];
+  const deleteLabel = isEpisode ? "Delete Episode" : "Delete Trace";
+  const deleteBody = isEpisode
+    ? <>This episode and all its traces will be <Box component="span" sx={{ fontWeight: "bold" }}>permanently deleted and cannot be recovered.</Box></>
+    : <>This trace will be <Box component="span" sx={{ fontWeight: "bold" }}>permanently deleted and cannot be recovered.</Box></>;
 
-    return (
-      <>
-        <Box
-          onClick={() => onSelectSpan({ traceId, spanId: span.span_id })}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            py: 1,
-            px: 1.5,
-            position: "relative",
-            cursor: "pointer",
-            bgcolor: isSelected ? "primary.50" : "transparent",
-            borderLeft: "0.125rem solid",
-            borderLeftColor: isSelected ? "primary.main" : "transparent",
-            "&:hover": { bgcolor: isSelected ? "primary.50" : "action.hover" },
-          }}
-        >
-          {depth > 0 && (
-            <>
-              {!isLast && (
-                // Not last child line keeps going
-                <Box
-                  sx={{
-                    position: "absolute",
-                    left: `${depth * 1.5}rem`,
-                    top: 0,
-                    bottom: 0,
-                    width: lineWidth,
-                    bgcolor: connectorColor,
-                    pointerEvents: "none",
-                  }}
-                />
-              )}
-              {/* Curve into node */}
-              <Box
-                sx={{
-                  position: "absolute",
-                  left: `${depth * 1.5}rem`,
-                  top: isLast ? 0 : "calc(50% - 0.5rem)",
-                  height: isLast ? "50%" : "0.5rem",
-                  width: branchWidth,
-                  ...(isLast && { borderLeft: `${lineWidth} solid` }),
-                  borderBottom: `${lineWidth} solid`,
-                  borderColor: connectorColor,
-                  borderBottomLeftRadius: "0.5rem",
-                  pointerEvents: "none",
-                }}
-              />
-            </>
-          )}
-
-          <Box sx={{ width: `${depth * 1.5}rem` }} />
-
-          {children.length > 0 ? (
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleExpand(traceId, span.span_id);
-              }}
-              sx={{ mr: 1, p: 0 }}
-            >
-              {isExpanded ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />}
-            </IconButton>
-          ) : (
-            <Box sx={{ width: "1.25rem", mr: 1 }} />
-          )}
-
-          {hasError ? (
-            <ErrorOutline fontSize="small" color="error" />
-          ) : (
-            <CheckCircleOutline fontSize="small" color="success" />
-          )}
-
-          <Typography variant="body2" sx={{ fontWeight: 500, ml: 1, flex: 1 }}>
-            {span.name}
-          </Typography>
-
-          <Typography variant="caption" color="text.secondary">
-            {formatDuration(parseFloat(spanGetDuration(span)))}
-          </Typography>
-        </Box>
-
-        {isExpanded &&
-          children.map((child, idx) => (
-            <SpanRow
-              key={child.span_id}
-              span={child}
-              traceId={traceId}
-              depth={depth + 1}
-              isLast={idx === children.length - 1}
-              spansByParent={spansByParent}
-            />
-          ))}
-      </>
-    );
+  const handleDelete = async () => {
+    try {
+      isEpisode ? await deleteEpisode(id) : await deleteTrace(id);
+      setConfirmOpen(false);
+      nav("/dashboard");
+    } catch {
+      setConfirmOpen(false);
+      setSnackbar({ open: true, message: `Failed to delete ${isEpisode ? "episode" : "trace"}`, severity: "error" });
+    }
   };
 
   return (
@@ -172,8 +334,9 @@ const TraceTree: React.FC<TraceTreeProps> = ({
     >
       <Box
         sx={{
-          py: 1,
-          px: 2,
+          py: 0.75,
+          pl: 2,
+          pr: 1,
           borderBottom: 1,
           borderColor: "divider",
           bgcolor: "background.default",
@@ -182,19 +345,52 @@ const TraceTree: React.FC<TraceTreeProps> = ({
           alignItems: "center",
         }}
       >
-        <Typography variant="h5">Trace Details</Typography>
-        {!isEpisode && (
-          <Button
-            variant="text"
-            size="small"
-            endIcon={<OpenInNew style={{ fontSize: 16 }} />}
-            sx={{ color: "text.secondary", fontSize: "0.75rem", "& .MuiButton-endIcon": { ml: 0.5 } }}
-            onClick={() => nav(`/trace/${episodeId}?type=episode`)}
-          >
-            View Episode
-          </Button>
-        )}
+        <Typography variant="h6">Trace Details</Typography>
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          {!isEpisode && (
+            <Tooltip title="View Episode">
+              <IconButton
+                onClick={() => nav(`/trace/${episodeId}?type=episode`)}
+                sx={{ color: "text.secondary" }}
+              >
+                <Polyline fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title={deleteLabel}>
+            <IconButton
+              onClick={() => setConfirmOpen(true)}
+              sx={{ color: "text.secondary", "&:hover": { color: "error.main" } }}
+            >
+              <DeleteOutline fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
+
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <DialogTitle>{deleteLabel}?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{deleteBody}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
+          <Button onClick={handleDelete} color="error" variant="contained" disableElevation>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
 
       <Box sx={{ flex: 1, overflowY: "auto" }}>
         {traces.map((t) => {
@@ -210,13 +406,18 @@ const TraceTree: React.FC<TraceTreeProps> = ({
               {spansByParent
                 .get(null)
                 ?.map((span, idx, arr) => (
-                  <SpanRow
+                  <SpanNode
                     key={span.span_id}
                     span={span}
                     traceId={t.trace_id}
                     depth={0}
                     isLast={idx === arr.length - 1}
                     spansByParent={spansByParent}
+                    ancestorLines={[]}
+                    expandedNodes={expandedNodes}
+                    selectedSpan={selectedSpan}
+                    onToggleExpand={onToggleExpand}
+                    onSelectSpan={onSelectSpan}
                   />
                 ))}
             </React.Fragment>

@@ -3,6 +3,8 @@ import { Stack, Box, Typography, IconButton } from "@mui/material";
 import { AutoAwesome, Close } from "@mui/icons-material";
 import type { Suggestion } from "./engine/chatEngine";
 
+const MAX_SUGGESTIONS = 2;
+
 interface ChatSuggestionsProps {
   suggestions: Suggestion[];
   onSuggestionClick: (value: string) => void;
@@ -41,7 +43,7 @@ export const ChatSuggestions: React.FC<ChatSuggestionsProps> = ({
         </IconButton>
       </Stack>
       <Stack spacing={0.5}>
-        {suggestions.map((suggestion, index) => (
+        {suggestions.slice(0, MAX_SUGGESTIONS).map((suggestion, index) => (
           <Box
             key={index}
             onClick={() => onSuggestionClick(suggestion.value)}

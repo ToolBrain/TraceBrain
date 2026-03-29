@@ -51,8 +51,6 @@ const MODEL_PRESETS = {
   huggingface: [],
 } as const;
 
-type FilterType = "automatic" | "manual";
-
 const AdvancedSection: React.FC = () => {
   const { settings, updateSettings } = useSettings();
 
@@ -163,6 +161,32 @@ const AdvancedSection: React.FC = () => {
             }
             tooltip="Automatically evaluate incoming traces."
           />
+
+          <Stack spacing={0.5}>
+            <Typography variant="subtitle2">Batch Size</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Number of traces to evaluate at once.
+            </Typography>
+            <Slider
+              value={settings.llm.batchSize ?? 5}
+              onChange={(_, value) =>
+                updateSettings((draft) => {
+                  draft.llm.batchSize = value as number;
+                })
+              }
+              min={5}
+              max={25}
+              step={1}
+              marks={[
+                { value: 5, label: "5" },
+                { value: 10, label: "10" },
+                { value: 15, label: "15" },
+                { value: 20, label: "20" },
+                { value: 25, label: "25" },
+              ]}
+              valueLabelDisplay="auto"
+            />
+          </Stack>
         </Stack>
       </Stack>
 
@@ -294,62 +318,6 @@ const AdvancedSection: React.FC = () => {
           helperText="Stored securely in local database. Leave unchanged to keep current key."
           InputProps={{ endAdornment: keyAdornment(settings.curatorLLM.provider) }}
         />
-      </Stack>
-
-      {/* Filters */}
-      <Stack>
-        <Stack>
-          <Typography variant="h6">Trace Filtering</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Flag traces based on configurable criteria.
-          </Typography>
-        </Stack>
-
-        <Toggle
-          label="Automatic Trace Filtering"
-          checked={activeFilter === "automatic"}
-          onChange={handleFilterToggle("automatic")}
-          tooltip="Filter traces automatically using adaptive metrics."
-        />
-
-        <Toggle
-          label="Manual Trace Filtering"
-          checked={activeFilter === "manual"}
-          onChange={handleFilterToggle("manual")}
-          tooltip="Define your own filtering criteria using the fields below."
-        />
-
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="subtitle1" gutterBottom>
-              Manual Trace Filters
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Traces exceeding these thresholds will be flagged.
-            </Typography>
-
-            <TextField
-              type="number"
-              label="Maximum Spans"
-              value={minSpans}
-              onChange={(e) => setMinSpans(Number(e.target.value))}
-              fullWidth
-              slotProps={{ htmlInput: { min: 0 } }}
-              disabled={activeFilter !== "manual"}
-              sx={{ mb: 2 }}
-            />
-
-            <TextField
-              type="number"
-              label="Maximum Duration (ms)"
-              value={maxDuration}
-              onChange={(e) => setMaxDuration(Number(e.target.value))}
-              fullWidth
-              slotProps={{ htmlInput: { min: 0 } }}
-              disabled={activeFilter !== "manual"}
-            />
-          </CardContent>
-        </Card>
       </Stack>
     </Stack>
   );

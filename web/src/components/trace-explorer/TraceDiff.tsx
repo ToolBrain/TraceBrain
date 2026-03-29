@@ -2,7 +2,6 @@ import React from "react";
 import { Box, Chip, Typography } from "@mui/material";
 import { ArrowForward, DifferenceOutlined } from "@mui/icons-material";
 import type { Trace } from "../../types/trace";
-import { traceGetStatus } from "../utils/traceUtils";
 import TraceDiffContent from "./TraceDiffContent";
 
 interface TraceDiffProps {
@@ -47,7 +46,6 @@ const TraceDiff: React.FC<TraceDiffProps> = ({ traces, selectedTraceIds, onSelec
         }}
       >
         {traces.map((trace, idx) => {
-          const status = traceGetStatus(trace);
           const isActive = selectedTraceIds.includes(trace.trace_id);
           return (
             <React.Fragment key={trace.trace_id}>
@@ -62,20 +60,6 @@ const TraceDiff: React.FC<TraceDiffProps> = ({ traces, selectedTraceIds, onSelec
                       fontFamily: "monospace",
                     }}
                   >
-                    <Box
-                      sx={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 1,
-                        flexShrink: 0,
-                        bgcolor:
-                          status === "completed"
-                            ? "success.main"
-                            : status === "failed"
-                              ? "error.main"
-                              : "text.disabled",
-                      }}
-                    />
                     {`Trace ${idx + 1}`}
                   </Box>
                 }
@@ -83,7 +67,7 @@ const TraceDiff: React.FC<TraceDiffProps> = ({ traces, selectedTraceIds, onSelec
                 sx={{
                   borderColor: "transparent",
                   outline: "2px solid",
-                  outlineColor: isActive ? "primary.main" : "divider",
+                  outlineColor: isActive ? "text.secondary" : "divider",
                   borderRadius: 2,
                   "&:hover": { bgcolor: "action.hover" },
                 }}

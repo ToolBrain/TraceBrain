@@ -8,6 +8,7 @@
       "confidence": 0.85,
       "status": "pending_review",
       "error_type": "context_overflow",
+      "priority": 3,
       "feedback": "The trace was truncated due to context window limits. The agent could not finish the final synthesis."
     }
   },
@@ -20,6 +21,7 @@
       "end_time": "2025-11-27T09:55:01.500Z",
       "attributes": {
         "tracebrain.span.type": "llm_inference",
+        "tracebrain.llm.model": "gemini-2.5-flash",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Summarize everything we discussed.\"}]",
         "tracebrain.llm.completion": "Based on the extensive logs and the 500-page document provided earlier, the key findings are: 1. Financial growth was...",
         "tracebrain.usage": {

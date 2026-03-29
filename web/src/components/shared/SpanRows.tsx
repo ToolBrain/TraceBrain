@@ -1,19 +1,9 @@
 import React from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-  Typography,
-} from "@mui/material";
+import { Table, TableBody, TableCell, TableRow, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import type { Span } from "../../types/trace";
-import { formatDateTime } from "../utils/utils";
-import {
-  spanGetDuration,
-  spanGetOutput,
-  spanHasError,
-} from "../utils/spanUtils";
+import { formatDateTime, formatDuration } from "../utils/utils";
+import { spanGetDuration, spanGetOutput, spanGetToolCode, spanHasError } from "../utils/spanUtils";
 import StatusChip from "./StatusChip";
 
 interface SpanRowsProps {
@@ -44,15 +34,13 @@ const SpanRows: React.FC<SpanRowsProps> = ({ spans, traceId }) => {
       <TableBody>
         {spans.map((span) => {
           const spanDuration = spanGetDuration(span);
-          const spanStatus: "success" | "error" = spanHasError(span)
-            ? "error"
-            : "success";
+          const spanStatus: "success" | "error" = spanHasError(span) ? "error" : "success";
           return (
             <TableRow
               key={span.span_id}
               hover
               onClick={(e) => handleSpanClick(span.span_id, e)}
-              sx={{ cursor: "pointer", "& > td": { py: 1.5, px: 1.75 } }}
+              sx={{ cursor: "pointer", "& > td": { px: 1.75, py: 1.5 } }}
             >
               <TableCell />
               <TableCell sx={{ fontFamily: "monospace" }}>
@@ -68,7 +56,15 @@ const SpanRows: React.FC<SpanRowsProps> = ({ spans, traceId }) => {
                 </Typography>
               </TableCell>
               <TableCell>
-                <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: "0.875rem",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {span.name}
                 </Typography>
                 <Typography
@@ -81,7 +77,7 @@ const SpanRows: React.FC<SpanRowsProps> = ({ spans, traceId }) => {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {spanGetOutput(span)}
+                  {(spanGetOutput(span) || spanGetToolCode(span)) ?? "\u00A0"}
                 </Typography>
               </TableCell>
               <TableCell>
@@ -96,7 +92,7 @@ const SpanRows: React.FC<SpanRowsProps> = ({ spans, traceId }) => {
                     fontSize: "0.75rem",
                   }}
                 >
-                  {spanDuration}s
+                  {formatDuration(parseFloat(spanDuration))}
                 </Typography>
               </TableCell>
               <TableCell sx={{ fontFamily: "monospace" }}>
