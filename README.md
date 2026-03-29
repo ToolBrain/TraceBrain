@@ -4,12 +4,17 @@
     <picture>
         <source media="(prefers-color-scheme: dark)" srcset="images/banner-dark.png">
         <source media="(prefers-color-scheme: light)" srcset="images/banner-light.png">
-        <img alt="TraceBrain Banner" src="images/banner-light.png" width="100%">
+        <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/banner-light.png" alt="TraceBrain Banner" width="100%">
     </picture>
 </p>
 
 <p align="center">
-    <img src="https://img.shields.io/badge/Release-v1.0.0-blue" alt="Release">
+    <a href="https://pypi.org/project/tracebrain/">
+        <img src="https://img.shields.io/pypi/v/tracebrain" alt="PyPI Version">
+    </a>
+    <a href="https://pypistats.org/packages/tracebrain">
+        <img src="https://img.shields.io/badge/dynamic/json?url=https://pypistats.org/api/packages/tracebrain/recent&query=data.last_month&label=downloads/month" alt="Monthly Downloads">
+    </a>
     <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
 </p>
 
@@ -38,7 +43,7 @@ By organizing historical traces as structured artifacts, TraceBrain supports age
 
 ## 🏗️ Architecture
 
-![System Architecture](images/system_architecture.jpg)
+![System Architecture](https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/system_architecture.jpg)
 
 - **Your AI Agent:** Any agent framework. Uses the TraceClient SDK to send data.
 - **TraceStore API:** The central FastAPI server. Ingests, stores, and serves trace data.
@@ -60,7 +65,7 @@ Take a look at the TraceBrain Command Center in action:
 <p align="center">
   <b>🌐 Welcome to the Command Center</b><br>
   <i>The central hub for agentic trace management, featuring a clean, intuitive, and modern interface.</i><br>
-  <img src="images/homepage.jpg" alt="TraceBrain Homepage" width="100%">
+  <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/homepage.jpg" alt="TraceBrain Homepage" width="100%">
 </p>
 
 <table>
@@ -68,24 +73,24 @@ Take a look at the TraceBrain Command Center in action:
     <td width="50%">
       <b>📊 Command Center Dashboard</b><br>
       <i>Real-time error distribution, confidence metrics, and active filters.</i><br>
-    <img src="images/dashboard_analytics.jpg" alt="Dashboard" style="width:100%; height:auto; border-radius:12px;">
+      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/dashboard_analytics.jpg" alt="Dashboard" style="width:100%; height:auto; border-radius:12px;">
     </td>
     <td width="50%">
       <b>🔍 Trace Explorer & AI Judge</b><br>
       <i>Side-by-side view of the execution tree, span properties, and Human-AI collaborative labeling.</i><br>
-    <img src="images/trace_explorer.jpg" alt="Trace Explorer" style="width:100%; height:auto; border-radius:12px;">
+      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/trace_explorer.jpg" alt="Trace Explorer" style="width:100%; height:auto; border-radius:12px;">
     </td>
   </tr>
   <tr>
     <td width="50%">
       <b>🤖 AI Librarian</b><br>
       <i>Query your trace database using natural language and intent-based UI filters.</i><br>
-    <img src="images/ai_librarian.jpg" alt="AI Librarian" style="width:100%; height:auto; border-radius:12px;">
+      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/ai_librarian.jpg" alt="AI Librarian" style="width:100%; height:auto; border-radius:12px;">
     </td>
     <td width="50%">
       <b>🗺️ Automated Curriculum</b><br>
       <i>Transform diagnosed failures into targeted training tasks ready for export.</i><br>
-    <img src="images/training_roadmap.jpg" alt="Training Roadmap" style="width:100%; height:auto; border-radius:12px;">
+      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/training_roadmap.jpg" alt="Training Roadmap" style="width:100%; height:auto; border-radius:12px;">
     </td>
   </tr>
 </table>
@@ -677,9 +682,9 @@ rating = func.jsonb_extract_path_text(cast(Trace.feedback, JSONB), "rating")
 - **[Building Your Own Trace Converter](docs/Converter.md)** - Complete guide for integrating custom agent frameworks
 - **[LLM Provider Guide](docs/LLMProviders.md)** - Use TraceBrain LLM providers and attach usage metadata
 - **[Trace Reconstruction Guide](docs/Reconstructor.md)** - Rebuild full context from delta traces for training
-- **[Sample OTLP Traces](data/TraceBrain%20OTLP%20Trace%20Samples)** - Example trace files
+- **[Sample OTLP Traces](src/tracebrain/resources/samples)** - Example trace files
 - **[API Documentation](http://localhost:8000/docs)** - Interactive OpenAPI docs (when server is running)
-- **[Docker Setup Guide](docker/README.md)** - Docker-specific instructions
+- **[Docker Setup Guide](src/tracebrain/resources/docker/README.md)** - Docker-specific instructions
 
 ## 🤝 Contributing
 
