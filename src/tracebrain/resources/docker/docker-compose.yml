@@ -5,7 +5,7 @@ services:
     container_name: tracebrain-postgres
     restart: unless-stopped
     env_file:
-      - ../../../../.env
+      - .env
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-tracebrain}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tracebrain_2026_secure}
@@ -27,13 +27,11 @@ services:
 
   # TraceBrain API
   tracebrain-api:
-    build:
-      context: ../../../../
-      dockerfile: src/tracebrain/resources/docker/Dockerfile
+    image: quyk67uet/tracebrain:latest
     container_name: tracebrain-api
     restart: unless-stopped
     env_file:
-      - ../../../../.env
+      - .env
     environment:
       # Database Configuration
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
@@ -43,8 +41,6 @@ services:
       PORT: 8000
       LOG_LEVEL: info
 
-      # Optional:
-      # LLM_API_KEY: your_llm_api_key_here
     ports:
       - "8000:8000"
     depends_on:
@@ -59,20 +55,16 @@ services:
       retries: 3
       start_period: 40s
     volumes:
-      # Mount for development (optional - remove in production)
-      # - ../src:/app/src
       - api_logs:/app/logs
       - api_data:/app/data
 
-  # Seed sample data once (skips if DB already has traces)
+  # Seed sample data
   tracebrain-seed:
-    build:
-      context: ../../../../
-      dockerfile: src/tracebrain/resources/docker/Dockerfile
+    image: quyk67uet/tracebrain:latest
     container_name: tracebrain-seed
     restart: "no"
     env_file:
-      - ../../../../.env
+      - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
     depends_on:
