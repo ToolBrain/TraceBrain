@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Paper, Stack, Typography, TextField, IconButton, Fab, Divider } from "@mui/material";
-import { Send, Remove, DeleteOutline } from "@mui/icons-material";
+import { Send, Remove, DeleteOutline, ChatBubble } from "@mui/icons-material";
 import { useChat } from "../../contexts/ChatContext";
 import { ChatMessages } from "./ChatMessages";
 import { ChatSuggestions } from "./ChatSuggestions";
@@ -146,15 +146,7 @@ export const Librarian: React.FC = () => {
                       color="primary"
                       onClick={handleSend}
                       disabled={isLoading || !input.trim()}
-                      sx={{
-                        alignSelf: "flex-end",
-                        mb: 0.5,
-                        bgcolor: input.trim() && !isLoading ? "primary.main" : "transparent",
-                        color: input.trim() && !isLoading ? "primary.contrastText" : "text.disabled",
-                        "&:hover": {
-                          bgcolor: input.trim() && !isLoading ? "primary.dark" : "transparent",
-                        },
-                      }}
+                      sx={{ alignSelf: "flex-end", mb: 0.5 }}
                     >
                       <Send fontSize="small" />
                     </IconButton>
@@ -178,15 +170,12 @@ export const Librarian: React.FC = () => {
           onClick={() => setIsOpen(true)}
           sx={{
             position: "fixed",
-            bottom: { xs: 12, sm: 24 },
-            right: { xs: 12, sm: 24 },
+            bottom: 24,
+            right: 24,
             zIndex: 1200,
-            width: 60,
-            height: 60,
-            boxShadow: "0 12px 24px rgba(31, 111, 190, 0.35)",
           }}
         >
-          <LibrarianLogoAvatar size={32} />
+          <ChatBubble />
         </Fab>
       )}
     </>

@@ -54,20 +54,12 @@ const MODEL_PRESETS = {
 
 const AdvancedSection: React.FC = () => {
   const { settings, updateSettings } = useSettings();
-
-  const [activeFilter, setActiveFilter] = useState<FilterType | null>(null);
-  const [minSpans, setMinSpans] = useState<number | "">("");
-  const [maxDuration, setMaxDuration] = useState<number | "">("");
   const [showKeys, setShowKeys] = useState<Record<ProviderValue, boolean>>({
     openai: false,
     gemini: false,
     anthropic: false,
     huggingface: false,
   });
-
-  const handleFilterToggle = (filter: FilterType) => (checked: boolean) => {
-    setActiveFilter(checked ? filter : null);
-  };
 
   const toggleKeyVisibility = (provider: ProviderValue) => {
     setShowKeys((prev) => ({ ...prev, [provider]: !prev[provider] }));
@@ -149,7 +141,7 @@ const AdvancedSection: React.FC = () => {
             }
             autoComplete="off"
             helperText="Stored securely in local database. Leave unchanged to keep current key."
-            InputProps={{ endAdornment: keyAdornment(settings.llm.provider) }}
+            slotProps={{ input: keyAdornment(settings.llm.provider) }}
           />
 
           <Toggle
@@ -252,7 +244,7 @@ const AdvancedSection: React.FC = () => {
           }
           autoComplete="off"
           helperText="Stored securely in local database. Leave unchanged to keep current key."
-          InputProps={{ endAdornment: keyAdornment(settings.chatLLM.provider) }}
+          slotProps={{ input: { endAdornment: keyAdornment(settings.chatLLM.provider) } }}
         />
       </Stack>
 
@@ -294,7 +286,8 @@ const AdvancedSection: React.FC = () => {
           }
           onChange={(_, newValue) =>
             updateSettings((draft) => {
-              draft.curatorLLM.model = typeof newValue === "string" ? newValue : draft.curatorLLM.model;
+              draft.curatorLLM.model =
+                typeof newValue === "string" ? newValue : draft.curatorLLM.model;
             })
           }
           renderInput={(params) => (
@@ -317,7 +310,7 @@ const AdvancedSection: React.FC = () => {
           }
           autoComplete="off"
           helperText="Stored securely in local database. Leave unchanged to keep current key."
-          InputProps={{ endAdornment: keyAdornment(settings.curatorLLM.provider) }}
+          slotProps={{ input: { endAdornment: keyAdornment(settings.curatorLLM.provider) } }}
         />
       </Stack>
     </Stack>

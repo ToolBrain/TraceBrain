@@ -1,12 +1,13 @@
 import React from "react";
 import { Box, Typography } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { useSettings } from "../../contexts/SettingsContext";
 import lightOwl from "../../assets/light-owl.png";
 import darkOwl from "../../assets/dark-owl.png";
 
 const HomeTitle: React.FC = () => {
-  const theme = useTheme();
-  const mascotSrc = theme.palette.mode === "dark" ? darkOwl : lightOwl;
+  const { settings } = useSettings();
+  const isDark = settings.appearance.theme === "dark";
+  const mascotSrc = isDark ? darkOwl : lightOwl;
 
   return (
     <Box sx={{ textAlign: "center", position: "relative", userSelect: "none", width: "100%" }}>
@@ -25,7 +26,10 @@ const HomeTitle: React.FC = () => {
           sx={{
             width: { xs: 56, sm: 72, md: 84 },
             height: "auto",
-            filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.2))",
+            filter: (theme) =>
+              theme.palette.mode === "dark"
+                ? "drop-shadow(0 8px 16px rgba(255,255,255,0.08))"
+                : "drop-shadow(0 8px 16px rgba(0,0,0,0.2))",
           }}
         />
 

@@ -63,9 +63,7 @@ const DashboardHeader: React.FC = () => {
                   borderRadius: "50%",
                   display: "grid",
                   placeItems: "center",
-                  background: isDark
-                    ? "linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0.08))"
-                    : "linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75))",
+                  background: "linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75))",
                   border: "1px solid",
                   borderColor: isDark ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.65)",
                   boxShadow: isDark
