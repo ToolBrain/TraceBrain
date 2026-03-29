@@ -5,8 +5,6 @@ import {
   Slider,
   TextField,
   Typography,
-  Card,
-  CardContent,
   MenuItem,
   IconButton,
   InputAdornment,
