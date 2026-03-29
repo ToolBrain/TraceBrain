@@ -15,8 +15,7 @@ import re
 
 import sqlparse
 
-from tracebrain.config import settings
-from tracebrain.core.llm_providers import select_provider, is_provider_available, BaseProvider
+from tracebrain.core.llm_providers import get_llm_provider, BaseProvider
 from tracebrain.core.schema import TraceBrainAttributes
 from tracebrain.core.curator import CurriculumCurator
 from tracebrain.db.base import TraceStatus
@@ -116,26 +115,69 @@ def _build_tool_specs() -> List[Dict[str, Any]]:
     ]
 
 def _validate_filters(filters: dict) -> dict:
-    if not filters:
+    if not isinstance(filters, dict) or not filters:
         return {}
-    valid_keys = {"status", "min_rating", "error_type", "min_confidence", "max_confidence", "start_time", "end_time"}
-    if not all(key in valid_keys for key in filters):
-        return {}
+
+    valid_keys = {
+        "status",
+        "min_rating",
+        "error_type",
+        "min_confidence",
+        "max_confidence",
+        "start_time",
+        "end_time",
+    }
     valid_statuses = {s.value for s in TraceStatus}
-    if "status" in filters and filters["status"] not in valid_statuses:
-        return {}
-    if "error_type" in filters and filters["error_type"] not in CurriculumCurator.VALID_ERROR_TYPES:
-        return {}
-    if "min_rating" in filters and not (1 <= filters["min_rating"] <= 5):
-        return {}
-    if "min_confidence" in filters and not (0.0 <= filters["min_confidence"] <= 1.0):
-        return {}
-    if "max_confidence" in filters and not (0.0 <= filters["max_confidence"] <= 1.0):
-        return {}
-    return filters
+    valid_error_types = set(CurriculumCurator.VALID_ERROR_TYPES)
 
-LIBRARIAN_AVAILABLE = is_provider_available()
+    cleaned: Dict[str, Any] = {}
 
+    for raw_key, raw_value in filters.items():
+        if raw_key is None or raw_value is None:
+            continue
+        key = str(raw_key).strip()
+        if key not in valid_keys:
+            continue
+
+        if key in {"status", "error_type", "start_time", "end_time"}:
+            value = str(raw_value).strip()
+            if value:
+                cleaned[key] = value
+            continue
+
+        if key == "min_rating":
+            try:
+                cleaned[key] = int(raw_value)
+            except (TypeError, ValueError):
+                continue
+            continue
+
+        if key in {"min_confidence", "max_confidence"}:
+            try:
+                cleaned[key] = float(raw_value)
+            except (TypeError, ValueError):
+                continue
+
+    if not cleaned:
+        return {}
+    if "status" in cleaned and cleaned["status"] not in valid_statuses:
+        return {}
+    if "error_type" in cleaned and cleaned["error_type"] not in valid_error_types:
+        return {}
+    if "min_rating" in cleaned and not (1 <= cleaned["min_rating"] <= 5):
+        return {}
+    if "min_confidence" in cleaned and not (0.0 <= cleaned["min_confidence"] <= 1.0):
+        return {}
+    if "max_confidence" in cleaned and not (0.0 <= cleaned["max_confidence"] <= 1.0):
+        return {}
+    if (
+        "min_confidence" in cleaned
+        and "max_confidence" in cleaned
+        and cleaned["min_confidence"] > cleaned["max_confidence"]
+    ):
+        return {}
+
+    return cleaned
 
 class LibrarianAgent:
     """Text-to-SQL agent with conversational memory and self-correction."""
@@ -304,9 +346,11 @@ class LibrarianAgent:
                 raise
             return json.loads(match.group(0))
 
-    def _extract_sources(self, answer: str) -> Optional[List[str]]:
-        potential_ids = re.findall(r"[a-f0-9]{32}", answer)
-        return list(set(potential_ids)) if potential_ids else None
+    def _extract_sources(self, answer: str) -> List[str]:
+        if not isinstance(answer, str) or not answer:
+            return []
+        potential_ids = re.findall(r"[a-fA-F0-9]{32}", answer)
+        return list(dict.fromkeys(potential_ids))
 
     def run_sql_query(self, sql_query: str) -> str:
         """Executes a READ-ONLY SQL query on the TraceStore."""
@@ -389,20 +433,43 @@ class LibrarianAgent:
         return normalized
 
     def _normalize_sources(self, sources: Any, answer: str) -> List[str]:
-        if isinstance(sources, list):
-            cleaned = []
-            for item in sources:
-                value = str(item).strip()
+        normalized: List[str] = []
+
+        def _append_candidate(candidate: Any) -> None:
+            if candidate is None:
+                return
+            if isinstance(candidate, str):
+                value = candidate.strip()
                 if value:
-                    cleaned.append(value)
-            return list(dict.fromkeys(cleaned))
-        extracted = self._extract_sources(answer)
-        return extracted if extracted else []
+                    normalized.append(value)
+                return
+            if isinstance(candidate, dict):
+                value = candidate.get("trace_id") or candidate.get("id")
+                if value is not None:
+                    value_str = str(value).strip()
+                    if value_str:
+                        normalized.append(value_str)
+                return
+
+            value = str(candidate).strip()
+            if value:
+                normalized.append(value)
+
+        if isinstance(sources, (list, tuple, set)):
+            for item in sources:
+                _append_candidate(item)
+        elif sources is not None:
+            _append_candidate(sources)
+
+        if not normalized:
+            normalized = self._extract_sources(answer)
+        return list(dict.fromkeys(normalized))
     
     def _normalize_filters(self, filters: Any) -> Dict[str, Any]:
         if not isinstance(filters, dict) or not filters:
             return {}
-        return {str(k).strip(): v for k, v in filters.items() if k and v is not None}
+        compact = {str(k).strip(): v for k, v in filters.items() if k and v is not None}
+        return _validate_filters(compact)
 
     def _extract_sql(self, text: str) -> Optional[str]:
         if not text:
@@ -429,23 +496,23 @@ class LibrarianAgent:
         results = self.store.search_similar_experiences(query, min_rating=min_rating, limit=limit)
         return json.dumps(results, default=str)
 
-    def query(self, user_query: str, session_id: str, model_id: Optional[str] = None) -> Dict[str, Any]:
+    def query(self, user_query: str, session_id: str) -> Dict[str, Any]:
         """Process a natural language query using the configured provider.
         
         Args:
             user_query: Natural language question about traces
             session_id: Conversation session ID for context
-            model_id: Optional model override (e.g., 'gpt-4o', 'gemini-2.0-flash-exp')
         """
-        if not LIBRARIAN_AVAILABLE:
-            return {
-                "answer": "Librarian is not available. Check provider configuration and API keys.",
-                "suggestions": [],
-                "sources": [],
-            }
-
-        # Select provider with optional model override
-        provider = select_provider(model_override=model_id)
+        runtime_settings = self.store.get_settings()
+        provider_name = runtime_settings.get("librarian_provider")
+        model_id = runtime_settings.get("librarian_model")
+        provider_key_field = f"{str(provider_name or '').strip().lower()}_api_key"
+        provider_api_key = runtime_settings.get(provider_key_field)
+        provider = get_llm_provider(
+            provider_name=provider_name,
+            model_id=model_id,
+            api_key=provider_api_key,
+        )
 
         history = self.store.get_chat_history(session_id)
         history_text = self._format_history(history)
@@ -463,7 +530,11 @@ class LibrarianAgent:
 
         logger.debug("Librarian system prompt:\n%s", system_prompt)
         logger.debug("Librarian user content:\n%s", user_content)
-        logger.debug("Librarian using provider: %s (model: %s)", provider.name, getattr(provider, 'model', getattr(provider, 'model_name', 'unknown')))
+        logger.debug(
+            "Librarian using provider: %s (model: %s)",
+            provider.name,
+            getattr(provider, "model", getattr(provider, "model_name", "unknown")),
+        )
 
         try:
             if not provider.supports_tools:

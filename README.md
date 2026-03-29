@@ -1,5 +1,18 @@
 # TraceBrain: An Open-Source Framework for Agentic Trace Management 🧠🚀
 
+<p align="center">
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="images/banner-dark.png">
+        <source media="(prefers-color-scheme: light)" srcset="images/banner-light.png">
+        <img alt="TraceBrain Banner" src="images/banner-light.png" width="100%">
+    </picture>
+</p>
+
+<p align="center">
+    <img src="https://img.shields.io/badge/Release-v1.0.0-blue" alt="Release">
+    <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+</p>
+
 **TraceBrain** is an open-source platform for collecting, managing, and analyzing execution traces from LLM agents.
 
 The system standardizes heterogeneous agent logs into a unified trace format, enabling consistent inspection, evaluation, and downstream analysis across different frameworks.
@@ -48,7 +61,7 @@ same user experience: a unified UI + API at http://localhost:8000.
 ### Option 1: Docker (Recommended)
 
 This is the default path for most users. It automatically provisions a production-ready
-PostgreSQL + pgvector environment.
+PostgreSQL + pgvector environment. Option 1 uses pre-built images from Docker Hub.
 
 1. **Install the CLI**
     ```bash
@@ -61,12 +74,20 @@ PostgreSQL + pgvector environment.
     ```
     This creates a template `.env` file for API keys and configuration.
 
+    Open the `.env` file and add your API keys before continuing. If you skip this step,
+    the containers will start but AI features (Librarian, Judge) will fail.
+
 3. **Start the platform**
     ```bash
     tracebrain up
     ```
 
 **Access:** http://localhost:8000 (UI + API)
+
+Note: Option 1 uses pre-built images from Docker Hub, so you don't need Node.js or local build tools.
+
+If you use Docker, you only need `pip install tracebrain` to get the CLI. All LLM and embedding
+dependencies are already bundled in the Docker image, so you do not install them on your host machine.
 
 ### Option 2: Local with SQLite (Portable Mode)
 
@@ -97,6 +118,10 @@ Best for fast evaluation without Docker.
 
 **Technical note:** the Python backend serves the bundled React build from its internal
 static directory, so no separate frontend build step is required.
+
+If you run locally without Docker and want to keep the environment light, install the core package
+first (`pip install tracebrain`). When you need a specific provider, add only that extra (for example
+`pip install tracebrain[openai]`).
 
 ### Option 3: Development Setup (Contributor Mode)
 
@@ -134,9 +159,9 @@ pip install tracebrain
 
 # Optional extras
 pip install tracebrain[embeddings-local]   # local embeddings
-pip install tracebrain[llm-openai]         # OpenAI provider
-pip install tracebrain[llm-anthropic]      # Anthropic provider
-pip install tracebrain[llm-huggingface]    # Hugging Face provider SDK
+pip install tracebrain[openai]             # OpenAI provider
+pip install tracebrain[anthropic]          # Anthropic provider
+pip install tracebrain[huggingface]        # Hugging Face provider SDK
 pip install tracebrain[all-llms]           # OpenAI + Anthropic + Hugging Face
 ```
 
@@ -178,12 +203,13 @@ pip install tracebrain[all-llms]           # OpenAI + Anthropic + Hugging Face
 
 **Natural Language Queries**
 - `POST /api/v1/natural_language_query` - Query traces with natural language
-    - Requires LLM configuration via env vars (for example: `LLM_PROVIDER`, `LLM_API_KEY`)
+    - Uses Librarian provider/model from Settings (stored in DB)
+    - Requires the matching provider API key in environment (`{PROVIDER}_API_KEY`)
     - Supports `session_id` for chat memory and returns `suggestions`
 - `GET /api/v1/librarian_sessions/{session_id}` - Load stored chat history
 
 **AI Evaluation**
-- `POST /api/v1/ai_evaluate/{trace_id}` - Evaluate a trace with a judge model
+- `POST /api/v1/ai_evaluate/{trace_id}` - Evaluate a trace using the configured Judge provider/model
 - `POST /api/v1/ops/batch_evaluate` - Run AI judge over recent traces missing `tracebrain.ai_evaluation`
 - `POST /api/v1/traces` triggers background evaluation when no AI draft exists
 
@@ -197,7 +223,7 @@ pip install tracebrain[all-llms]           # OpenAI + Anthropic + Hugging Face
 - `POST /api/v1/traces/{trace_id}/signal` - Update trace status/priority
 
 **Curriculum**
-- `POST /api/v1/curriculum/generate` - Generate tasks from failed/low-rated traces
+- `POST /api/v1/curriculum/generate` - Generate tasks from failed/low-rated traces using configured Curator provider/model
 - `GET /api/v1/curriculum` - List pending curriculum tasks
 - `GET /api/v1/curriculum/export` - Export curriculum tasks as JSONL
 - `DELETE /api/v1/curriculum/{task_id}` - Delete a curriculum task
@@ -211,8 +237,8 @@ pip install tracebrain[all-llms]           # OpenAI + Anthropic + Hugging Face
 - `DELETE /api/v1/history` - Clear all traces and episodes in viewed history
 
 **Settings**
-- `GET /api/v1/settings` - Retrieve current TraceBrain settings
-- `POST /api/v1/settings` - Update TraceBrain settings
+- `GET /api/v1/settings` - Retrieve current LLM routing settings
+- `POST /api/v1/settings` - Update LLM routing + provider API keys (`librarian_*`, `judge_*`, `curator_*`, `*_api_key`)
 
 ### Trace Status and Needs Review
 
@@ -235,36 +261,99 @@ Trace status is stored in both the database column `status` and in
     `format_error`, `misinterpretation`, `context_overflow`.
 - **System Error:** Any span has `otel.status_code` = `ERROR`.
 
-### Configuration (LLM + Embeddings)
+### Configuration (Settings + Provider Keys)
 
-Core environment variables:
+TraceBrain now separates configuration into two layers:
+
+- **Runtime routing settings (DB-backed):** provider/model for Librarian, Judge, Curator.
+- **Secrets and infra flags (env):** provider API keys, embedding config, debug flags.
+
+Runtime settings are editable from the UI or `POST /api/v1/settings`, and are persisted in the database.
+On first startup (when DB settings row does not exist), values are bootstrapped from `DEFAULT_*` env variables.
+
+#### 1) Provider API keys (environment variables)
+
+Use provider-specific key names only:
 
 ```bash
-# LLM (Librarian, Judge, Curator)
-LLM_PROVIDER=gemini
-LLM_MODEL=gemini-2.5-flash
-LLM_API_KEY=your-key
+OPENAI_API_KEY=your_openai_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+# ANTHROPIC_API_KEY=your_anthropic_api_key_here
+# HUGGINGFACE_API_KEY=your_huggingface_api_key_here
+```
 
-# Embeddings (semantic search)
+Optional provider base URLs:
+
+```bash
+# Optional: custom endpoints/proxies
+# OPENAI_BASE_URL=https://your-openai-compatible-endpoint/v1
+# ANTHROPIC_BASE_URL=https://your-anthropic-endpoint
+# HUGGINGFACE_BASE_URL=https://your-huggingface-endpoint
+```
+
+**Hugging Face local inference (vLLM/TGI):**
+
+If you run a local inference server (vLLM or TGI), set `HUGGINGFACE_BASE_URL` to your server URL.
+When this is set, TraceBrain routes Hugging Face traffic to your local endpoint instead of the
+Hugging Face cloud API.
+
+```bash
+# Example: local vLLM/TGI endpoint
+HUGGINGFACE_BASE_URL=http://localhost:8000
+HUGGINGFACE_API_KEY=your_token_if_required
+```
+
+#### 2) Bootstrap defaults for first run (environment variables)
+
+These defaults are used only when settings are not yet stored in DB:
+
+```bash
+DEFAULT_LIBRARIAN_PROVIDER=openai
+DEFAULT_LIBRARIAN_MODEL=gpt-4o-mini
+
+DEFAULT_JUDGE_PROVIDER=gemini
+DEFAULT_JUDGE_MODEL=gemini-2.5-flash
+
+DEFAULT_CURATOR_PROVIDER=gemini
+DEFAULT_CURATOR_MODEL=gemini-2.5-flash
+```
+
+#### 3) Global flags and embedding configuration
+
+```bash
+LLM_DEBUG=false
+
 EMBEDDING_PROVIDER=local
 EMBEDDING_MODEL=all-MiniLM-L6-v2
+
+# For cloud embeddings
+# EMBEDDING_API_KEY=your_embedding_key
+# EMBEDDING_BASE_URL=https://your-embedding-endpoint/v1
 ```
 
-**Cloud provider setup (LLM + embeddings):**
-- Set these environment variables before starting the server (`tracebrain start` or `tracebrain up`).
-- Recommended: put them in a `.env` file at the project root for local development.
+#### Settings API payload
 
-```bash
-# LLM providers
-LLM_PROVIDER=openai|anthropic|gemini
-LLM_MODEL=your-model-id
-LLM_API_KEY=your-key
+`GET /api/v1/settings` and `POST /api/v1/settings` use this shape:
 
-# Embeddings providers
-EMBEDDING_PROVIDER=openai|gemini
-EMBEDDING_MODEL=your-embedding-model-id
-EMBEDDING_API_KEY=your-key
+```json
+{
+    "librarian_provider": "openai",
+    "librarian_model": "gpt-4o-mini",
+    "judge_provider": "gemini",
+    "judge_model": "gemini-2.5-flash",
+    "curator_provider": "gemini",
+    "curator_model": "gemini-2.5-flash",
+    "openai_api_key": "sk-...abcd",
+    "gemini_api_key": "AIza...wxyz",
+    "anthropic_api_key": null,
+    "huggingface_api_key": null
+}
 ```
+
+Notes:
+- `GET /api/v1/settings` returns masked API keys for safety.
+- `POST /api/v1/settings` accepts plain-text API keys when you want to add or rotate keys.
+- If a DB key is empty, TraceBrain falls back to the corresponding environment variable (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `HUGGINGFACE_API_KEY`).
 
 **Example API Usage:**
 

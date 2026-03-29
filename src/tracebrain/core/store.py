@@ -11,9 +11,10 @@ from typing import Dict, Any, Optional, List, Iterator, Union
 import logging
 import re
 import json
+import os
 
 import sqlparse
-from sqlalchemy import create_engine, event, func, cast, text, Integer, Float, case
+from sqlalchemy import create_engine, event, func, cast, text, Integer, Float, case, inspect
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError, ProgrammingError, TimeoutError
 from sqlalchemy.orm import sessionmaker, Session, selectinload
@@ -29,10 +30,18 @@ from tracebrain.db.base import (
     TraceStatus,
     CurriculumTask,
     History,
-    AppSettings,
+    Settings as DBSettings,
 )
 
 logger = logging.getLogger(__name__)
+
+_ALLOWED_SETTINGS_PROVIDERS = {"openai", "gemini", "anthropic", "huggingface"}
+_API_KEY_FIELD_TO_ENV = {
+    "openai_api_key": "OPENAI_API_KEY",
+    "gemini_api_key": "GEMINI_API_KEY",
+    "anthropic_api_key": "ANTHROPIC_API_KEY",
+    "huggingface_api_key": "HUGGINGFACE_API_KEY",
+}
 
 
 class BaseStorageBackend:
@@ -92,7 +101,51 @@ class BaseStorageBackend:
             with self.engine.begin() as connection:
                 connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         Base.metadata.create_all(bind=self.engine)
+        self._ensure_settings_schema()
         logger.info("Database tables created/verified for %s", self.__class__.__name__)
+
+    def _ensure_settings_schema(self) -> None:
+        """Backfill settings columns for existing databases created before new fields existed."""
+        inspector = inspect(self.engine)
+        if not inspector.has_table("settings"):
+            return
+
+        existing_columns = {column["name"] for column in inspector.get_columns("settings")}
+        alter_statements: List[str] = []
+
+        if "curator_provider" not in existing_columns:
+            alter_statements.append(
+                "ALTER TABLE settings ADD COLUMN curator_provider VARCHAR(50) NOT NULL DEFAULT 'gemini'"
+            )
+        if "curator_model" not in existing_columns:
+            alter_statements.append(
+                "ALTER TABLE settings ADD COLUMN curator_model VARCHAR(255) NOT NULL DEFAULT 'gemini-2.5-flash'"
+            )
+        if "openai_api_key" not in existing_columns:
+            alter_statements.append(
+                "ALTER TABLE settings ADD COLUMN openai_api_key VARCHAR(512)"
+            )
+        if "gemini_api_key" not in existing_columns:
+            alter_statements.append(
+                "ALTER TABLE settings ADD COLUMN gemini_api_key VARCHAR(512)"
+            )
+        if "anthropic_api_key" not in existing_columns:
+            alter_statements.append(
+                "ALTER TABLE settings ADD COLUMN anthropic_api_key VARCHAR(512)"
+            )
+        if "huggingface_api_key" not in existing_columns:
+            alter_statements.append(
+                "ALTER TABLE settings ADD COLUMN huggingface_api_key VARCHAR(512)"
+            )
+
+        if not alter_statements:
+            return
+
+        with self.engine.begin() as connection:
+            for statement in alter_statements:
+                connection.execute(text(statement))
+
+        logger.info("Backfilled settings table with missing columns: %s", ", ".join(alter_statements))
 
     def get_session(self) -> Session:
         """Get a new database session."""
@@ -983,37 +1036,196 @@ class BaseStorageBackend:
         finally:
             session.close()
 
-    def get_settings(self) -> Dict[str, Any]:
-        """Return global application settings (singleton row)."""
+    def _default_llm_settings(self) -> Dict[str, Any]:
+        librarian_provider = (
+            os.getenv("DEFAULT_LIBRARIAN_PROVIDER")
+            or "gemini"
+        )
+        librarian_model = (
+            os.getenv("DEFAULT_LIBRARIAN_MODEL")
+            or "gemini-2.5-flash"
+        )
+
+        judge_provider = os.getenv("DEFAULT_JUDGE_PROVIDER") or librarian_provider
+        judge_model = os.getenv("DEFAULT_JUDGE_MODEL") or librarian_model
+
+        curator_provider = os.getenv("DEFAULT_CURATOR_PROVIDER") or librarian_provider
+        curator_model = os.getenv("DEFAULT_CURATOR_MODEL") or librarian_model
+
+        defaults: Dict[str, Any] = {
+            "librarian_provider": str(librarian_provider).strip().lower() or "gemini",
+            "librarian_model": str(librarian_model).strip() or "gemini-2.5-flash",
+            "judge_provider": str(judge_provider).strip().lower() or "gemini",
+            "judge_model": str(judge_model).strip() or "gemini-2.5-flash",
+            "curator_provider": str(curator_provider).strip().lower() or "gemini",
+            "curator_model": str(curator_model).strip() or "gemini-2.5-flash",
+        }
+        for field_name, env_var in _API_KEY_FIELD_TO_ENV.items():
+            defaults[field_name] = (os.getenv(env_var) or "").strip() or None
+        return defaults
+
+    def _mask_api_key(self, value: Optional[str]) -> Optional[str]:
+        secret = str(value or "").strip()
+        if not secret:
+            return None
+        if len(secret) <= 8:
+            return "*" * len(secret)
+        return f"{secret[:3]}...{secret[-4:]}"
+
+    def _looks_masked_key(self, value: Optional[str]) -> bool:
+        text = str(value or "").strip()
+        if not text:
+            return False
+        if "..." in text and len(text) <= 32:
+            return True
+        if len(text) >= 4 and all(ch == "*" for ch in text):
+            return True
+        return False
+
+    def _merge_api_key(
+        self,
+        incoming_value: Any,
+        current_db_value: Optional[str],
+    ) -> Optional[str]:
+        current = str(current_db_value or "").strip() or None
+        if incoming_value is None:
+            return current
+
+        candidate = str(incoming_value).strip()
+        if not candidate:
+            return current
+        if self._looks_masked_key(candidate):
+            return current
+        return candidate
+
+    def _sanitize_provider(self, value: Any) -> str:
+        provider = str(value or "").strip().lower()
+        if provider not in _ALLOWED_SETTINGS_PROVIDERS:
+            raise ValueError(
+                "Provider must be one of: openai, gemini, anthropic, huggingface"
+            )
+        return provider
+
+    def get_settings(self, mask_api_keys: bool = False) -> Dict[str, Any]:
+        """Return LLM routing settings with env fallback when DB row is missing."""
+        defaults = self._default_llm_settings()
         session = self.get_session()
         try:
-            settings_row = session.query(AppSettings).filter(AppSettings.id == 1).first()
-            if not settings_row or not isinstance(settings_row.config, dict):
-                return {}
-            return dict(settings_row.config)
+            settings_row = session.query(DBSettings).filter(DBSettings.id == 1).first()
+            if not settings_row:
+                result = dict(defaults)
+                if mask_api_keys:
+                    for field_name in _API_KEY_FIELD_TO_ENV:
+                        result[field_name] = self._mask_api_key(result.get(field_name))
+                return result
+
+            librarian_provider = (settings_row.librarian_provider or "").strip().lower()
+            librarian_model = (settings_row.librarian_model or "").strip()
+            judge_provider = (settings_row.judge_provider or "").strip().lower()
+            judge_model = (settings_row.judge_model or "").strip()
+            curator_provider = (getattr(settings_row, "curator_provider", "") or "").strip().lower()
+            curator_model = (getattr(settings_row, "curator_model", "") or "").strip()
+
+            result = {
+                "librarian_provider": librarian_provider or defaults["librarian_provider"],
+                "librarian_model": librarian_model or defaults["librarian_model"],
+                "judge_provider": judge_provider or defaults["judge_provider"],
+                "judge_model": judge_model or defaults["judge_model"],
+                "curator_provider": curator_provider or defaults["curator_provider"],
+                "curator_model": curator_model or defaults["curator_model"],
+            }
+
+            for field_name in _API_KEY_FIELD_TO_ENV:
+                db_secret = (getattr(settings_row, field_name, None) or "").strip() or None
+                result[field_name] = db_secret or defaults.get(field_name)
+
+            if mask_api_keys:
+                for field_name in _API_KEY_FIELD_TO_ENV:
+                    result[field_name] = self._mask_api_key(result.get(field_name))
+
+            return result
+        finally:
+            session.close()
+
+    def save_settings(self, new_settings: Dict[str, Any], mask_api_keys: bool = False) -> Dict[str, Any]:
+        """Upsert singleton LLM settings and return the normalized payload."""
+        payload = new_settings if isinstance(new_settings, dict) else {}
+        defaults = self._default_llm_settings()
+
+        session = self.get_session()
+        try:
+            settings_row = session.query(DBSettings).filter(DBSettings.id == 1).first()
+            current = defaults if not settings_row else {
+                "librarian_provider": (settings_row.librarian_provider or defaults["librarian_provider"]),
+                "librarian_model": (settings_row.librarian_model or defaults["librarian_model"]),
+                "judge_provider": (settings_row.judge_provider or defaults["judge_provider"]),
+                "judge_model": (settings_row.judge_model or defaults["judge_model"]),
+                "curator_provider": (getattr(settings_row, "curator_provider", None) or defaults["curator_provider"]),
+                "curator_model": (getattr(settings_row, "curator_model", None) or defaults["curator_model"]),
+            }
+
+            librarian_provider = self._sanitize_provider(
+                payload.get("librarian_provider", current["librarian_provider"])
+            )
+            judge_provider = self._sanitize_provider(
+                payload.get("judge_provider", current["judge_provider"])
+            )
+            curator_provider = self._sanitize_provider(
+                payload.get("curator_provider", current["curator_provider"])
+            )
+
+            librarian_model = str(
+                payload.get("librarian_model", current["librarian_model"])
+            ).strip()
+            judge_model = str(payload.get("judge_model", current["judge_model"])).strip()
+            curator_model = str(payload.get("curator_model", current["curator_model"])).strip()
+
+            if not librarian_model:
+                raise ValueError("librarian_model is required")
+            if not judge_model:
+                raise ValueError("judge_model is required")
+            if not curator_model:
+                raise ValueError("curator_model is required")
+
+            if not settings_row:
+                settings_row = DBSettings(
+                    id=1,
+                    librarian_provider=librarian_provider,
+                    librarian_model=librarian_model,
+                    judge_provider=judge_provider,
+                    judge_model=judge_model,
+                    curator_provider=curator_provider,
+                    curator_model=curator_model,
+                )
+                session.add(settings_row)
+            else:
+                settings_row.librarian_provider = librarian_provider
+                settings_row.librarian_model = librarian_model
+                settings_row.judge_provider = judge_provider
+                settings_row.judge_model = judge_model
+                settings_row.curator_provider = curator_provider
+                settings_row.curator_model = curator_model
+
+            for field_name in _API_KEY_FIELD_TO_ENV:
+                current_db_value = getattr(settings_row, field_name, None)
+                merged_value = self._merge_api_key(
+                    payload.get(field_name),
+                    current_db_value,
+                )
+                setattr(settings_row, field_name, merged_value)
+
+            session.commit()
+            return self.get_settings(mask_api_keys=mask_api_keys)
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to save settings")
+            raise
         finally:
             session.close()
 
     def update_settings(self, new_settings: Dict[str, Any]) -> Dict[str, Any]:
-        """Upsert global application settings and return the updated config."""
-        session = self.get_session()
-        try:
-            settings_row = session.query(AppSettings).filter(AppSettings.id == 1).first()
-            payload = new_settings if isinstance(new_settings, dict) else {}
-            if not settings_row:
-                settings_row = AppSettings(id=1, config=dict(payload))
-                session.add(settings_row)
-            else:
-                existing = settings_row.config if isinstance(settings_row.config, dict) else {}
-                settings_row.config = {**existing, **payload}
-            session.commit()
-            return dict(settings_row.config or {})
-        except Exception:
-            session.rollback()
-            logger.exception("Failed to update settings")
-            raise
-        finally:
-            session.close()
+        """Backward-compatible alias for previous settings API."""
+        return self.save_settings(new_settings)
 
     def update_ai_evaluation(self, trace_id: str, ai_evaluation: Dict[str, Any]) -> None:
         """Update AI evaluation metadata for a trace."""

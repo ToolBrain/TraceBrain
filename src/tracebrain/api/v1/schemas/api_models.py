@@ -136,10 +136,6 @@ class NaturalLanguageQuery(BaseModel):
 
     query: str = Field(..., description="Natural language question about traces")
     session_id: Optional[str] = Field(None, description="Conversation session ID")
-    model_id: Optional[str] = Field(
-        None,
-        description="Override LLM model for this request (e.g., 'gemini-2.0-flash-exp', 'gpt-4o')",
-    )
 
 
 class Suggestion(BaseModel):
@@ -232,7 +228,37 @@ class EpisodeSummaryListOut(BaseModel):
 
 
 class AIEvaluationIn(BaseModel):
-    judge_model_id: str
+    judge_model_id: Optional[str] = None
+
+
+class SettingsOut(BaseModel):
+    """Response model for persistent provider/model and API key settings."""
+
+    librarian_provider: str = Field(..., description="Librarian provider name")
+    librarian_model: str = Field(..., description="Librarian model ID")
+    judge_provider: str = Field(..., description="Judge provider name")
+    judge_model: str = Field(..., description="Judge model ID")
+    curator_provider: str = Field(..., description="Curator provider name")
+    curator_model: str = Field(..., description="Curator model ID")
+    openai_api_key: Optional[str] = Field(None, description="OpenAI API key (masked on read)")
+    gemini_api_key: Optional[str] = Field(None, description="Gemini API key (masked on read)")
+    anthropic_api_key: Optional[str] = Field(None, description="Anthropic API key (masked on read)")
+    huggingface_api_key: Optional[str] = Field(None, description="Hugging Face API key (masked on read)")
+
+
+class SettingsIn(BaseModel):
+    """Request model for partial settings updates."""
+
+    librarian_provider: Optional[str] = Field(None, description="Librarian provider name")
+    librarian_model: Optional[str] = Field(None, description="Librarian model ID")
+    judge_provider: Optional[str] = Field(None, description="Judge provider name")
+    judge_model: Optional[str] = Field(None, description="Judge model ID")
+    curator_provider: Optional[str] = Field(None, description="Curator provider name")
+    curator_model: Optional[str] = Field(None, description="Curator model ID")
+    openai_api_key: Optional[str] = Field(None, description="OpenAI API key")
+    gemini_api_key: Optional[str] = Field(None, description="Gemini API key")
+    anthropic_api_key: Optional[str] = Field(None, description="Anthropic API key")
+    huggingface_api_key: Optional[str] = Field(None, description="Hugging Face API key")
 
 
 class AIEvaluationOut(BaseModel):

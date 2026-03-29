@@ -13,6 +13,8 @@ from .schemas.api_models import (
     HistoryAddRequest,
     HistoryListOut,
     HistoryResponse,
+    SettingsIn,
+    SettingsOut,
     TraceOut,
     trace_to_out,
 )
@@ -80,20 +82,28 @@ def health_check():
         raise HTTPException(status_code=503, detail=f"Database connection failed: {str(exc)}")
 
 
-@router.get("/settings", tags=["Settings"])
-async def get_settings() -> Dict[str, Any]:
+@router.get("/settings", response_model=SettingsOut, tags=["Settings"])
+async def get_settings() -> SettingsOut:
     """Load settings from the database."""
     try:
-        return store.get_settings()
+        return SettingsOut(**store.get_settings(mask_api_keys=True))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@router.post("/settings", tags=["Settings"])
-async def save_settings(settings_payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Save the settings object to the database."""
+@router.post("/settings", response_model=SettingsOut, tags=["Settings"])
+async def save_settings(settings_payload: SettingsIn) -> SettingsOut:
+    """Save provider/model settings to the database."""
     try:
-        return store.update_settings(settings_payload)
+        saved = store.save_settings(
+            settings_payload.model_dump(exclude_unset=True),
+            mask_api_keys=True,
+        )
+        return SettingsOut(**saved)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 

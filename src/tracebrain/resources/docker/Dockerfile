@@ -32,9 +32,12 @@ COPY src/ ./src/
 # Copy frontend build artifacts into static directory
 COPY --from=frontend-builder /app/web/dist /app/src/tracebrain/static
 
-# Install backend package (include local embeddings)
+# Install backend package in two steps to maximize cache reuse
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir .[embeddings-local]
+    && pip install --no-cache-dir .
+
+# Install optional LLMs and local embeddings (full-feature image)
+RUN pip install --no-cache-dir .[embeddings-local,all-llms]
 
 # Create non-root user
 RUN useradd -m -u 1000 tracebrain \

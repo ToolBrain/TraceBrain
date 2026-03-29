@@ -1,21 +1,55 @@
 import React, { useState } from "react";
-import { Stack, TextField, Typography, Card, CardContent, MenuItem } from "@mui/material";
+import {
+  Autocomplete,
+  Stack,
+  TextField,
+  Typography,
+  Card,
+  CardContent,
+  MenuItem,
+  IconButton,
+  InputAdornment,
+} from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useSettings } from "../../../contexts/SettingsContext";
 import Toggle from "../Toggle";
 
-const EVALUATION_MODELS = [
-  { value: "qwen2.5:7b", label: "Qwen 2.5 7B (Local)" },
-  { value: "gpt-4o", label: "GPT-4o" },
-  { value: "claude-sonnet-4-5-20250929", label: "Claude Sonnet 4.5" },
-  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+const PROVIDERS = [
+  { value: "openai", label: "OpenAI" },
+  { value: "gemini", label: "Gemini" },
+  { value: "anthropic", label: "Anthropic" },
+  { value: "huggingface", label: "Hugging Face" },
 ];
 
-const CHAT_MODELS = [
-  { value: "qwen2.5:7b", label: "Qwen 2.5 7B (Local)" },
-  { value: "gpt-4o", label: "GPT-4o" },
-  { value: "claude-sonnet-4-5-20250929", label: "Claude Sonnet 4.5" },
-  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-];
+type ProviderValue = (typeof PROVIDERS)[number]["value"];
+
+const MODEL_PRESETS = {
+  openai: [
+    "gpt-5.4",
+    "gpt-5.3-chat-latest",
+    "gpt-5.4-mini",
+    "gpt-4.1",
+    "gpt-4o-mini",
+    "gpt-5",
+  ],
+  gemini: [
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-001",
+    "gemini-2.0-flash-lite-001",
+    "gemini-2.0-flash-lite",
+    "gemini-2.5-flash-lite",
+  ],
+  anthropic: [
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5-20251001",
+    "claude-opus-4-6",
+    "claude-sonnet-4-5-20250929",
+    "claude-opus-4-5-20251101",
+  ],
+  huggingface: [],
+} as const;
 
 type FilterType = "automatic" | "manual";
 
@@ -25,10 +59,32 @@ const AdvancedSection: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<FilterType | null>(null);
   const [minSpans, setMinSpans] = useState<number | "">("");
   const [maxDuration, setMaxDuration] = useState<number | "">("");
+  const [showKeys, setShowKeys] = useState<Record<ProviderValue, boolean>>({
+    openai: false,
+    gemini: false,
+    anthropic: false,
+    huggingface: false,
+  });
 
   const handleFilterToggle = (filter: FilterType) => (checked: boolean) => {
     setActiveFilter(checked ? filter : null);
   };
+
+  const toggleKeyVisibility = (provider: ProviderValue) => {
+    setShowKeys((prev) => ({ ...prev, [provider]: !prev[provider] }));
+  };
+
+  const keyAdornment = (provider: ProviderValue) => (
+    <InputAdornment position="end">
+      <IconButton
+        edge="end"
+        onClick={() => toggleKeyVisibility(provider)}
+        aria-label={showKeys[provider] ? "Hide API key" : "Show API key"}
+      >
+        {showKeys[provider] ? <VisibilityOff /> : <Visibility />}
+      </IconButton>
+    </InputAdornment>
+  );
 
   return (
     <Stack spacing={3}>
@@ -44,21 +100,58 @@ const AdvancedSection: React.FC = () => {
         <Stack spacing={1}>
           <TextField
             select
-            label="Model"
-            value={settings.llm.model}
+            label="Provider"
+            value={settings.llm.provider}
             onChange={(e) =>
               updateSettings((draft) => {
-                draft.llm.model = e.target.value;
+                draft.llm.provider = e.target.value as typeof draft.llm.provider;
               })
             }
-            helperText="API credentials must be configured for certain models."
+            helperText="Select which provider powers AI Judge evaluations."
           >
-            {EVALUATION_MODELS.map(({ value, label }) => (
+            {PROVIDERS.map(({ value, label }) => (
               <MenuItem key={value} value={value}>
                 {label}
               </MenuItem>
             ))}
           </TextField>
+
+          <Autocomplete
+            freeSolo
+            options={MODEL_PRESETS[settings.llm.provider]}
+            value={settings.llm.model}
+            onInputChange={(_, newInputValue) =>
+              updateSettings((draft) => {
+                draft.llm.model = newInputValue;
+              })
+            }
+            onChange={(_, newValue) =>
+              updateSettings((draft) => {
+                draft.llm.model = typeof newValue === "string" ? newValue : draft.llm.model;
+              })
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Model ID"
+                helperText="Choose a preset or type any custom model ID."
+              />
+            )}
+          />
+
+          <TextField
+            type={showKeys[settings.llm.provider] ? "text" : "password"}
+            label="API Key"
+            value={settings.apiKeys[settings.llm.provider]}
+            onChange={(e) =>
+              updateSettings((draft) => {
+                draft.apiKeys[draft.llm.provider] = e.target.value;
+              })
+            }
+            autoComplete="off"
+            helperText="Stored securely in local database. Leave unchanged to keep current key."
+            InputProps={{ endAdornment: keyAdornment(settings.llm.provider) }}
+          />
 
           <Toggle
             label="Auto Evaluate"
@@ -84,21 +177,123 @@ const AdvancedSection: React.FC = () => {
 
         <TextField
           select
-          label="Model"
-          value={settings.chatLLM.model}
+          label="Provider"
+          value={settings.chatLLM.provider}
           onChange={(e) =>
             updateSettings((draft) => {
-              draft.chatLLM.model = e.target.value;
+              draft.chatLLM.provider = e.target.value as typeof draft.chatLLM.provider;
             })
           }
-          helperText="API credentials must be configured for certain models."
+          helperText="Select which provider powers Librarian chat."
         >
-          {CHAT_MODELS.map(({ value, label }) => (
+          {PROVIDERS.map(({ value, label }) => (
             <MenuItem key={value} value={value}>
               {label}
             </MenuItem>
           ))}
         </TextField>
+
+        <Autocomplete
+          freeSolo
+          options={MODEL_PRESETS[settings.chatLLM.provider]}
+          value={settings.chatLLM.model}
+          onInputChange={(_, newInputValue) =>
+            updateSettings((draft) => {
+              draft.chatLLM.model = newInputValue;
+            })
+          }
+          onChange={(_, newValue) =>
+            updateSettings((draft) => {
+              draft.chatLLM.model = typeof newValue === "string" ? newValue : draft.chatLLM.model;
+            })
+          }
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Model ID"
+              helperText="Choose a preset or type any custom model ID."
+            />
+          )}
+        />
+
+        <TextField
+          type={showKeys[settings.chatLLM.provider] ? "text" : "password"}
+          label="API Key"
+          value={settings.apiKeys[settings.chatLLM.provider]}
+          onChange={(e) =>
+            updateSettings((draft) => {
+              draft.apiKeys[draft.chatLLM.provider] = e.target.value;
+            })
+          }
+          autoComplete="off"
+          helperText="Stored securely in local database. Leave unchanged to keep current key."
+          InputProps={{ endAdornment: keyAdornment(settings.chatLLM.provider) }}
+        />
+      </Stack>
+
+      {/* Curriculum Model */}
+      <Stack spacing={3}>
+        <Stack spacing={0.5}>
+          <Typography variant="h6">Automated Curriculum (Curator Agent)</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Language model used to generate training curriculum from failed traces.
+          </Typography>
+        </Stack>
+
+        <TextField
+          select
+          label="Provider"
+          value={settings.curatorLLM.provider}
+          onChange={(e) =>
+            updateSettings((draft) => {
+              draft.curatorLLM.provider = e.target.value as typeof draft.curatorLLM.provider;
+            })
+          }
+          helperText="Select which provider powers Curator curriculum generation."
+        >
+          {PROVIDERS.map(({ value, label }) => (
+            <MenuItem key={value} value={value}>
+              {label}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <Autocomplete
+          freeSolo
+          options={MODEL_PRESETS[settings.curatorLLM.provider]}
+          value={settings.curatorLLM.model}
+          onInputChange={(_, newInputValue) =>
+            updateSettings((draft) => {
+              draft.curatorLLM.model = newInputValue;
+            })
+          }
+          onChange={(_, newValue) =>
+            updateSettings((draft) => {
+              draft.curatorLLM.model = typeof newValue === "string" ? newValue : draft.curatorLLM.model;
+            })
+          }
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Model ID"
+              helperText="Choose a preset or type any custom model ID."
+            />
+          )}
+        />
+
+        <TextField
+          type={showKeys[settings.curatorLLM.provider] ? "text" : "password"}
+          label="API Key"
+          value={settings.apiKeys[settings.curatorLLM.provider]}
+          onChange={(e) =>
+            updateSettings((draft) => {
+              draft.apiKeys[draft.curatorLLM.provider] = e.target.value;
+            })
+          }
+          autoComplete="off"
+          helperText="Stored securely in local database. Leave unchanged to keep current key."
+          InputProps={{ endAdornment: keyAdornment(settings.curatorLLM.provider) }}
+        />
       </Stack>
 
       {/* Filters */}

@@ -11,7 +11,6 @@ Usage:
     app.run(host=settings.HOST, port=settings.PORT)
 """
 
-import os
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -126,6 +125,10 @@ class Settings(BaseSettings):
         default=None,
         description="Base URL for LLM provider"
     )
+    HUGGINGFACE_BASE_URL: Optional[str] = Field(
+        default=None,
+        description="Base URL for Hugging Face-compatible inference endpoint (e.g., vLLM/TGI proxy)"
+    )
     LLM_API_VERSION: Optional[str] = Field(
         default=None,
         description="API version for providers that require it (e.g., Azure)"
@@ -182,21 +185,6 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _validate_required_keys(self):
-        provider = (self.LLM_PROVIDER or "").lower()
-        mode = (self.LIBRARIAN_MODE or "").lower()
-        if provider == "gemini" and not self.LLM_API_KEY:
-            gemini_key = os.getenv("GEMINI_API_KEY")
-            if gemini_key:
-                self.LLM_API_KEY = gemini_key
-            else:
-                raise ValueError(
-                    "LLM_API_KEY (or GEMINI_API_KEY) is required when LLM_PROVIDER=gemini."
-                )
-
-        if mode == "api" and provider in {"openai", "anthropic", "azure_openai", "openai_compatible"}:
-            if not self.LLM_API_KEY:
-                raise ValueError("LLM_API_KEY is required for the selected LLM provider.")
-
         embedding_provider = (self.EMBEDDING_PROVIDER or "").lower()
         if embedding_provider in {"openai", "gemini"} and not self.EMBEDDING_API_KEY:
             raise ValueError(

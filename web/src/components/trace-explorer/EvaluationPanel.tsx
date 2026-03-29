@@ -27,7 +27,6 @@ import {
 import { evaluateTrace, submitTraceFeedback } from "../utils/api";
 import StatusChip from "../shared/StatusChip";
 import ErrorTypeChip from "../shared/ErrorTypeChip";
-import { useSettings } from "../../contexts/SettingsContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router-dom";
 import { getConfidenceColor } from "../utils/utils";
@@ -51,7 +50,6 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
 
   const feedback = trace ? traceGetLatestFeedback(trace) : null;
 
-  const { settings } = useSettings();
   const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -90,7 +88,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     setEvalError("");
     setShowEvalError(false);
     try {
-      await evaluateTrace(trace.trace_id, settings.llm.model);
+      await evaluateTrace(trace.trace_id);
       await queryClient.invalidateQueries({ queryKey: ["traces", type, id] });
     } catch (e: any) {
       setEvalError(e?.message || "Failed to evaluate trace.");

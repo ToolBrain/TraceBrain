@@ -42,7 +42,6 @@ services:
       HOST: 0.0.0.0
       PORT: 8000
       LOG_LEVEL: info
-      SETTINGS_PATH: /app/data/settings.json
 
       # Optional:
       # LLM_API_KEY: your_llm_api_key_here

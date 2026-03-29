@@ -280,9 +280,7 @@ async def ingest_trace(trace: TraceIn, background_tasks: BackgroundTasks):
         )
         if text_to_embed:
             background_tasks.add_task(store.update_trace_embedding, trace_id, text_to_embed)
-        store_settings = store.get_settings()
-        settings_evaluate = store_settings.get("llm", {}).get("autoEvaluate")
-        if (settings_evaluate if settings_evaluate is not None else settings.AUTO_EVALUATE_TRACES) and not attributes.get("tracebrain.ai_evaluation"):
+        if settings.AUTO_EVALUATE_TRACES and not attributes.get("tracebrain.ai_evaluation"):
             background_tasks.add_task(run_bg_evaluation, trace_id)
         return TraceIngestResponse(
             success=True,

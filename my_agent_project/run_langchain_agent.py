@@ -21,17 +21,22 @@ def check_inventory(item: str) -> str:
 
 def main() -> None:
     env_path = Path(__file__).resolve().parents[1] / ".env"
-    if env_path.exists() and not os.getenv("GOOGLE_API_KEY"):
+    if env_path.exists() and not os.getenv("GEMINI_API_KEY"):
         try:
             from dotenv import load_dotenv
+        except ImportError:
+            load_dotenv = None
 
+        if load_dotenv:
             load_dotenv(env_path)
-        except Exception:
-            print("python-dotenv is not installed. Run: pip install python-dotenv")
 
     system_prompt = "You are a helpful inventory assistant. Use tools when needed."
 
-    model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+    model = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
+        temperature=0,
+        google_api_key=os.getenv("GEMINI_API_KEY"),
+    )
     agent = create_agent(model=model, tools=[check_inventory], system_prompt=system_prompt)
 
     client = TraceClient(base_url="http://localhost:8000")
