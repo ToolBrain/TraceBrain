@@ -24,6 +24,8 @@ class BaseEmbeddingProvider(ABC):
 class LocalEmbeddingProvider(BaseEmbeddingProvider):
     def __init__(self) -> None:
         self._model = None
+        self._init_error: str | None = None
+        self._availability_warning_emitted = False
         self._load_model()
 
     def _load_model(self) -> None:
@@ -31,12 +33,27 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
             from sentence_transformers import SentenceTransformer
 
             self._model = SentenceTransformer(settings.EMBEDDING_MODEL)
+        except ImportError as exc:
+            # Optional dependency: keep CLI and non-embedding flows silent.
+            self._init_error = str(exc)
+            self._model = None
         except Exception as exc:
-            logger.warning("Failed to load local embedding model: %s", exc)
+            self._init_error = str(exc)
             self._model = None
 
     def get_embedding(self, text: str) -> List[float]:
         if not self._model:
+            if not self._availability_warning_emitted:
+                if self._init_error:
+                    logger.warning(
+                        "Local embeddings are unavailable (%s). Install with 'pip install tracebrain[embeddings-local]' or switch EMBEDDING_PROVIDER.",
+                        self._init_error,
+                    )
+                else:
+                    logger.warning(
+                        "Local embeddings are unavailable. Install with 'pip install tracebrain[embeddings-local]' or switch EMBEDDING_PROVIDER."
+                    )
+                self._availability_warning_emitted = True
             return []
         try:
             embedding = self._model.encode([text], normalize_embeddings=True)

@@ -33,7 +33,6 @@ import os
 from pathlib import Path
 from typing import Optional
 import typer
-import uvicorn
 
 from .config import settings
 
@@ -545,6 +544,8 @@ def start(
     typer.echo("")
     
     try:
+        import uvicorn
+
         uvicorn.run(
             "tracebrain.main:app",
             host=server_host,

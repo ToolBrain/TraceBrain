@@ -48,11 +48,13 @@ Usage:
 __version__ = "1.0.0"
 __author__ = "TraceBrain Team"
 
-# Expose main components for easy import
-from .main import app
-from .config import settings
-from .sdk import TraceClient
-from .sdk.client import TraceScope
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .main import app as app
+    from .config import settings as settings
+    from .sdk import TraceClient as TraceClient
+    from .sdk.client import TraceScope as TraceScope
 
 __all__ = [
     "app",
@@ -61,3 +63,20 @@ __all__ = [
     "TraceScope",
     "__version__",
 ]
+
+
+def __getattr__(name: str):
+    # Lazily import heavy modules to keep CLI startup lightweight.
+    if name == "app":
+        from .main import app as value
+        return value
+    if name == "settings":
+        from .config import settings as value
+        return value
+    if name == "TraceClient":
+        from .sdk import TraceClient as value
+        return value
+    if name == "TraceScope":
+        from .sdk.client import TraceScope as value
+        return value
+    raise AttributeError(f"module 'tracebrain' has no attribute '{name}'")

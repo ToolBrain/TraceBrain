@@ -4,8 +4,6 @@ services:
     image: ankane/pgvector:v0.5.1
     container_name: tracebrain-postgres
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-tracebrain}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tracebrain_2026_secure}
@@ -30,8 +28,6 @@ services:
     image: quyk67uet/tracebrain:latest
     container_name: tracebrain-api
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       # Database Configuration
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
@@ -63,8 +59,6 @@ services:
     image: quyk67uet/tracebrain:latest
     container_name: tracebrain-seed
     restart: "no"
-    env_file:
-      - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
     depends_on:
