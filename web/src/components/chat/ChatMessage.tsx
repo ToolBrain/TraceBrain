@@ -4,6 +4,8 @@ import type { Message } from "./engine/chatEngine";
 import TraceSources from "./TraceSources";
 import TraceFilters from "./TraceFilters";
 import { AssistantAvatar, UserAvatar } from "./Icons";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ChatMessageProps {
   message: Message;
@@ -12,6 +14,7 @@ interface ChatMessageProps {
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message, index }) => {
   const isUser = message.role === "user";
+  const isError = !isUser && message.content.is_error;
   return (
     <Box
       sx={{
@@ -47,15 +50,25 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, index }) => {
           background: isUser
             ? "linear-gradient(140deg, #2e86de 0%, #1f6fbe 100%)"
             : undefined,
-          backgroundColor: isUser ? undefined : "background.paper",
-          color: isUser ? "primary.contrastText" : "text.primary",
+          backgroundColor: isUser
+            ? undefined
+            : isError
+              ? "rgba(239, 68, 68, 0.12)"
+              : "background.paper",
+          color: isUser ? "primary.contrastText" : isError ? "error.main" : "text.primary",
           borderRadius: 3,
           border: "1px solid",
-          borderColor: isUser ? "rgba(255,255,255,0.18)" : "divider",
+          borderColor: isUser
+            ? "rgba(255,255,255,0.18)"
+            : isError
+              ? "rgba(239, 68, 68, 0.35)"
+              : "divider",
           fontSize: "0.875rem",
           boxShadow: isUser
             ? "0 8px 18px rgba(31, 111, 190, 0.28)"
-            : "0 4px 12px rgba(16, 24, 40, 0.08)",
+            : isError
+              ? "0 4px 12px rgba(239, 68, 68, 0.16)"
+              : "0 4px 12px rgba(16, 24, 40, 0.08)",
           "&::after": isUser
             ? {
                 content: '""',
@@ -74,7 +87,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, index }) => {
                 borderTop: "6px solid transparent",
                 borderBottom: "6px solid transparent",
                 borderRight: "8px solid",
-                borderRightColor: "background.paper",
+                borderRightColor: isError ? "rgba(239, 68, 68, 0.12)" : "background.paper",
               },
         }}
       >
@@ -85,9 +98,26 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, index }) => {
             lineHeight: 1.55,
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
+            "& p": { m: 0 },
+            "& p + p": { mt: 1 },
+            "& ul, & ol": { m: 0, pl: 2.5 },
+            "& li": { mt: 0.25 },
+            "& li > p": { display: "inline" },
+            "& code": {
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              fontSize: "0.85em",
+              bgcolor: "action.hover",
+              px: 0.4,
+              py: 0.1,
+              borderRadius: 0.75,
+            },
           }}
         >
-          {message.content.answer}
+          {isUser ? (
+            message.content.answer
+          ) : (
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content.answer}</ReactMarkdown>
+          )}
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
           {!isUser && message.content.sources && message.content.sources.length > 0 && (

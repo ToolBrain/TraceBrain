@@ -22,7 +22,12 @@
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Coder: Write a search function.\"}]",
         "tracebrain.llm.completion": "```python\ndef search(q): return [x for x in data if q in x]\n```",
-        "tracebrain.llm.tool_code": "submit_to_reviewer()"
+        "tracebrain.llm.tool_code": "submit_to_reviewer()",
+        "tracebrain.usage": {
+          "prompt_tokens": 80,
+          "completion_tokens": 22,
+          "total_tokens": 102
+        }
       }
     },
     {
@@ -35,7 +40,12 @@
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"reviewer\", \"content\": \"Review: Please add type hints for better stability.\"}]",
         "tracebrain.llm.completion": "Revised: def search(q: str) -> list: ...",
-        "tracebrain.llm.final_answer": "Final optimized code with type hints submitted."
+        "tracebrain.llm.final_answer": "Final optimized code with type hints submitted.",
+        "tracebrain.usage": {
+          "prompt_tokens": 66,
+          "completion_tokens": 18,
+          "total_tokens": 84
+        }
       }
     }
   ]

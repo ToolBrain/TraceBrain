@@ -9,8 +9,8 @@ import IconButton from "@mui/material/IconButton";
 import { useNavigate, useLocation } from "react-router-dom";
 import { LightMode, DarkMode } from "@mui/icons-material";
 import { useSettings } from "../../contexts/SettingsContext";
-import lightOwl from "../../assets/light-owl.png";
-import darkOwl from "../../assets/dark-owl.png";
+import lightOwl from "../../assets/chat-light-bg.png";
+import darkOwl from "../../assets/chat-dark-bg.png";
 
 const pages = [
   { label: "Dashboard", path: "/dashboard" },

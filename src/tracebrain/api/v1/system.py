@@ -15,6 +15,7 @@ from .schemas.api_models import (
     HistoryResponse,
     SettingsIn,
     SettingsOut,
+    SystemInfoOut,
     TraceOut,
     trace_to_out,
 )
@@ -59,6 +60,7 @@ def root():
             "clear_history": "DELETE /api/v1/history",
             "get_settings": "GET /api/v1/settings",
             "save_settings": "POST /api/v1/settings",
+            "system_info": "GET /api/v1/system/info",
             "curriculum_delete_task": "DELETE /api/v1/curriculum/{task_id}",
             "curriculum_delete_all": "DELETE /api/v1/curriculum",
             "curriculum_complete_task": "PATCH /api/v1/curriculum/{task_id}/complete",
@@ -80,6 +82,21 @@ def health_check():
         }
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Database connection failed: {str(exc)}")
+
+
+@router.get("/system/info", response_model=SystemInfoOut, tags=["System"])
+def get_system_info() -> SystemInfoOut:
+    """Return runtime metadata used by the Librarian welcome state."""
+    try:
+        backend_type = settings.get_backend_type()
+        database_type = "PostgreSQL" if backend_type == "postgres" else "SQLite"
+        return SystemInfoOut(
+            database_type=database_type,
+            trace_count=store.count_traces(),
+            model_name=store.get_librarian_model_name(),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve system info: {str(exc)}")
 
 
 @router.get("/settings", response_model=SettingsOut, tags=["Settings"])

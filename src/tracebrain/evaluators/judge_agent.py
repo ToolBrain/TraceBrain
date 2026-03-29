@@ -215,13 +215,30 @@ class AIJudge:
                 api_key=provider_api_key,
             )
         except (ProviderError, ValueError) as exc:
-            raise ValueError(str(exc)) from exc
+            logger.error("AIJudge provider error: %s", exc)
+            return {
+                "rating": 1,
+                "feedback": str(exc),
+                "confidence": 0.0,
+                "error_type": "tool_execution_error",
+                "priority": 2,
+            }
 
-        response = provider.send_user_message(
-            provider.start_chat(system_instruction, []),
-            user_content,
-        )
-        raw_text = provider.extract_text(response)
+        try:
+            response = provider.send_user_message(
+                provider.start_chat(system_instruction, []),
+                user_content,
+            )
+            raw_text = provider.extract_text(response)
+        except ProviderError as exc:
+            logger.error("AIJudge provider error: %s", exc)
+            return {
+                "rating": 1,
+                "feedback": str(exc),
+                "confidence": 0.0,
+                "error_type": "tool_execution_error",
+                "priority": 2,
+            }
 
         logger.debug("AIJudge raw response: %s", raw_text)
 

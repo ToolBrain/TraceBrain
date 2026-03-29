@@ -8,6 +8,7 @@ import uuid
 from fastapi import APIRouter, HTTPException
 
 from ...evaluators.judge_agent import AIJudge
+from ...core.llm_providers import ProviderError
 from .common import build_ai_evaluation, get_librarian_agent, store
 from .schemas.api_models import (
     AIEvaluationIn,
@@ -80,6 +81,7 @@ def _build_nlq_response(result: Dict[str, Any], session_id: str) -> NaturalLangu
         suggestions=_normalize_suggestions(result.get("suggestions")),
         sources=_normalize_sources(result.get("sources")),
         filters=_normalize_filters(result.get("filters")),
+        is_error=bool(result.get("is_error", False)),
     )
 
 
@@ -122,15 +124,20 @@ def natural_language_query(query: NaturalLanguageQuery):
         return _build_nlq_response(result, session_id=session_id)
 
     except Exception as exc:
+        if isinstance(exc, ProviderError):
+            answer = str(exc)
+        else:
+            answer = (
+                "Sorry, I encountered an error processing your query. "
+                "Please try rephrasing your question or check the server logs."
+            )
         return _build_nlq_response(
             {
-                "answer": (
-                    "Sorry, I encountered an error processing your query: "
-                    f"{str(exc)}\n\nPlease try rephrasing your question or check the server logs."
-                ),
+                "answer": answer,
                 "suggestions": [],
                 "sources": [],
                 "filters": {},
+                "is_error": True,
             },
             session_id=session_id,
         )

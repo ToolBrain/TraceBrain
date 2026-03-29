@@ -47,7 +47,11 @@ const MODEL_PRESETS = {
     "claude-sonnet-4-5-20250929",
     "claude-opus-4-5-20251101",
   ],
-  huggingface: [],
+  huggingface: [
+    "Qwen/Qwen2.5-72B-Instruct",
+    "Qwen/Qwen2.5-7B-Instruct",
+    "Qwen/Qwen3-4B-Instruct-2507",
+  ],
 } as const;
 
 const AdvancedSection: React.FC = () => {

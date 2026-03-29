@@ -15,7 +15,7 @@ import re
 
 import sqlparse
 
-from tracebrain.core.llm_providers import get_llm_provider, BaseProvider
+from tracebrain.core.llm_providers import get_llm_provider, BaseProvider, ProviderError
 from tracebrain.core.schema import TraceBrainAttributes
 from tracebrain.core.curator import CurriculumCurator
 from tracebrain.db.base import TraceStatus
@@ -686,11 +686,19 @@ class LibrarianAgent:
 
         except Exception as e:
             logger.exception("Librarian query failed for session %s", session_id)
+            if isinstance(e, ProviderError):
+                answer = str(e)
+            else:
+                answer = (
+                    "Sorry, I encountered an error processing your query. "
+                    "Please try rephrasing your question or check the server logs."
+                )
             error_result = {
-                "answer": f"Sorry, I encountered an error processing your query: {str(e)}\n\nPlease try rephrasing your question or check the server logs.",
+                "answer": answer,
                 "suggestions": [],
                 "sources": [],
                 "filters": {},
+                "is_error": True,
             }
             self.store.save_chat_message(session_id, "assistant", error_result)
             raise

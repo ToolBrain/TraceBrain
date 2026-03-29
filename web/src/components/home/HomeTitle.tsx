@@ -48,6 +48,22 @@ const HomeTitle: React.FC = () => {
         </Typography>
       </Box>
 
+      <Typography
+        sx={{
+          mt: { xs: 0.75, sm: 1 },
+          fontSize: { xs: "0.95rem", sm: "1.1rem", md: "1.25rem" },
+          fontWeight: 500,
+          letterSpacing: { xs: "0.08em", sm: "0.12em" },
+          textTransform: "uppercase",
+          color: (theme) =>
+            theme.palette.mode === "dark"
+              ? "rgba(255,255,255,0.7)"
+              : "rgba(17,17,17,0.65)",
+        }}
+      >
+        Trace Management for LLM Agents
+      </Typography>
+
       <Box
         sx={{
           mt: { xs: 1, sm: 1.5 },

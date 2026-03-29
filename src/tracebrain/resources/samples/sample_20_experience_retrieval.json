@@ -22,7 +22,12 @@
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Generate TechCorp report.\"}]",
         "tracebrain.llm.thought": "I should check past traces for formatting rules.",
-        "tracebrain.llm.tool_code": "search_past_experiences('TechCorp report')"
+        "tracebrain.llm.tool_code": "search_past_experiences('TechCorp report')",
+        "tracebrain.usage": {
+          "prompt_tokens": 70,
+          "completion_tokens": 16,
+          "total_tokens": 86
+        }
       }
     },
     {
@@ -48,7 +53,12 @@
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"tool\", \"content\": \"Found Trace x7y8: Always wrap financials in a markdown table\"}]",
         "tracebrain.llm.completion": "Based on past experience, here is your report in a table: ...",
-        "tracebrain.llm.final_answer": "Based on past experience, here is your report in a table: ..."
+        "tracebrain.llm.final_answer": "Based on past experience, here is your report in a table: ...",
+        "tracebrain.usage": {
+          "prompt_tokens": 58,
+          "completion_tokens": 26,
+          "total_tokens": 84
+        }
       }
     }
   ]

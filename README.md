@@ -53,6 +53,45 @@ By organizing historical traces as structured artifacts, TraceBrain supports age
 - **AI Integration**: LibrarianAgent + AI Judge + Curriculum Curator with multi-provider LLM support
 - **Embeddings**: sentence-transformers (local) or OpenAI/Gemini (cloud)
 
+## 📸 Platform Showcase
+
+Take a look at the TraceBrain Command Center in action:
+
+<p align="center">
+  <b>🌐 Welcome to the Command Center</b><br>
+  <i>The central hub for agentic trace management, featuring a clean, intuitive, and modern interface.</i><br>
+  <img src="images/homepage.jpg" alt="TraceBrain Homepage" width="100%">
+</p>
+
+<table>
+  <tr>
+    <td width="50%">
+      <b>📊 Command Center Dashboard</b><br>
+      <i>Real-time error distribution, confidence metrics, and active filters.</i><br>
+    <img src="images/dashboard_analytics.jpg" alt="Dashboard" style="width:100%; height:auto; border-radius:12px;">
+    </td>
+    <td width="50%">
+      <b>🔍 Trace Explorer & AI Judge</b><br>
+      <i>Side-by-side view of the execution tree, span properties, and Human-AI collaborative labeling.</i><br>
+    <img src="images/trace_explorer.jpg" alt="Trace Explorer" style="width:100%; height:auto; border-radius:12px;">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <b>🤖 AI Librarian</b><br>
+      <i>Query your trace database using natural language and intent-based UI filters.</i><br>
+    <img src="images/ai_librarian.jpg" alt="AI Librarian" style="width:100%; height:auto; border-radius:12px;">
+    </td>
+    <td width="50%">
+      <b>🗺️ Automated Curriculum</b><br>
+      <i>Transform diagnosed failures into targeted training tasks ready for export.</i><br>
+    <img src="images/training_roadmap.jpg" alt="Training Roadmap" style="width:100%; height:auto; border-radius:12px;">
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 🚀 Quick Start
 
 Choose one of three installation paths based on your needs. Each option ends with the
@@ -691,7 +730,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Built with [FastAPI](https://fastapi.tiangolo.com/)
 - Database powered by [SQLAlchemy](https://www.sqlalchemy.org/)
-- UI with [Streamlit](https://streamlit.io/)
+- UI with [React (Vite)](https://vitejs.dev/) + [MUI](https://mui.com/)
 - Inspired by [OpenTelemetry](https://opentelemetry.io/) standards
 
 ---

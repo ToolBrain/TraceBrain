@@ -1195,6 +1195,12 @@ class BaseStorageBackend:
         finally:
             session.close()
 
+    def get_librarian_model_name(self) -> str:
+        """Return the current Librarian model name from persisted settings with env fallback."""
+        settings_payload = self.get_settings(mask_api_keys=False)
+        model_name = str(settings_payload.get("librarian_model") or "").strip()
+        return model_name or settings.LLM_MODEL
+
     def save_settings(self, new_settings: Dict[str, Any], mask_api_keys: bool = False) -> Dict[str, Any]:
         """Upsert singleton LLM settings and return the normalized payload."""
         payload = new_settings if isinstance(new_settings, dict) else {}

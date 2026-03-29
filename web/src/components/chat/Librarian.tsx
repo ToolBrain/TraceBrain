@@ -6,19 +6,28 @@ import { ChatMessages } from "./ChatMessages";
 import { ChatSuggestions } from "./ChatSuggestions";
 import { LibrarianLogoAvatar } from "./Icons";
 
+interface SystemInfo {
+  database_type: string;
+  trace_count: number;
+  model_name: string;
+}
+
 export const Librarian: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
+  const [isSystemInfoLoading, setIsSystemInfoLoading] = useState(false);
   const { messages, suggestions, isLoading, sendMessage, clearMessages, clearSuggestions } =
     useChat();
   const [selectedSuggestion, setSelectedSuggestion] = useState(false);
 
   // Sends the message if input is not empty and clears the input
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const handleSend = async (prefill?: string) => {
+    const message = (prefill ?? input).trim();
+    if (!message) return;
 
-    await sendMessage(input);
     setInput("");
+    await sendMessage(message);
   };
 
   // Sends message on when enter is press and allows newline with Shift+Enter
@@ -35,6 +44,12 @@ export const Librarian: React.FC = () => {
     setSelectedSuggestion(true);
   };
 
+  // Handle quick starter click
+  const handleQuickStarterClick = (query: string) => {
+    setSelectedSuggestion(false);
+    void handleSend(query);
+  };
+
   // Handle clear session
   const handleClearSession = () => {
     clearMessages();
@@ -48,6 +63,40 @@ export const Librarian: React.FC = () => {
       setSelectedSuggestion(false);
     }
   }, [suggestions]);
+
+  // Fetch lightweight system metadata for welcome state
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSystemInfo = async () => {
+      setIsSystemInfoLoading(true);
+      try {
+        const response = await fetch("/api/v1/system/info");
+        if (!response.ok) {
+          throw new Error(`Failed to load system metadata: ${response.statusText}`);
+        }
+        const payload = (await response.json()) as SystemInfo;
+        if (isMounted) {
+          setSystemInfo(payload);
+        }
+      } catch (error) {
+        console.error(error);
+        if (isMounted) {
+          setSystemInfo(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsSystemInfoLoading(false);
+        }
+      }
+    };
+
+    void loadSystemInfo();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <>
@@ -108,7 +157,13 @@ export const Librarian: React.FC = () => {
             </IconButton>
           </Stack>
 
-          <ChatMessages messages={messages} isLoading={isLoading} />
+          <ChatMessages
+            messages={messages}
+            isLoading={isLoading}
+            systemInfo={systemInfo}
+            isSystemInfoLoading={isSystemInfoLoading}
+            onQuickStarterClick={handleQuickStarterClick}
+          />
 
           {!selectedSuggestion && suggestions.length > 0 && (
             <ChatSuggestions
@@ -144,7 +199,9 @@ export const Librarian: React.FC = () => {
                     <IconButton
                       size="small"
                       color="primary"
-                      onClick={handleSend}
+                      onClick={() => {
+                        void handleSend();
+                      }}
                       disabled={isLoading || !input.trim()}
                       sx={{
                         alignSelf: "flex-end",

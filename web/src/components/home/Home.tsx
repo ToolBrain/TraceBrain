@@ -11,27 +11,27 @@ const NAV_ITEMS = [
   {
     title: "Dashboard",
     description:
-      "Monitor real-time training runs, view live metrics, and get a high-level overview of your agents' training progress.",
+      "Monitor real-time agent telemetry, track errors, and assess system health at a glance.",
     route: "/dashboard",
     Icon: DashboardIcon,
   },
   {
     title: "Explorer",
-    description: "Search and filter through your agent traces and episodes.",
+    description: "Explore multi-turn traces, visualize span hierarchies, and compare executions side by side.",
     route: "/explorer",
     Icon: TimelineIcon,
   },
   {
     title: "History",
     description:
-      "Browse and revisit traces and episodes you've previously opened and explored.",
+      "Access recent traces, episodes, and validated feedback for quick review.",
     route: "/history",
     Icon: HistoryIcon,
   },
   {
     title: "Roadmap",
     description:
-      "Generate sample training tasks for your agents to learn from.",
+      "Turn failures into targeted training tasks with automated curriculum generation.",
     route: "/roadmap",
     Icon: Map,
   },

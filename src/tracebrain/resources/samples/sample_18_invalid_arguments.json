@@ -23,7 +23,12 @@
         "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"Convert 'one hundred' dollars to EUR.\"}]",
         "tracebrain.llm.completion": "Thought: I will call convert_currency.\n{\"tool_call\": {\"name\": \"convert_currency\", \"arguments\": {\"amount\": \"one hundred\"}}}",
         "tracebrain.llm.thought": "I will call convert_currency.",
-        "tracebrain.llm.tool_code": "convert_currency({'amount': 'one hundred'})"
+        "tracebrain.llm.tool_code": "convert_currency({'amount': 'one hundred'})",
+        "tracebrain.usage": {
+          "prompt_tokens": 72,
+          "completion_tokens": 18,
+          "total_tokens": 90
+        }
       }
     },
     {
@@ -49,7 +54,12 @@
         "tracebrain.span.type": "llm_inference",
         "tracebrain.llm.new_content": "[{\"role\": \"tool\", \"content\": \"TypeError: amount must be a float, not 'str'\"}]",
         "tracebrain.llm.completion": "I'm sorry, I encountered a technical error and cannot perform the conversion.",
-        "tracebrain.llm.final_answer": "I'm sorry, I encountered a technical error and cannot perform the conversion."
+        "tracebrain.llm.final_answer": "I'm sorry, I encountered a technical error and cannot perform the conversion.",
+        "tracebrain.usage": {
+          "prompt_tokens": 54,
+          "completion_tokens": 20,
+          "total_tokens": 74
+        }
       }
     }
   ]

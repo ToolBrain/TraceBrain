@@ -165,6 +165,71 @@ class BaseProvider:
     def extract_usage(self, response) -> Optional[Dict[str, Any]]:
         return None
 
+    def _extract_status_code(self, exc: Exception) -> Optional[int]:
+        status_code = getattr(exc, "status_code", None)
+        if isinstance(status_code, int):
+            return status_code
+
+        response = getattr(exc, "response", None)
+        if response is not None:
+            response_code = getattr(response, "status_code", None)
+            if isinstance(response_code, int):
+                return response_code
+
+        return None
+
+    def _is_timeout(self, exc: Exception) -> bool:
+        if isinstance(exc, TimeoutError):
+            return True
+        if isinstance(exc, requests.exceptions.Timeout):
+            return True
+
+        try:
+            import httpx
+
+            if isinstance(exc, httpx.TimeoutException):
+                return True
+        except Exception:
+            pass
+
+        return False
+
+    def _friendly_error_message(self, exc: Exception) -> str:
+        try:
+            from google.api_core.exceptions import ResourceExhausted
+
+            if isinstance(exc, ResourceExhausted):
+                return (
+                    "System is busy. Too many requests to the AI provider. "
+                    "Please wait a minute or switch models."
+                )
+        except Exception:
+            pass
+
+        if self._is_timeout(exc):
+            return "The AI is taking too long to think. Please try again or use a smaller model."
+
+        status_code = self._extract_status_code(exc)
+        if status_code == 429:
+            return (
+                "System is busy. Too many requests to the AI provider. "
+                "Please wait a minute or switch models."
+            )
+        if status_code == 400:
+            return (
+                "This model doesn't support the current request format or tool usage. "
+                "Try a different model."
+            )
+        if status_code in {500, 503}:
+            return "The AI provider's server is currently down or overloaded."
+
+        return "The AI provider encountered an unexpected error. Please try again or switch models."
+
+    def _raise_provider_error(self, exc: Exception, provider_label: Optional[str] = None) -> None:
+        label = provider_label or self.name
+        logger.warning("%s provider error: %s", label, exc)
+        raise ProviderError(self._friendly_error_message(exc)) from exc
+
 
 class OpenAIProvider(BaseProvider):
     name = "openai"
@@ -181,6 +246,76 @@ class OpenAIProvider(BaseProvider):
 
     def start_chat(self, system_instruction: str, tools: List[Dict[str, Any]]):
         return {"system": system_instruction, "messages": [], "tools": tools}
+
+    @staticmethod
+    def _read_output_field(item: Any, key: str) -> Any:
+        if isinstance(item, dict):
+            return item.get(key)
+        return getattr(item, key, None)
+
+    def _append_function_calls_to_session(self, session: Dict[str, Any], response: Any) -> bool:
+        """Persist assistant outputs and function calls so follow-up tool outputs keep valid context."""
+        output_items = (
+            response.get("output")
+            if isinstance(response, dict)
+            else getattr(response, "output", None)
+        ) or []
+
+        appended_assistant_message = False
+
+        for item in output_items:
+            item_type = self._read_output_field(item, "type")
+            if item_type == "message":
+                role = self._read_output_field(item, "role") or "assistant"
+                content = self._read_output_field(item, "content")
+                if role == "assistant" and isinstance(content, list) and content:
+                    session["messages"].append({"role": "assistant", "content": content})
+                    appended_assistant_message = True
+                elif role == "assistant" and isinstance(content, str) and content.strip():
+                    session["messages"].append({"role": "assistant", "content": content})
+                    appended_assistant_message = True
+                continue
+
+            if item_type != "function_call":
+                continue
+
+            fn_payload = self._read_output_field(item, "function")
+            call_id = (
+                self._read_output_field(item, "call_id")
+                or self._read_output_field(item, "id")
+                or self._read_output_field(fn_payload, "call_id")
+            )
+            name = (
+                self._read_output_field(item, "name")
+                or self._read_output_field(fn_payload, "name")
+            )
+            arguments = (
+                self._read_output_field(item, "arguments")
+                or self._read_output_field(item, "args")
+                or self._read_output_field(fn_payload, "arguments")
+                or self._read_output_field(fn_payload, "args")
+                or "{}"
+            )
+
+            if not call_id or not name:
+                continue
+
+            if not isinstance(arguments, str):
+                try:
+                    arguments = json.dumps(arguments)
+                except Exception:
+                    arguments = "{}"
+
+            session["messages"].append(
+                {
+                    "type": "function_call",
+                    "call_id": str(call_id),
+                    "name": str(name),
+                    "arguments": arguments,
+                }
+            )
+
+        return appended_assistant_message
 
     def _normalize_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         normalized: List[Dict[str, Any]] = []
@@ -231,9 +366,14 @@ class OpenAIProvider(BaseProvider):
         if self.max_tokens is not None:
             request_kwargs["max_output_tokens"] = self.max_tokens
 
-        response = self.client.responses.create(**request_kwargs)
+        try:
+            response = self.client.responses.create(**request_kwargs)
+        except Exception as exc:
+            self._raise_provider_error(exc, "OpenAI")
+            raise
+        appended_assistant_message = self._append_function_calls_to_session(session, response)
         output_text = getattr(response, "output_text", None)
-        if isinstance(output_text, str) and output_text:
+        if isinstance(output_text, str) and output_text and not appended_assistant_message:
             session["messages"].append({"role": "assistant", "content": output_text})
         return response
 
@@ -442,14 +582,18 @@ class AnthropicProvider(BaseProvider):
 
     def send_user_message(self, session, content: str):
         session["messages"].append({"role": "user", "content": content})
-        response = self.client.messages.create(
-            model=self.model,
-            system=session["system"],
-            messages=session["messages"],
-            tools=self._format_tools(session.get("tools", [])),
-            temperature=self.temperature,
-            max_tokens=self.max_tokens or 512,
-        )
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                system=session["system"],
+                messages=session["messages"],
+                tools=self._format_tools(session.get("tools", [])),
+                temperature=self.temperature,
+                max_tokens=self.max_tokens or 512,
+            )
+        except Exception as exc:
+            self._raise_provider_error(exc, "Anthropic")
+            raise
         self._append_assistant_response(session, response)
         return response
 
@@ -475,14 +619,18 @@ class AnthropicProvider(BaseProvider):
                 ],
             }
         )
-        response = self.client.messages.create(
-            model=self.model,
-            system=session["system"],
-            messages=session["messages"],
-            tools=self._format_tools(session.get("tools", [])),
-            temperature=self.temperature,
-            max_tokens=self.max_tokens or 512,
-        )
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                system=session["system"],
+                messages=session["messages"],
+                tools=self._format_tools(session.get("tools", [])),
+                temperature=self.temperature,
+                max_tokens=self.max_tokens or 512,
+            )
+        except Exception as exc:
+            self._raise_provider_error(exc, "Anthropic")
+            raise
         self._append_assistant_response(session, response)
         return response
 
@@ -556,12 +704,19 @@ class OllamaProvider(BaseProvider):
             "stream": False,
             "options": {"temperature": self.temperature},
         }
-        response = requests.post(
-            f"{self.base_url}/api/chat", json=payload, timeout=self.timeout
-        )
-        if response.status_code >= 400:
-            raise ProviderError(f"Provider error {response.status_code}: {response.text[:200]}")
-        data = response.json()
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/chat", json=payload, timeout=self.timeout
+            )
+            if response.status_code >= 400:
+                error = requests.HTTPError(response.text)
+                error.response = response
+                self._raise_provider_error(error, "Ollama")
+            data = response.json()
+        except Exception as exc:
+            self._raise_provider_error(exc, "Ollama")
+            raise
+
         message = data.get("message") or {}
         session["messages"].append(message)
         return data
@@ -657,7 +812,11 @@ class GeminiProvider(BaseProvider):
         return {"chat": chat}
 
     def send_user_message(self, session, content: str):
-        return session["chat"].send_message(content)
+        try:
+            return session["chat"].send_message(content)
+        except Exception as exc:
+            self._raise_provider_error(exc, "Gemini")
+            raise
 
     def send_tool_result(self, session, tool_name: str, tool_result: str, tool_call_id: Optional[str]):
         try:
@@ -666,16 +825,20 @@ class GeminiProvider(BaseProvider):
             parsed_result = {"result": tool_result}
         if not isinstance(parsed_result, dict):
             parsed_result = {"result": parsed_result}
-        return session["chat"].send_message(
-            [
-                self.types.Part(
-                    function_response=self.types.FunctionResponse(
-                        name=tool_name,
-                        response=parsed_result,
+        try:
+            return session["chat"].send_message(
+                [
+                    self.types.Part(
+                        function_response=self.types.FunctionResponse(
+                            name=tool_name,
+                            response=parsed_result,
+                        )
                     )
-                )
-            ]
-        )
+                ]
+            )
+        except Exception as exc:
+            self._raise_provider_error(exc, "Gemini")
+            raise
 
     def extract_text(self, response) -> str:
         text = getattr(response, "text", None)
@@ -767,6 +930,7 @@ class HuggingFaceProvider(BaseProvider):
         self.model = model
         normalized_base_url = str(base_url).strip() if base_url is not None else ""
         self.base_url = normalized_base_url.rstrip("/") if normalized_base_url else None
+        self.timeout = max(self.timeout, 90)
 
         try:
             from huggingface_hub import InferenceClient
@@ -774,21 +938,50 @@ class HuggingFaceProvider(BaseProvider):
             raise ProviderError("huggingface_hub SDK not available") from exc
 
         if self.base_url:
-            self.client = InferenceClient(base_url=self.base_url, token=self.api_key)
+            self.client = InferenceClient(
+                base_url=self.base_url,
+                token=self.api_key,
+                timeout=self.timeout,
+            )
         else:
-            self.client = InferenceClient(model=self.model, token=self.api_key)
+            self.client = InferenceClient(
+                model=self.model,
+                token=self.api_key,
+                timeout=self.timeout,
+            )
 
         self._tools: List[Dict[str, Any]] = []
 
     def start_chat(self, system_instruction: str, tools: List[Dict[str, Any]]):
-        self._tools = list(tools or [])
+        self._tools = self._format_tools(tools)
         return {"system": system_instruction, "history": []}
+
+    def _format_tools(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        formatted: List[Dict[str, Any]] = []
+        for tool in (tools or []):
+            if not isinstance(tool, dict):
+                continue
+            name = tool.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+
+            function_payload: Dict[str, Any] = {
+                "name": name,
+                "parameters": tool.get("parameters") or {"type": "object", "properties": {}},
+            }
+            description = tool.get("description")
+            if isinstance(description, str) and description.strip():
+                function_payload["description"] = description
+
+            formatted.append({"type": "function", "function": function_payload})
+        return formatted
 
     def _create_completion(self, messages: List[Dict[str, Any]]):
         kwargs: Dict[str, Any] = {
             "messages": messages,
             "temperature": self.temperature,
         }
+        kwargs.pop("timeout", None)
         if self.max_tokens is not None:
             kwargs["max_tokens"] = self.max_tokens
         if self._tools:
@@ -798,7 +991,20 @@ class HuggingFaceProvider(BaseProvider):
         try:
             return self.client.chat.completions.create(**kwargs)
         except Exception as exc:
-            raise ProviderError(str(exc)) from exc
+            status_code = self._extract_status_code(exc)
+            if status_code == 400 and self._tools:
+                logger.warning("HuggingFace tools rejected; retrying without tools: %s", exc)
+                fallback_kwargs = dict(kwargs)
+                fallback_kwargs.pop("tools", None)
+                fallback_kwargs.pop("tool_choice", None)
+                try:
+                    return self.client.chat.completions.create(**fallback_kwargs)
+                except Exception as fallback_exc:
+                    self._raise_provider_error(fallback_exc, "HuggingFace")
+                    raise
+
+            self._raise_provider_error(exc, "HuggingFace")
+            raise
 
     def send_user_message(self, session, content: str):
         session["history"].append({"role": "user", "content": content})
@@ -806,6 +1012,11 @@ class HuggingFaceProvider(BaseProvider):
         response = self._create_completion(messages)
 
         assistant_text = self.extract_text(response)
+        if not assistant_text.strip():
+            assistant_text = (
+                "The model is taking longer than expected to load on the free tier. "
+                "Please try again in a few seconds."
+            )
         session["history"].append({"role": "assistant", "content": assistant_text})
         return response
 
@@ -824,6 +1035,11 @@ class HuggingFaceProvider(BaseProvider):
         response = self._create_completion(messages)
 
         assistant_text = self.extract_text(response)
+        if not assistant_text.strip():
+            assistant_text = (
+                "The model is taking longer than expected to load on the free tier. "
+                "Please try again in a few seconds."
+            )
         session["history"].append({"role": "assistant", "content": assistant_text})
         return response
 

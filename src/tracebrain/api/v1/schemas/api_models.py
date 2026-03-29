@@ -151,6 +151,7 @@ class NaturalLanguageResponse(BaseModel):
     suggestions: Optional[List[Suggestion]] = Field(default_factory=list)
     sources: List[str] = Field(default_factory=list, description="Trace IDs referenced in the answer")
     filters: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Filters extracted from the query")
+    is_error: Optional[bool] = Field(False, description="Whether the response represents a provider error")
 
 
 class ChatMessageOut(BaseModel):
@@ -259,6 +260,14 @@ class SettingsIn(BaseModel):
     gemini_api_key: Optional[str] = Field(None, description="Gemini API key")
     anthropic_api_key: Optional[str] = Field(None, description="Anthropic API key")
     huggingface_api_key: Optional[str] = Field(None, description="Hugging Face API key")
+
+
+class SystemInfoOut(BaseModel):
+    """Response model for lightweight runtime system metadata used by chat welcome UI."""
+
+    database_type: str = Field(..., description="Active database type label (PostgreSQL or SQLite)")
+    trace_count: int = Field(..., ge=0, description="Total number of traces indexed")
+    model_name: str = Field(..., description="Current Librarian model name")
 
 
 class AIEvaluationOut(BaseModel):
