@@ -28,6 +28,11 @@ export const ChatSuggestions: React.FC<ChatSuggestionsProps> = ({
         borderColor: "divider",
         minWidth: 0,
         overflow: "hidden",
+        "@keyframes suggestionsIn": {
+          from: { opacity: 0, transform: "translateY(6px)" },
+          to: { opacity: 1, transform: "translateY(0)" },
+        },
+        animation: "suggestionsIn 180ms ease-out",
       }}
     >
       <Stack direction="row" spacing={0.5} alignItems="center" sx={{ px: 0.5 }}>
@@ -55,10 +60,12 @@ export const ChatSuggestions: React.FC<ChatSuggestionsProps> = ({
               borderColor: "divider",
               borderRadius: 2,
               cursor: "pointer",
+              transition: "all 140ms ease",
               "&:hover": {
                 bgcolor: "action.hover",
                 borderColor: "primary.main",
                 boxShadow: 1,
+                transform: "translateY(-1px)",
               },
             }}
           >

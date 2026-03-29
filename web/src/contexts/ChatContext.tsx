@@ -42,7 +42,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function sendMessage(content: string) {
+    if (isLoading) {
+      return;
+    }
+
     setIsLoading(true);
+    setSuggestions([]);
     setMessages((prev) => [...prev, chatEngine.buildUserMessage(content)]);
     try {
       const result = await chatEngine.sendMessage({

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Paper, Stack, Typography, TextField, IconButton, Fab, Divider } from "@mui/material";
-import { Send, ChatBubble, Remove, DeleteOutline } from "@mui/icons-material";
+import { Send, Remove, DeleteOutline } from "@mui/icons-material";
 import { useChat } from "../../contexts/ChatContext";
 import { ChatMessages } from "./ChatMessages";
 import { ChatSuggestions } from "./ChatSuggestions";
-import { AssistantAvatar } from "./Icons";
+import { LibrarianLogoAvatar } from "./Icons";
 
 export const Librarian: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -56,15 +56,23 @@ export const Librarian: React.FC = () => {
           elevation={8}
           sx={{
             position: "fixed",
-            bottom: 24,
-            right: 24,
-            width: 400,
-            height: 600,
+            bottom: { xs: 8, sm: 24 },
+            right: { xs: 8, sm: 24 },
+            width: { xs: "calc(100vw - 16px)", sm: 420 },
+            height: { xs: "min(82vh, 680px)", sm: 640 },
             display: "flex",
             flexDirection: "column",
-            borderRadius: 2,
+            borderRadius: 3,
             overflow: "hidden",
             zIndex: 1200,
+            border: "1px solid",
+            borderColor: "divider",
+            boxShadow: "0 14px 36px rgba(15, 23, 42, 0.28)",
+            "@keyframes chatOpenIn": {
+              from: { opacity: 0, transform: "translateY(12px) scale(0.98)" },
+              to: { opacity: 1, transform: "translateY(0) scale(1)" },
+            },
+            animation: "chatOpenIn 180ms ease-out",
           }}
         >
           <Stack
@@ -74,10 +82,12 @@ export const Librarian: React.FC = () => {
             sx={{
               p: 1.5,
               bgcolor: "primary.dark",
+              backgroundImage:
+                "linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0))",
               color: "primary.contrastText",
             }}
           >
-            <AssistantAvatar />
+            <LibrarianLogoAvatar />
             <Stack flex={1}>
               <Typography variant="h6" sx={{ fontWeight: 600, userSelect: "none" }}>
                 TraceBrain Librarian
@@ -120,7 +130,7 @@ export const Librarian: React.FC = () => {
           >
             <TextField
               fullWidth
-              placeholder="Type your message..."
+              placeholder={isLoading ? "Waiting for Librarian..." : "Type your message..."}
               variant="outlined"
               multiline
               maxRows={3}
@@ -136,7 +146,15 @@ export const Librarian: React.FC = () => {
                       color="primary"
                       onClick={handleSend}
                       disabled={isLoading || !input.trim()}
-                      sx={{ alignSelf: "flex-end", mb: 0.5 }}
+                      sx={{
+                        alignSelf: "flex-end",
+                        mb: 0.5,
+                        bgcolor: input.trim() && !isLoading ? "primary.main" : "transparent",
+                        color: input.trim() && !isLoading ? "primary.contrastText" : "text.disabled",
+                        "&:hover": {
+                          bgcolor: input.trim() && !isLoading ? "primary.dark" : "transparent",
+                        },
+                      }}
                     >
                       <Send fontSize="small" />
                     </IconButton>
@@ -145,7 +163,7 @@ export const Librarian: React.FC = () => {
               }}
               sx={{
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
+                  borderRadius: 2.5,
                 },
               }}
             />
@@ -160,12 +178,15 @@ export const Librarian: React.FC = () => {
           onClick={() => setIsOpen(true)}
           sx={{
             position: "fixed",
-            bottom: 24,
-            right: 24,
+            bottom: { xs: 12, sm: 24 },
+            right: { xs: 12, sm: 24 },
             zIndex: 1200,
+            width: 60,
+            height: 60,
+            boxShadow: "0 12px 24px rgba(31, 111, 190, 0.35)",
           }}
         >
-          <ChatBubble />
+          <LibrarianLogoAvatar size={32} />
         </Fab>
       )}
     </>

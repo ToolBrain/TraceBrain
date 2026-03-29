@@ -63,10 +63,12 @@ interface SettingsContextType {
   saveError: string | null;
 }
 
+const LOCAL_SETTINGS_KEY = "tracebrain_ui_settings_v1";
+
 const DEFAULT_SETTINGS: Settings = {
   appearance: { theme: "light" },
   refresh: { autoRefresh: false, refreshInterval: 30 },
-  llm: { provider: "gemini", model: "gemini-2.5-flash", autoEvaluate: true },
+  llm: { provider: "gemini", model: "gemini-2.5-flash", autoEvaluate: true, batchSize: 5 },
   chatLLM: { provider: "gemini", model: "gemini-2.5-flash" },
   curatorLLM: { provider: "gemini", model: "gemini-2.5-flash" },
   apiKeys: { openai: "", gemini: "", anthropic: "", huggingface: "" },
@@ -141,6 +143,49 @@ const applyBackendSettings = (base: Settings, payload: Partial<LLMSettingsPayloa
     }
   });
 
+const loadLocalSettings = (): Settings => {
+  const base = fillDefaults(DEFAULT_SETTINGS, {});
+  if (typeof window === "undefined") {
+    return base;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(LOCAL_SETTINGS_KEY);
+    if (!raw) {
+      return base;
+    }
+    const parsed = JSON.parse(raw);
+    return fillDefaults(base, parsed);
+  } catch {
+    return base;
+  }
+};
+
+const persistLocalSettings = (settings: Settings) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const payload = {
+    appearance: settings.appearance,
+    refresh: settings.refresh,
+    llm: {
+      provider: settings.llm.provider,
+      model: settings.llm.model,
+      autoEvaluate: settings.llm.autoEvaluate,
+      batchSize: settings.llm.batchSize,
+    },
+    chatLLM: settings.chatLLM,
+    curatorLLM: settings.curatorLLM,
+  };
+
+  try {
+    window.localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore local persistence failures.
+  }
+};
+
 const SettingsContext = createContext<SettingsContextType | undefined>(
   undefined,
 );
@@ -160,22 +205,26 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   );
 
   useEffect(() => {
+    const localBase = loadLocalSettings();
+    setSettings(localBase);
+
     fetch("/api/v1/settings")
       .then((res) => {
         if (!res.ok) throw new Error("Settings not found");
         return res.json();
       })
       .then((data) => {
-        const merged = fillDefaults(DEFAULT_SETTINGS, {});
-        const mapped = applyBackendSettings(merged, data || {});
+        const mapped = applyBackendSettings(localBase, data || {});
 
         setSettings(mapped);
         setPersistedPayload(JSON.stringify(toBackendPayload(mapped)));
+        persistLocalSettings(mapped);
         setIsLoading(false);
       })
       .catch(() => {
-        setSettings(DEFAULT_SETTINGS);
-        setPersistedPayload(JSON.stringify(toBackendPayload(DEFAULT_SETTINGS)));
+        setSettings(localBase);
+        setPersistedPayload(JSON.stringify(toBackendPayload(localBase)));
+        persistLocalSettings(localBase);
         setIsLoading(false);
       });
   }, []);
@@ -183,6 +232,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const updateSettings = (updater: (draft: Settings) => void) => {
     setSettings((prev) => {
       const updated = produce(prev, updater);
+      persistLocalSettings(updated);
       return updated;
     });
   };
@@ -213,6 +263,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       const payload = await response.json();
       const merged = applyBackendSettings(settings, payload || {});
       setSettings(merged);
+      persistLocalSettings(merged);
       setPersistedPayload(JSON.stringify(toBackendPayload(merged)));
       return true;
     } catch (error) {

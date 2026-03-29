@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from "react";
-import { Stack, Box, CircularProgress, Typography } from "@mui/material";
+import { Stack, Box, Typography } from "@mui/material";
 import { ChatMessage } from "./ChatMessage";
 import type { Message } from "./engine/chatEngine";
+import { AssistantAvatar } from "./Icons";
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -27,6 +28,10 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         p: 2,
         overflowY: "auto",
         bgcolor: "background.default",
+        backgroundImage: (theme) =>
+          theme.palette.mode === "dark"
+            ? "radial-gradient(circle at top right, rgba(46,134,222,0.08), transparent 45%)"
+            : "radial-gradient(circle at top right, rgba(46,134,222,0.06), transparent 45%)",
       }}
     >
       {messages.length === 0 && !isLoading && (
@@ -49,7 +54,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       )}
 
       {messages.map((message, index) => (
-        <ChatMessage key={index} message={message} />
+        <ChatMessage key={`${message.role}-${index}`} message={message} index={index} />
       ))}
 
       {isLoading && (
@@ -57,17 +62,47 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
           sx={{
             display: "flex",
             alignItems: "center",
-            gap: 1.5,
-            ml: 5,
+            gap: 1,
             py: 0.5,
+            "@keyframes typingPulse": {
+              "0%, 80%, 100%": { transform: "scale(0.72)", opacity: 0.35 },
+              "40%": { transform: "scale(1)", opacity: 1 },
+            },
           }}
         >
-          <CircularProgress size={24} thickness={4} />
+          <AssistantAvatar size={30} />
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.6,
+              px: 1.4,
+              py: 1,
+              borderRadius: 3,
+              border: "1px solid",
+              borderColor: "divider",
+              bgcolor: "background.paper",
+              boxShadow: "0 4px 12px rgba(16,24,40,0.08)",
+              "& span": {
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                bgcolor: "primary.main",
+                animation: "typingPulse 1.15s infinite ease-in-out",
+              },
+              "& span:nth-of-type(2)": { animationDelay: "0.16s" },
+              "& span:nth-of-type(3)": { animationDelay: "0.32s" },
+            }}
+          >
+            <span />
+            <span />
+            <span />
+          </Box>
           <Typography
             variant="body2"
             sx={{ color: "text.secondary", fontStyle: "italic" }}
           >
-            Generating Response…
+            Librarian is thinking…
           </Typography>
         </Box>
       )}

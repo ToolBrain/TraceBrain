@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   Autocomplete,
   Stack,
+  Slider,
   TextField,
   Typography,
   Card,

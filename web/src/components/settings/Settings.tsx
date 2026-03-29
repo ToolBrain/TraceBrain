@@ -98,7 +98,7 @@ const Settings: React.FC = () => {
           }}
         >
           <Typography variant="body2" color={saveError ? "error.main" : "text.secondary"}>
-            {saveError || "Changes are saved only when you click Save Configuration."}
+            {saveError || "Display preferences are saved locally. Click Save Configuration to sync LLM and API key settings."}
           </Typography>
           <Button
             variant="contained"
