@@ -5,8 +5,6 @@ import {
   Slider,
   TextField,
   Typography,
-  Card,
-  CardContent,
   MenuItem,
   IconButton,
   InputAdornment,
@@ -55,19 +53,12 @@ const MODEL_PRESETS = {
 const AdvancedSection: React.FC = () => {
   const { settings, updateSettings } = useSettings();
 
-  const [activeFilter, setActiveFilter] = useState<FilterType | null>(null);
-  const [minSpans, setMinSpans] = useState<number | "">("");
-  const [maxDuration, setMaxDuration] = useState<number | "">("");
   const [showKeys, setShowKeys] = useState<Record<ProviderValue, boolean>>({
     openai: false,
     gemini: false,
     anthropic: false,
     huggingface: false,
   });
-
-  const handleFilterToggle = (filter: FilterType) => (checked: boolean) => {
-    setActiveFilter(checked ? filter : null);
-  };
 
   const toggleKeyVisibility = (provider: ProviderValue) => {
     setShowKeys((prev) => ({ ...prev, [provider]: !prev[provider] }));
