@@ -29,6 +29,7 @@ Usage:
 import sys
 import subprocess
 import time
+import os
 from pathlib import Path
 from typing import Optional
 import typer
@@ -128,27 +129,51 @@ def init():
     template = """# TraceBrain Configuration
 # Copy this file to .env and customize as needed
 
-# Database Configuration
+# --- DATABASE CONFIGURATION ---
 # SQLite (default for development)
 DATABASE_URL=sqlite:///./tracebrain_traces.db
 
 # PostgreSQL (for production)
-# DATABASE_URL=postgresql://user:password@localhost:5432/tracestore
+# DATABASE_URL=postgresql://tracebrain:tracebrain_2026_secure@localhost:5432/tracestore
+POSTGRES_USER=tracebrain
+POSTGRES_PASSWORD=tracebrain_2026_secure
+POSTGRES_DB=tracestore
 
-# Server Configuration
+# --- SERVER CONFIGURATION ---
 HOST=127.0.0.1
 PORT=8000
 LOG_LEVEL=info
 
-# LLM Configuration
-LLM_PROVIDER=gemini
-LLM_MODEL=gemini-2.5-flash
-LLM_API_KEY=your-key-here
+# --- LLM API KEYS (Key infrastructure) ---
+# Users should enter all API keys they own here once.
+OPENAI_API_KEY=your_openai_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+# ANTHROPIC_API_KEY=your_claude_api_key_here
+# HUGGINGFACE_API_KEY=your_huggingface_api_key_here
 
-# Embeddings Configuration
+# Optional provider endpoints/proxies
+# OPENAI_BASE_URL=https://your-openai-compatible-endpoint/v1
+# ANTHROPIC_BASE_URL=https://your-anthropic-endpoint
+# HUGGINGFACE_BASE_URL=http://localhost:8000
+
+# --- BOOTSTRAP DEFAULTS (Default configuration before UI setup) ---
+# These variables allow the system to start when the database is empty (first startup).
+DEFAULT_LIBRARIAN_PROVIDER=openai
+DEFAULT_LIBRARIAN_MODEL=gpt-4o-mini
+DEFAULT_JUDGE_PROVIDER=gemini
+DEFAULT_JUDGE_MODEL=gemini-2.5-flash
+DEFAULT_CURATOR_PROVIDER=gemini
+DEFAULT_CURATOR_MODEL=gemini-2.5-flash
+
+# --- SYSTEM SETTINGS ---
+LIBRARIAN_MODE=api
+LLM_DEBUG=false
+
+# --- EMBEDDING SETTINGS ---
 EMBEDDING_PROVIDER=local
 EMBEDDING_MODEL=all-MiniLM-L6-v2
-EMBEDDING_API_KEY=your-key-here
+# EMBEDDING_API_KEY=your_embedding_api_key_here
+# EMBEDDING_BASE_URL=https://your-embedding-endpoint/v1
 """
 
     env_path.write_text(template, encoding="utf-8")
@@ -604,8 +629,16 @@ def info():
     typer.echo("")
     
     typer.echo("[Features]")
-    typer.echo(f"  LLM Provider:     {settings.LLM_PROVIDER}")
-    typer.echo(f"  LLM API Key:      {'Configured' if settings.LLM_API_KEY else 'Missing'}")
+    typer.echo(f"  Librarian Mode:   {settings.LIBRARIAN_MODE}")
+    typer.echo(f"  Fallback Provider:{settings.LLM_PROVIDER}")
+    typer.echo(f"  Fallback Model:   {settings.LLM_MODEL}")
+    typer.echo(
+        "  Provider Keys:    "
+        f"openai={'Yes' if os.getenv('OPENAI_API_KEY') else 'No'}, "
+        f"gemini={'Yes' if os.getenv('GEMINI_API_KEY') else 'No'}, "
+        f"anthropic={'Yes' if os.getenv('ANTHROPIC_API_KEY') else 'No'}, "
+        f"huggingface={'Yes' if os.getenv('HUGGINGFACE_API_KEY') else 'No'}"
+    )
     typer.echo("")
     
     # Check if static files exist

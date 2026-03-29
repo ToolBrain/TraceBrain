@@ -315,6 +315,25 @@ TraceBrain now separates configuration into two layers:
 Runtime settings are editable from the UI or `POST /api/v1/settings`, and are persisted in the database.
 On first startup (when DB settings row does not exist), values are bootstrapped from `DEFAULT_*` env variables.
 
+For a complete, up-to-date template, copy from `.env.example` (same content as `tracebrain init`).
+
+#### 0) Database + server baseline
+
+```bash
+# SQLite (default for development)
+DATABASE_URL=sqlite:///./tracebrain_traces.db
+
+# PostgreSQL (for production)
+# DATABASE_URL=postgresql://tracebrain:tracebrain_2026_secure@localhost:5432/tracestore
+POSTGRES_USER=tracebrain
+POSTGRES_PASSWORD=tracebrain_2026_secure
+POSTGRES_DB=tracestore
+
+HOST=127.0.0.1
+PORT=8000
+LOG_LEVEL=info
+```
+
 #### 1) Provider API keys (environment variables)
 
 Use provider-specific key names only:
@@ -322,7 +341,7 @@ Use provider-specific key names only:
 ```bash
 OPENAI_API_KEY=your_openai_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
-# ANTHROPIC_API_KEY=your_anthropic_api_key_here
+# ANTHROPIC_API_KEY=your_claude_api_key_here
 # HUGGINGFACE_API_KEY=your_huggingface_api_key_here
 ```
 
@@ -332,7 +351,7 @@ Optional provider base URLs:
 # Optional: custom endpoints/proxies
 # OPENAI_BASE_URL=https://your-openai-compatible-endpoint/v1
 # ANTHROPIC_BASE_URL=https://your-anthropic-endpoint
-# HUGGINGFACE_BASE_URL=https://your-huggingface-endpoint
+# HUGGINGFACE_BASE_URL=http://localhost:8000
 ```
 
 **Hugging Face local inference (vLLM/TGI):**
@@ -362,16 +381,17 @@ DEFAULT_CURATOR_PROVIDER=gemini
 DEFAULT_CURATOR_MODEL=gemini-2.5-flash
 ```
 
-#### 3) Global flags and embedding configuration
+#### 3) System + embedding configuration
 
 ```bash
+LIBRARIAN_MODE=api
 LLM_DEBUG=false
 
 EMBEDDING_PROVIDER=local
 EMBEDDING_MODEL=all-MiniLM-L6-v2
 
 # For cloud embeddings
-# EMBEDDING_API_KEY=your_embedding_key
+# EMBEDDING_API_KEY=your_embedding_api_key_here
 # EMBEDDING_BASE_URL=https://your-embedding-endpoint/v1
 ```
 
@@ -660,7 +680,7 @@ No migration tooling is included yet. For schema changes:
 1. Update models in `src/tracebrain/db/base.py`
 2. Recreate the database:
     - **SQLite (local):** delete `tracebrain_traces.db`, then run `tracebrain init-db`
-    - **PostgreSQL (Docker):** `docker compose -f docker/docker-compose.yml down -v` then `tracebrain up`
+    - **PostgreSQL (Docker):** `docker compose -f src/tracebrain/resources/docker/docker-compose.yml down -v` then `tracebrain up`
 
 ### Working with JSONB Queries (PostgreSQL)
 
@@ -711,7 +731,7 @@ If code changes aren't picked up after `tracebrain up --build`:
 
 ```bash
 tracebrain down
-docker compose -f docker/docker-compose.yml build --no-cache
+docker compose -f src/tracebrain/resources/docker/docker-compose.yml build --no-cache
 tracebrain up
 ```
 

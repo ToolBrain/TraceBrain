@@ -50,23 +50,52 @@ docker compose -f src/tracebrain/resources/docker/docker-compose.yml down
 
 ### Environment Variables
 
-Create a `.env` file at the project root (recommended) or edit `docker-compose.yml`:
+Copy `.env.example` to `.env` at the project root, then customize values as needed:
 
 ```env
 # Database
+DATABASE_URL=postgresql://tracebrain:tracebrain_2026_secure@postgres:5432/tracestore
+# POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB are used by the postgres service.
 POSTGRES_USER=tracebrain
 POSTGRES_PASSWORD=tracebrain_2026_secure
 POSTGRES_DB=tracestore
 
-# API
-DATABASE_URL=postgresql://tracebrain:tracebrain_2026_secure@postgres:5432/tracestore
+# Server
 HOST=0.0.0.0
 PORT=8000
 LOG_LEVEL=info
 
-# Optional: 
-LLM_API_KEY=your_key_here
+# LLM API keys (set the providers you plan to use)
+OPENAI_API_KEY=your_openai_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+# ANTHROPIC_API_KEY=your_claude_api_key_here
+# HUGGINGFACE_API_KEY=your_huggingface_api_key_here
+
+# Optional provider endpoints/proxies
+# OPENAI_BASE_URL=https://your-openai-compatible-endpoint/v1
+# ANTHROPIC_BASE_URL=https://your-anthropic-endpoint
+# HUGGINGFACE_BASE_URL=http://localhost:8000
+
+# Bootstrap defaults (used before runtime settings are configured in UI)
+DEFAULT_LIBRARIAN_PROVIDER=openai
+DEFAULT_LIBRARIAN_MODEL=gpt-4o-mini
+DEFAULT_JUDGE_PROVIDER=gemini
+DEFAULT_JUDGE_MODEL=gemini-2.5-flash
+DEFAULT_CURATOR_PROVIDER=gemini
+DEFAULT_CURATOR_MODEL=gemini-2.5-flash
+
+# System
+LIBRARIAN_MODE=api
+LLM_DEBUG=false
+
+# Embedding
+EMBEDDING_PROVIDER=local
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+# EMBEDDING_API_KEY=your_embedding_api_key_here
+# EMBEDDING_BASE_URL=https://your-embedding-endpoint/v1
 ```
+
+Note: `.env.example` and `tracebrain init` are the source of truth for the latest configuration template.
 
 ## 📊 Services
 
@@ -76,8 +105,8 @@ LLM_API_KEY=your_key_here
 - **Volume**: `tracebrain_postgres_data` (persistent)
 - **Health Check**: Automatic readiness probe
 
-Note: The database port is not exposed by default in production. Uncomment the
-`ports` section in docker-compose.yml for local development only.
+Note: The database port is currently exposed for local development. Remove the
+`ports` mapping in `docker-compose.yml` for production deployments.
 
 ### tracebrain-api
 - **Build**: Multi-stage optimized image
