@@ -109,15 +109,13 @@ export const submitTraceFeedback = async (
   }
 };
 
-export const evaluateTrace = async (id: string, judgeModelId: string) => {
+export const evaluateTrace = async (id: string) => {
   const response = await fetch(`/api/v1/ai_evaluate/${id}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      judge_model_id: judgeModelId,
-    }),
+    body: JSON.stringify({}),
   });
 
   if (!response.ok) {

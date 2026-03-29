@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { useSettings } from "./SettingsContext";
 import { ChatEngine, type Message, type Suggestion } from "../components/chat/engine/chatEngine";
 
 interface ChatContextType {
@@ -16,7 +15,6 @@ const ChatContext = createContext<ChatContextType | null>(null);
 const chatEngine = new ChatEngine("/api/v1");
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const { settings } = useSettings();
   const [sessionId, setSessionId] = useState<string | null>(() => chatEngine.getSessionId());
   const [messages, setMessages] = useState<Message[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -50,7 +48,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const result = await chatEngine.sendMessage({
         content,
         sessionId,
-        model: settings.llm.model,
       });
 
       setSessionId(result.sessionId);

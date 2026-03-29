@@ -7,7 +7,7 @@ import logging
 import re
 from typing import Optional
 
-from tracebrain.core.llm_providers import ProviderError, select_provider
+from tracebrain.core.llm_providers import ProviderError, get_llm_provider
 
 logger = logging.getLogger(__name__)
 
@@ -130,11 +130,17 @@ class AIJudge:
                 raise
             return json.loads(match.group(0))
 
-    def evaluate(self, trace_id: str, judge_model_id: str) -> dict:
+    def evaluate(self, trace_id: str, judge_model_id: Optional[str] = None) -> dict:
         """Evaluate a trace using the judge model."""
         trace = self.store.get_trace(trace_id)
         if not trace:
             raise ValueError(f"Trace not found: {trace_id}")
+
+        runtime_settings = self.store.get_settings()
+        judge_provider = runtime_settings.get("judge_provider")
+        selected_model = (judge_model_id or runtime_settings.get("judge_model") or "").strip()
+        provider_key_field = f"{str(judge_provider or '').strip().lower()}_api_key"
+        provider_api_key = runtime_settings.get(provider_key_field)
 
         has_active_help = False
         for span in trace.spans or []:
@@ -203,8 +209,12 @@ class AIJudge:
         logger.debug("AIJudge prompt:\n%s", prompt)
 
         try:
-            provider = select_provider(model_override=judge_model_id)
-        except ProviderError as exc:
+            provider = get_llm_provider(
+                provider_name=judge_provider,
+                model_id=selected_model,
+                api_key=provider_api_key,
+            )
+        except (ProviderError, ValueError) as exc:
             raise ValueError(str(exc)) from exc
 
         response = provider.send_user_message(

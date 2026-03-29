@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Any
 import logging
 import json
+import os
 
 import requests
 
@@ -181,15 +182,56 @@ class OpenAIProvider(BaseProvider):
     def start_chat(self, system_instruction: str, tools: List[Dict[str, Any]]):
         return {"system": system_instruction, "messages": [], "tools": tools}
 
+    def _normalize_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        normalized: List[Dict[str, Any]] = []
+        for message in messages or []:
+            if not isinstance(message, dict):
+                continue
+
+            content = message.get("content")
+            if isinstance(content, str):
+                role = str(message.get("role") or "")
+                block_type = "output_text" if role == "assistant" else "input_text"
+
+                # Responses API accepts structured content blocks; normalize plain strings for compatibility.
+                normalized_message = dict(message)
+                normalized_message["content"] = [{"type": block_type, "text": content}]
+                normalized.append(normalized_message)
+            else:
+                normalized.append(message)
+        return normalized
+
     def _send_response(self, session):
-        response = self.client.responses.create(
-            model=self.model,
-            instructions=session.get("system"),
-            input=session["messages"],
-            tools=[{"type": "function", "function": tool} for tool in session.get("tools", [])],
-            temperature=self.temperature,
-            max_output_tokens=self.max_tokens,
-        )
+        tool_specs: List[Dict[str, Any]] = []
+        for tool in session.get("tools", []) or []:
+            if not isinstance(tool, dict):
+                continue
+            name = tool.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+
+            spec: Dict[str, Any] = {
+                "type": "function",
+                "name": name,
+                "parameters": tool.get("parameters") or {"type": "object", "properties": {}},
+            }
+            description = tool.get("description")
+            if isinstance(description, str) and description.strip():
+                spec["description"] = description
+            tool_specs.append(spec)
+
+        request_kwargs: Dict[str, Any] = {
+            "model": self.model,
+            "instructions": session.get("system"),
+            "input": self._normalize_messages(session.get("messages", [])),
+            "temperature": self.temperature,
+        }
+        if tool_specs:
+            request_kwargs["tools"] = tool_specs
+        if self.max_tokens is not None:
+            request_kwargs["max_output_tokens"] = self.max_tokens
+
+        response = self.client.responses.create(**request_kwargs)
         output_text = getattr(response, "output_text", None)
         if isinstance(output_text, str) and output_text:
             session["messages"].append({"role": "assistant", "content": output_text})
@@ -200,13 +242,21 @@ class OpenAIProvider(BaseProvider):
         return self._send_response(session)
 
     def send_tool_result(self, session, tool_name: str, tool_result: str, tool_call_id: Optional[str]):
-        tool_message = {
-            "role": "tool",
-            "name": tool_name,
-            "content": tool_result,
-        }
+        if not isinstance(tool_result, str):
+            tool_result = json.dumps(tool_result)
+
         if tool_call_id:
-            tool_message["tool_call_id"] = tool_call_id
+            tool_message = {
+                "type": "function_call_output",
+                "call_id": tool_call_id,
+                "output": tool_result,
+            }
+        else:
+            tool_message = {
+                "role": "tool",
+                "name": tool_name,
+                "content": tool_result,
+            }
         session["messages"].append(tool_message)
         return self._send_response(session)
 
@@ -217,29 +267,48 @@ class OpenAIProvider(BaseProvider):
         return ""
 
     def extract_tool_calls(self, response) -> List[Dict[str, Any]]:
-        output_items = getattr(response, "output", None) or []
+        if isinstance(response, dict):
+            output_items = response.get("output") or response.get("output_tool_calls") or []
+        else:
+            output_items = (
+                getattr(response, "output", None)
+                or getattr(response, "output_tool_calls", None)
+                or []
+            )
         result: List[Dict[str, Any]] = []
+
+        def _read(item: Any, key: str) -> Any:
+            if isinstance(item, dict):
+                return item.get(key)
+            return getattr(item, key, None)
+
         for item in output_items:
-            item_type = getattr(item, "type", None) or item.get("type")
-            if item_type not in {"tool_call", "function_call"}:
+            item_type = _read(item, "type")
+            if item_type and item_type not in {"tool_call", "function_call"}:
                 continue
-            name = getattr(item, "name", None) or item.get("name")
+
+            fn_payload = _read(item, "function")
+            name = _read(item, "name") or _read(fn_payload, "name")
             args_raw = (
-                getattr(item, "arguments", None)
-                or item.get("arguments")
-                or getattr(item, "args", None)
-                or item.get("args")
+                _read(item, "arguments")
+                or _read(item, "args")
+                or _read(fn_payload, "arguments")
+                or _read(fn_payload, "args")
                 or "{}"
             )
             try:
                 args = json.loads(args_raw) if isinstance(args_raw, str) else dict(args_raw)
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, TypeError, ValueError):
                 args = {}
+
+            call_id = _read(item, "call_id") or _read(item, "id") or _read(fn_payload, "call_id")
+            if not name:
+                continue
             result.append(
                 {
                     "name": name,
                     "args": args,
-                    "id": getattr(item, "id", None) or item.get("id"),
+                    "id": call_id,
                 }
             )
         return result
@@ -321,28 +390,74 @@ class AnthropicProvider(BaseProvider):
     def start_chat(self, system_instruction: str, tools: List[Dict[str, Any]]):
         return {"system": system_instruction, "messages": [], "tools": tools}
 
+    def _format_tools(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        formatted: List[Dict[str, Any]] = []
+        for tool in (tools or []):
+            if not isinstance(tool, dict):
+                continue
+
+            name = tool.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+
+            formatted.append(
+                {
+                    "name": name,
+                    "description": tool.get("description"),
+                    "input_schema": tool.get("parameters") or {"type": "object", "properties": {}},
+                }
+            )
+
+        return formatted
+
+    def _response_content_blocks(self, response) -> List[Dict[str, Any]]:
+        blocks: List[Dict[str, Any]] = []
+        for part in (getattr(response, "content", None) or []):
+            part_type = getattr(part, "type", None)
+            if part_type == "text":
+                blocks.append({"type": "text", "text": getattr(part, "text", "") or ""})
+                continue
+            if part_type == "tool_use":
+                blocks.append(
+                    {
+                        "type": "tool_use",
+                        "id": getattr(part, "id", None),
+                        "name": getattr(part, "name", None),
+                        "input": getattr(part, "input", None) or {},
+                    }
+                )
+                continue
+
+            # Preserve future Anthropic content block types when available.
+            if hasattr(part, "model_dump"):
+                dumped = part.model_dump(exclude_none=True)
+                if isinstance(dumped, dict) and dumped.get("type"):
+                    blocks.append(dumped)
+        return blocks
+
+    def _append_assistant_response(self, session, response) -> None:
+        content_blocks = self._response_content_blocks(response)
+        if content_blocks:
+            session["messages"].append({"role": "assistant", "content": content_blocks})
+
     def send_user_message(self, session, content: str):
         session["messages"].append({"role": "user", "content": content})
         response = self.client.messages.create(
             model=self.model,
             system=session["system"],
             messages=session["messages"],
-            tools=[
-                {
-                    "name": tool["name"],
-                    "description": tool.get("description"),
-                    "input_schema": tool.get("parameters") or {"type": "object", "properties": {}},
-                }
-                for tool in session.get("tools", [])
-            ],
+            tools=self._format_tools(session.get("tools", [])),
             temperature=self.temperature,
             max_tokens=self.max_tokens or 512,
         )
+        self._append_assistant_response(session, response)
         return response
 
     def send_tool_result(self, session, tool_name: str, tool_result: str, tool_call_id: Optional[str]):
         if not isinstance(tool_result, str):
             tool_result = json.dumps(tool_result)
+        if not tool_call_id:
+            raise ProviderError("Anthropic tool_result requires a tool_call_id")
         session["messages"].append(
             {
                 "role": "user",
@@ -350,7 +465,12 @@ class AnthropicProvider(BaseProvider):
                     {
                         "type": "tool_result",
                         "tool_use_id": tool_call_id,
-                        "content": tool_result,
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": tool_result,
+                            }
+                        ],
                     }
                 ],
             }
@@ -359,17 +479,11 @@ class AnthropicProvider(BaseProvider):
             model=self.model,
             system=session["system"],
             messages=session["messages"],
-            tools=[
-                {
-                    "name": tool["name"],
-                    "description": tool.get("description"),
-                    "input_schema": tool.get("parameters") or {"type": "object", "properties": {}},
-                }
-                for tool in session.get("tools", [])
-            ],
+            tools=self._format_tools(session.get("tools", [])),
             temperature=self.temperature,
             max_tokens=self.max_tokens or 512,
         )
+        self._append_assistant_response(session, response)
         return response
 
     def extract_text(self, response) -> str:
@@ -472,7 +586,7 @@ class GeminiProvider(BaseProvider):
         except ImportError as exc:
             raise ProviderError("google-genai not available") from exc
         if not api_key:
-            raise ProviderError("LLM_API_KEY is required for gemini")
+            raise ProviderError("GEMINI_API_KEY is required for gemini")
         self.client = genai.Client(api_key=api_key)
         self.types = types
         self.model_name = model
@@ -651,14 +765,15 @@ class HuggingFaceProvider(BaseProvider):
         super().__init__()
         self.api_key = api_key
         self.model = model
-        self.base_url = (base_url or "https://api-inference.huggingface.co").rstrip("/")
+        normalized_base_url = str(base_url).strip() if base_url is not None else ""
+        self.base_url = normalized_base_url.rstrip("/") if normalized_base_url else None
 
         try:
             from huggingface_hub import InferenceClient
         except ImportError as exc:
             raise ProviderError("huggingface_hub SDK not available") from exc
 
-        if base_url:
+        if self.base_url:
             self.client = InferenceClient(base_url=self.base_url, token=self.api_key)
         else:
             self.client = InferenceClient(model=self.model, token=self.api_key)
@@ -753,37 +868,58 @@ def select_provider(
     mode = (mode_override or settings.LIBRARIAN_MODE).lower()
     provider = (provider_override or settings.LLM_PROVIDER).lower()
     model = model_override or settings.LLM_MODEL
-    api_key = settings.LLM_API_KEY
 
-    if mode == "api":
-        if provider == "gemini":
-            return GeminiProvider(api_key=api_key, model=model)
-        if provider in {"openai", "openai_compatible"}:
-            base_url = settings.LLM_BASE_URL
-            return OpenAIProvider(api_key=api_key, model=model, base_url=base_url)
-        if provider == "azure_openai":
-            if not settings.LLM_BASE_URL or not settings.LLM_API_VERSION:
-                raise ProviderError("LLM_BASE_URL and LLM_API_VERSION are required for azure_openai")
-            return AzureOpenAIProvider(
-                api_key=api_key,
-                model=model,
-                base_url=settings.LLM_BASE_URL,
-                api_version=settings.LLM_API_VERSION,
-            )
-        if provider == "anthropic":
-            return AnthropicProvider(api_key=api_key, model=model, base_url=settings.LLM_BASE_URL)
-    else:
-        if provider in {"huggingface", "hf", "gemini"}:
-            if provider == "gemini":
-                logger.warning("open_source mode uses Hugging Face by default")
-            return HuggingFaceProvider(api_key=api_key, model=model, base_url=settings.LLM_BASE_URL)
+    if mode == "open_source":
         if provider in {"openai_compatible", "vllm", "tgi", "lmstudio"}:
             base_url = settings.LLM_BASE_URL or "http://localhost:8000"
-            return OpenAIProvider(api_key=api_key, model=model, base_url=base_url)
+            return OpenAIProvider(api_key=os.getenv("OPENAI_API_KEY"), model=model, base_url=base_url)
         if provider == "ollama":
             return OllamaProvider(base_url=settings.LLM_BASE_URL, model=model)
 
-    raise ProviderError(f"Unsupported provider configuration: {mode} / {provider}")
+    return get_llm_provider(provider_name=provider, model_id=model)
+
+
+def _require_api_key(provider_label: str, configured_api_key: Optional[str] = None) -> str:
+    value = str(configured_api_key or "").strip()
+    if value:
+        return value
+
+    env_key = f"{provider_label.upper()}_API_KEY"
+    env_value = os.getenv(env_key)
+    if env_value:
+        return env_value
+    raise ProviderError(f"Missing API key for provider '{provider_label}'. Set {env_key} in .env")
+
+
+def get_llm_provider(provider_name: str, model_id: str, api_key: Optional[str] = None) -> BaseProvider:
+    """Create a provider instance from explicit provider/model settings."""
+    provider = (provider_name or "").strip().lower()
+    model = str(model_id or "").strip()
+    if not model:
+        raise ValueError("model_id is required")
+
+    if provider == "openai":
+        resolved_api_key = _require_api_key("openai", api_key)
+        base_url = os.getenv("OPENAI_BASE_URL") or settings.LLM_BASE_URL
+        return OpenAIProvider(api_key=resolved_api_key, model=model, base_url=base_url)
+
+    if provider == "gemini":
+        resolved_api_key = _require_api_key("gemini", api_key)
+        return GeminiProvider(api_key=resolved_api_key, model=model)
+
+    if provider == "anthropic":
+        resolved_api_key = _require_api_key("anthropic", api_key)
+        base_url = os.getenv("ANTHROPIC_BASE_URL") or settings.LLM_BASE_URL
+        return AnthropicProvider(api_key=resolved_api_key, model=model, base_url=base_url)
+
+    if provider in {"huggingface", "hf"}:
+        resolved_api_key = _require_api_key("huggingface", api_key)
+        base_url = settings.HUGGINGFACE_BASE_URL
+        return HuggingFaceProvider(api_key=resolved_api_key, model=model, base_url=base_url)
+
+    raise ValueError(
+        f"Unknown provider '{provider_name}'. Supported providers: openai, gemini, anthropic, huggingface"
+    )
 
 
 def is_provider_available() -> bool:

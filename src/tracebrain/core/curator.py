@@ -13,7 +13,7 @@ from sqlalchemy import func, cast, Integer, Float
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import selectinload
 
-from tracebrain.core.llm_providers import select_provider, ProviderError
+from tracebrain.core.llm_providers import get_llm_provider, ProviderError
 from tracebrain.db.base import Trace, CurriculumTask, TraceStatus
 
 logger = logging.getLogger(__name__)
@@ -34,12 +34,6 @@ class CurriculumCurator:
 
     def __init__(self, store):
         self.store = store
-        self.provider = None
-        self.provider_error: str | None = None
-        try:
-            self.provider = select_provider()
-        except ProviderError as exc:
-            self.provider_error = str(exc)
 
     def find_failed_traces(
         self,
@@ -226,10 +220,18 @@ class CurriculumCurator:
         error_types: Optional[List[str]] = None,
         limit: int = 5,
     ) -> int:
-        if not self.provider:
+        settings = self.store.get_settings()
+        provider_name = str(settings.get("curator_provider") or "gemini").strip().lower()
+        model_id = str(settings.get("curator_model") or "gemini-2.5-flash").strip()
+        provider_key_field = f"{provider_name}_api_key"
+        provider_api_key = settings.get(provider_key_field)
+        try:
+            provider = get_llm_provider(provider_name, model_id, api_key=provider_api_key)
+        except ProviderError as exc:
             raise ValueError(
-                f"LLM provider not configured for curriculum generation: {self.provider_error}"
-            )
+                f"LLM provider not configured for curriculum generation: {exc}"
+            ) from exc
+
         normalized_error_types = self._normalize_error_types(error_types)
         traces = self.find_failed_traces(limit=limit, error_types=normalized_error_types)
         if not traces:
@@ -258,9 +260,9 @@ class CurriculumCurator:
             f"\n### FAILED TRACES LOG:\n{summary}"
         )
 
-        session = self.provider.start_chat(system_prompt, [])
-        response = self.provider.send_user_message(session, user_prompt)
-        raw_text = self.provider.extract_text(response)
+        session = provider.start_chat(system_prompt, [])
+        response = provider.send_user_message(session, user_prompt)
+        raw_text = provider.extract_text(response)
 
         tasks_payload = self._extract_json(raw_text)
         if not isinstance(tasks_payload, list):

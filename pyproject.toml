@@ -53,13 +53,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-llm-openai = [
+openai = [
     "openai>=2.26,<3",
 ]
-llm-anthropic = [
+anthropic = [
     "anthropic>=0.34,<1",
 ]
-llm-huggingface = [
+huggingface = [
     "huggingface_hub>=1.0,<2",
 ]
 all-llms = [

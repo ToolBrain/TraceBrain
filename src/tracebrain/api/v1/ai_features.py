@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, Dict, List
 import uuid
 
 from fastapi import APIRouter, HTTPException
 
-from ...core.librarian import LIBRARIAN_AVAILABLE
 from ...evaluators.judge_agent import AIJudge
 from .common import build_ai_evaluation, get_librarian_agent, store
 from .schemas.api_models import (
@@ -19,6 +18,69 @@ from .schemas.api_models import (
 )
 
 router = APIRouter()
+
+
+def _normalize_suggestions(value: Any) -> List[Dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+
+    normalized: List[Dict[str, str]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        label = str(item.get("label", "")).strip()
+        suggestion_value = str(item.get("value", "")).strip()
+        if label and suggestion_value:
+            normalized.append({"label": label, "value": suggestion_value})
+    return normalized
+
+
+def _normalize_sources(value: Any) -> List[str]:
+    normalized: List[str] = []
+
+    def _append_candidate(candidate: Any) -> None:
+        if candidate is None:
+            return
+        if isinstance(candidate, str):
+            text = candidate.strip()
+            if text:
+                normalized.append(text)
+            return
+        if isinstance(candidate, dict):
+            source_id = candidate.get("trace_id") or candidate.get("id")
+            if source_id is not None:
+                text = str(source_id).strip()
+                if text:
+                    normalized.append(text)
+            return
+
+        text = str(candidate).strip()
+        if text:
+            normalized.append(text)
+
+    if isinstance(value, (list, tuple, set)):
+        for item in value:
+            _append_candidate(item)
+    elif value is not None:
+        _append_candidate(value)
+
+    return list(dict.fromkeys(normalized))
+
+
+def _normalize_filters(value: Any) -> Dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    return {str(k).strip(): v for k, v in value.items() if k and v is not None}
+
+
+def _build_nlq_response(result: Dict[str, Any], session_id: str) -> NaturalLanguageResponse:
+    return NaturalLanguageResponse(
+        answer=str(result.get("answer", "")),
+        session_id=session_id,
+        suggestions=_normalize_suggestions(result.get("suggestions")),
+        sources=_normalize_sources(result.get("sources")),
+        filters=_normalize_filters(result.get("filters")),
+    )
 
 
 @router.get("/librarian_sessions/{session_id}", response_model=ChatHistoryOut, tags=["AI"])
@@ -47,53 +109,30 @@ def natural_language_query(query: NaturalLanguageQuery):
     """
     session_id = query.session_id or str(uuid.uuid4())
 
-    if not LIBRARIAN_AVAILABLE:
-        return NaturalLanguageResponse(
-            answer="Librarian is not available. Please check LLM provider configuration and API keys.",
-            session_id=session_id,
-            suggestions=[],
-            sources=[],
-            filters={},
-        )
-
     try:
         agent = get_librarian_agent()
         result = agent.query(query.query, session_id=session_id)
-
-        sources = result.get("sources")
-        normalized_sources: Optional[List[str]] = None
-        if sources is None:
-            normalized_sources = None
-        elif isinstance(sources, list):
-            normalized_sources = []
-            for item in sources:
-                if isinstance(item, str):
-                    normalized_sources.append(item)
-                elif isinstance(item, dict):
-                    value = item.get("id") or item.get("trace_id")
-                    if value:
-                        normalized_sources.append(str(value))
-        else:
-            normalized_sources = [str(sources)]
-
-        return NaturalLanguageResponse(
-            answer=result.get("answer", ""),
-            session_id=session_id,
-            suggestions=result.get("suggestions", []),
-            sources=normalized_sources,
-            filters=result.get("filters", {}),
-        )
+        if not isinstance(result, dict):
+            result = {
+                "answer": str(result),
+                "suggestions": [],
+                "sources": [],
+                "filters": {},
+            }
+        return _build_nlq_response(result, session_id=session_id)
 
     except Exception as exc:
-        return NaturalLanguageResponse(
-            answer=(
-                "Sorry, I encountered an error processing your query: "
-                f"{str(exc)}\n\nPlease try rephrasing your question or check the server logs."
-            ),
+        return _build_nlq_response(
+            {
+                "answer": (
+                    "Sorry, I encountered an error processing your query: "
+                    f"{str(exc)}\n\nPlease try rephrasing your question or check the server logs."
+                ),
+                "suggestions": [],
+                "sources": [],
+                "filters": {},
+            },
             session_id=session_id,
-            suggestions=[],
-            sources=[],
-            filters={},
         )
 
 

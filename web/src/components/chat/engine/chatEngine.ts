@@ -18,7 +18,6 @@ export interface Suggestion {
 interface SendMessageRequest {
   content: string;
   sessionId: string | null;
-  model: string;
 }
 
 interface SendMessageResponse {
@@ -68,7 +67,7 @@ export class ChatEngine {
   }
 
   async sendMessage(params: SendMessageRequest): Promise<SendMessageResponse> {
-    const { content, sessionId, model } = params;
+    const { content, sessionId } = params;
 
     const response = await fetch(`${this.baseUrl}/natural_language_query`, {
       method: "POST",
@@ -78,7 +77,6 @@ export class ChatEngine {
       body: JSON.stringify({
         query: content,
         session_id: sessionId,
-        model_id: model,
       }),
     });
 
