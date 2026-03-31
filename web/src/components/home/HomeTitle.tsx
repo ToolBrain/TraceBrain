@@ -1,12 +1,13 @@
 import React from "react";
 import { Box, Typography } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { useSettings } from "../../contexts/SettingsContext";
 import lightOwl from "../../assets/light-owl.png";
 import darkOwl from "../../assets/dark-owl.png";
 
 const HomeTitle: React.FC = () => {
-  const theme = useTheme();
-  const mascotSrc = theme.palette.mode === "dark" ? darkOwl : lightOwl;
+  const { settings } = useSettings();
+  const isDark = settings.appearance.theme === "dark";
+  const mascotSrc = isDark ? darkOwl : lightOwl;
 
   return (
     <Box sx={{ textAlign: "center", position: "relative", userSelect: "none", width: "100%" }}>
@@ -25,7 +26,6 @@ const HomeTitle: React.FC = () => {
           sx={{
             width: { xs: 56, sm: 72, md: 84 },
             height: "auto",
-            filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.2))",
           }}
         />
 
@@ -48,21 +48,6 @@ const HomeTitle: React.FC = () => {
         </Typography>
       </Box>
 
-      <Typography
-        sx={{
-          mt: { xs: 0.75, sm: 1 },
-          fontSize: { xs: "0.95rem", sm: "1.1rem", md: "1.25rem" },
-          fontWeight: 500,
-          letterSpacing: { xs: "0.08em", sm: "0.12em" },
-          textTransform: "uppercase",
-          color: (theme) =>
-            theme.palette.mode === "dark"
-              ? "rgba(255,255,255,0.7)"
-              : "rgba(17,17,17,0.65)",
-        }}
-      >
-        Trace Management for LLM Agents
-      </Typography>
 
       <Box
         sx={{

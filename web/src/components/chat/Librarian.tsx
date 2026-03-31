@@ -240,7 +240,6 @@ export const Librarian: React.FC = () => {
             zIndex: 1200,
             width: 60,
             height: 60,
-            boxShadow: "0 12px 24px rgba(31, 111, 190, 0.35)",
           }}
         >
           <LibrarianLogoAvatar size={32} />
