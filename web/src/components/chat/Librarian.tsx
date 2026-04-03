@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Paper, Stack, Typography, TextField, IconButton, Fab, Divider } from "@mui/material";
-import { Send, Remove, DeleteOutline } from "@mui/icons-material";
+import { Send, Remove, DeleteOutline, ChatBubble } from "@mui/icons-material";
 import { useChat } from "../../contexts/ChatContext";
 import { ChatMessages } from "./ChatMessages";
 import { ChatSuggestions } from "./ChatSuggestions";
@@ -47,7 +47,7 @@ export const Librarian: React.FC = () => {
   // Handle quick starter click
   const handleQuickStarterClick = (query: string) => {
     setSelectedSuggestion(false);
-    void handleSend(query);
+    setInput(query);
   };
 
   // Handle clear session
@@ -105,23 +105,17 @@ export const Librarian: React.FC = () => {
           elevation={8}
           sx={{
             position: "fixed",
-            bottom: { xs: 8, sm: 24 },
-            right: { xs: 8, sm: 24 },
-            width: { xs: "calc(100vw - 16px)", sm: 420 },
-            height: { xs: "min(82vh, 680px)", sm: 640 },
+            bottom: 24,
+            right: 24,
+            width: 400,
+            height: 600,
             display: "flex",
             flexDirection: "column",
-            borderRadius: 3,
+            borderRadius: 2,
             overflow: "hidden",
             zIndex: 1200,
             border: "1px solid",
             borderColor: "divider",
-            boxShadow: "0 14px 36px rgba(15, 23, 42, 0.28)",
-            "@keyframes chatOpenIn": {
-              from: { opacity: 0, transform: "translateY(12px) scale(0.98)" },
-              to: { opacity: 1, transform: "translateY(0) scale(1)" },
-            },
-            animation: "chatOpenIn 180ms ease-out",
           }}
         >
           <Stack
@@ -131,8 +125,6 @@ export const Librarian: React.FC = () => {
             sx={{
               p: 1.5,
               bgcolor: "primary.dark",
-              backgroundImage:
-                "linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0))",
               color: "primary.contrastText",
             }}
           >
@@ -235,14 +227,12 @@ export const Librarian: React.FC = () => {
           onClick={() => setIsOpen(true)}
           sx={{
             position: "fixed",
-            bottom: { xs: 12, sm: 24 },
-            right: { xs: 12, sm: 24 },
+            bottom: 24,
+            right: 24,
             zIndex: 1200,
-            width: 60,
-            height: 60,
           }}
         >
-          <LibrarianLogoAvatar size={32} />
+          <ChatBubble />
         </Fab>
       )}
     </>

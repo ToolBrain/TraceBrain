@@ -48,7 +48,6 @@ const HomeTitle: React.FC = () => {
         </Typography>
       </Box>
 
-
       <Box
         sx={{
           mt: { xs: 1, sm: 1.5 },

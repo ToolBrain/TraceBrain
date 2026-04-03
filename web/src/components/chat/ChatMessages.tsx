@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Stack, Box, Typography, Chip, Skeleton } from "@mui/material";
+import { Stack, Box, Typography, Chip, Skeleton, keyframes } from "@mui/material";
 import { ChatMessage } from "./ChatMessage";
 import type { Message } from "./engine/chatEngine";
 import { AssistantAvatar } from "./Icons";
@@ -18,20 +18,31 @@ interface ChatMessagesProps {
   onQuickStarterClick: (query: string) => void;
 }
 
-const QUICK_STARTERS: Array<{ group: string; items: string[] }> = [
+const QUICK_STARTERS: Array<{ group: string; items: Array<{ title: string; content: string }> }> = [
   {
     group: "Debug",
-    items: ["Show me traces that failed today", "Find logic loops"],
+    items: [
+      { title: "Failed traces today", content: "Show me traces that failed today" },
+      { title: "Logic loops", content: "Find me traces with logic loops" },
+    ],
   },
   {
     group: "Analytics",
-    items: ["Average AI confidence", "Top error types"],
+    items: [
+      { title: "Average AI confidence", content: "What is the average AI confidence?" },
+      { title: "Top error types", content: "What are the top error types?" },
+    ],
   },
   {
     group: "Discovery",
-    items: ["Summarize recent successes"],
+    items: [{ title: "Recent successes", content: "Summarize recent traces with no errors" }],
   },
 ];
+
+const bounce = keyframes`
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-5px); }
+`;
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
   messages,
@@ -55,10 +66,6 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         p: 2,
         overflowY: "auto",
         bgcolor: "background.default",
-        backgroundImage: (theme) =>
-          theme.palette.mode === "dark"
-            ? "radial-gradient(circle at top right, rgba(46,134,222,0.08), transparent 45%)"
-            : "radial-gradient(circle at top right, rgba(46,134,222,0.06), transparent 45%)",
       }}
     >
       {messages.length === 0 && !isLoading && (
@@ -73,14 +80,14 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             px: 1,
           }}
         >
-          <AssistantAvatar size={67} />
+          <AssistantAvatar size={64} />
 
           <Stack spacing={0.75} sx={{ maxWidth: 330 }}>
             <Typography variant="h6" sx={{ color: "text.primary", fontWeight: 600 }}>
               Hello! How can I help you today?
             </Typography>
             <Typography variant="body2">
-              Ask me to query, summarize, or analyze your agent&apos;s traces using natural language.
+              Ask me anything about your agent traces errors, performance, patterns, or summaries.
             </Typography>
           </Stack>
 
@@ -91,16 +98,15 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
                   {group.group}
                 </Typography>
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
-                  {group.items.map((query) => (
+                  {group.items.map((item) => (
                     <Chip
-                      key={query}
-                      label={query}
+                      key={item.title}
+                      label={item.title}
                       variant="outlined"
                       size="small"
-                      onClick={() => onQuickStarterClick(query)}
+                      onClick={() => onQuickStarterClick(item.content)}
                       sx={{
-                        borderRadius: 2,
-                        fontWeight: 500,
+                        borderRadius: 3,
                         bgcolor: "background.paper",
                         "&:hover": {
                           borderColor: "primary.main",
@@ -136,7 +142,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             ) : (
               <Stack spacing={0.25}>
                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  Status: Connected to {systemInfo?.database_type ?? "Unknown"} | {" "}
+                  Status: Connected to {systemInfo?.database_type ?? "Unknown"} |{" "}
                   {(systemInfo?.trace_count ?? 0).toLocaleString()} traces indexed
                 </Typography>
                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
@@ -159,10 +165,6 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             alignItems: "center",
             gap: 1,
             py: 0.5,
-            "@keyframes typingPulse": {
-              "0%, 80%, 100%": { transform: "scale(0.72)", opacity: 0.35 },
-              "40%": { transform: "scale(1)", opacity: 1 },
-            },
           }}
         >
           <AssistantAvatar size={30} />
@@ -173,30 +175,23 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
               gap: 0.6,
               px: 1.4,
               py: 1,
-              borderRadius: 3,
-              border: "1px solid",
-              borderColor: "divider",
-              bgcolor: "background.paper",
-              boxShadow: "0 4px 12px rgba(16,24,40,0.08)",
-              "& span": {
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                bgcolor: "primary.main",
-                animation: "typingPulse 1.15s infinite ease-in-out",
-              },
-              "& span:nth-of-type(2)": { animationDelay: "0.16s" },
-              "& span:nth-of-type(3)": { animationDelay: "0.32s" },
             }}
           >
-            <span />
-            <span />
-            <span />
+            {[0, 0.16, 0.32].map((delay) => (
+              <Box
+                key={delay}
+                sx={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  bgcolor: "primary.main",
+                  animation: `${bounce} 1s infinite ease-in-out`,
+                  animationDelay: `${delay}s`,
+                }}
+              />
+            ))}
           </Box>
-          <Typography
-            variant="body2"
-            sx={{ color: "text.secondary", fontStyle: "italic" }}
-          >
+          <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
             Librarian is thinking…
           </Typography>
         </Box>
