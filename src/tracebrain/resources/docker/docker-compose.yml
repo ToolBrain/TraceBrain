@@ -35,7 +35,36 @@ services:
       # Server Configuration
       HOST: 0.0.0.0
       PORT: 8000
-      LOG_LEVEL: info
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+      # System Settings
+      LIBRARIAN_MODE: ${LIBRARIAN_MODE:-api}
+      LLM_DEBUG: ${LLM_DEBUG:-false}
+
+      # LLM API Keys
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      HUGGINGFACE_API_KEY: ${HUGGINGFACE_API_KEY:-}
+
+      # Optional Provider Base URLs
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
+      HUGGINGFACE_BASE_URL: ${HUGGINGFACE_BASE_URL:-}
+
+      # Bootstrap Defaults
+      DEFAULT_LIBRARIAN_PROVIDER: ${DEFAULT_LIBRARIAN_PROVIDER:-openai}
+      DEFAULT_LIBRARIAN_MODEL: ${DEFAULT_LIBRARIAN_MODEL:-gpt-4o-mini}
+      DEFAULT_JUDGE_PROVIDER: ${DEFAULT_JUDGE_PROVIDER:-gemini}
+      DEFAULT_JUDGE_MODEL: ${DEFAULT_JUDGE_MODEL:-gemini-2.5-flash}
+      DEFAULT_CURATOR_PROVIDER: ${DEFAULT_CURATOR_PROVIDER:-gemini}
+      DEFAULT_CURATOR_MODEL: ${DEFAULT_CURATOR_MODEL:-gemini-2.5-flash}
+
+      # Embedding Settings
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
 
     ports:
       - "8000:8000"
@@ -61,6 +90,10 @@ services:
     restart: "no"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      HUGGINGFACE_API_KEY: ${HUGGINGFACE_API_KEY:-}
     depends_on:
       tracebrain-api:
         condition: service_healthy
