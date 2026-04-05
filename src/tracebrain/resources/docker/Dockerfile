@@ -16,6 +16,9 @@ RUN npm run build
 # Stage 2: Backend runtime
 FROM python:3.11-slim AS backend-runtime
 
+# Image profile: full (local embeddings + cloud providers) or slim (cloud-first)
+ARG TRACEBRAIN_IMAGE_PROFILE=full
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
@@ -32,12 +35,17 @@ COPY src/ ./src/
 # Copy frontend build artifacts into static directory
 COPY --from=frontend-builder /app/web/dist /app/src/tracebrain/static
 
-# Install backend package in two steps to maximize cache reuse
+# Install backend package and optional dependencies based on selected profile
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir .
-
-# Install optional LLMs and local embeddings (full-feature image)
-RUN pip install --no-cache-dir .[embeddings-local,all-llms]
+    && if [ "$TRACEBRAIN_IMAGE_PROFILE" = "full" ]; then \
+        pip install --no-cache-dir .[embeddings-local,all-llms]; \
+    elif [ "$TRACEBRAIN_IMAGE_PROFILE" = "slim" ]; then \
+        pip install --no-cache-dir .[all-llms]; \
+    else \
+        echo "Unsupported TRACEBRAIN_IMAGE_PROFILE: $TRACEBRAIN_IMAGE_PROFILE"; \
+        echo "Use TRACEBRAIN_IMAGE_PROFILE=full or TRACEBRAIN_IMAGE_PROFILE=slim"; \
+        exit 1; \
+    fi
 
 # Create non-root user
 RUN useradd -m -u 1000 tracebrain \

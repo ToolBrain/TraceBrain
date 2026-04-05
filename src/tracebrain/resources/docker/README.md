@@ -14,16 +14,31 @@ This directory contains all Docker-related files for running TraceBrain in conta
 
 ```bash
 # From project root
-tracebrain up          # Start all services
+tracebrain up          # Start full image (default)
+tracebrain up --slim   # Start slim image (cloud-first)
 tracebrain status      # Check status
 tracebrain down        # Stop all services
 ```
+
+### Image Profiles
+
+- **Full (`latest`)**: ~2.8GB, includes local embedding stack (`embeddings-local`), supports `EMBEDDING_PROVIDER=local`.
+- **Slim (`slim`)**: ~400-500MB, faster pull/start, intended for cloud embeddings (`EMBEDDING_PROVIDER=openai` or `gemini`).
 
 ### Using Docker Compose Directly
 
 ```bash
 # From project root
+# Full image (default)
 docker compose -f src/tracebrain/resources/docker/docker-compose.yml up -d --build
+
+# Slim image
+TRACEBRAIN_IMAGE=quyk67uet/tracebrain:slim docker compose -f src/tracebrain/resources/docker/docker-compose.yml up -d
+
+# Slim image (PowerShell)
+$env:TRACEBRAIN_IMAGE='quyk67uet/tracebrain:slim'; docker compose -f src/tracebrain/resources/docker/docker-compose.yml up -d
+
+# Utility commands
 docker compose -f src/tracebrain/resources/docker/docker-compose.yml ps
 docker compose -f src/tracebrain/resources/docker/docker-compose.yml logs -f
 docker compose -f src/tracebrain/resources/docker/docker-compose.yml down
@@ -88,6 +103,10 @@ DEFAULT_CURATOR_MODEL=gemini-2.5-flash
 LIBRARIAN_MODE=api
 LLM_DEBUG=false
 
+# Optional: choose image profile in Docker mode
+# TRACEBRAIN_IMAGE=quyk67uet/tracebrain:latest
+# TRACEBRAIN_IMAGE=quyk67uet/tracebrain:slim
+
 # Embedding
 EMBEDDING_PROVIDER=local
 EMBEDDING_MODEL=all-MiniLM-L6-v2
@@ -96,6 +115,11 @@ EMBEDDING_MODEL=all-MiniLM-L6-v2
 ```
 
 Note: `.env.example` and `tracebrain init` are the source of truth for the latest configuration template.
+
+Important:
+- You may switch LLM provider/model (Librarian/Judge/Curator) at runtime.
+- Keep `EMBEDDING_PROVIDER` + `EMBEDDING_MODEL` stable for one database lifecycle.
+- If you change embedding engine, re-embed/migrate existing vectors first; otherwise semantic search may fail due to mixed vector dimensions.
 
 ## 📊 Services
 
@@ -109,7 +133,7 @@ Note: The database port is currently exposed for local development. Remove the
 `ports` mapping in `docker-compose.yml` for production deployments.
 
 ### tracebrain-api
-- **Build**: Multi-stage optimized image
+- **Image**: `${TRACEBRAIN_IMAGE:-quyk67uet/tracebrain:latest}`
 - **Port**: `8000`
 - **Depends on**: postgres (healthy)
 - **Health Check**: `/healthz` endpoint
@@ -153,6 +177,22 @@ docker compose -f src/tracebrain/resources/docker/docker-compose.yml down -v
 5. **Use reverse proxy** (nginx, Traefik) for HTTPS
 6. **Enable monitoring** (Prometheus, Grafana)
 7. **Disable DB port exposure** in production
+
+## 🧪 Building Images (Maintainers)
+
+Build from source with profile ARG:
+
+```bash
+# Full image
+docker build -f src/tracebrain/resources/docker/Dockerfile \
+    --build-arg TRACEBRAIN_IMAGE_PROFILE=full \
+    -t quyk67uet/tracebrain:latest .
+
+# Slim image
+docker build -f src/tracebrain/resources/docker/Dockerfile \
+    --build-arg TRACEBRAIN_IMAGE_PROFILE=slim \
+    -t quyk67uet/tracebrain:slim .
+```
 
 ## 📚 Learn More
 

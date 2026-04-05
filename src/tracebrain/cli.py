@@ -195,6 +195,10 @@ DEFAULT_CURATOR_MODEL=gemini-2.5-flash
 LIBRARIAN_MODE=api
 LLM_DEBUG=false
 
+# --- DOCKER IMAGE PROFILE (Optional) ---
+# TRACEBRAIN_IMAGE=quyk67uet/tracebrain:latest
+# TRACEBRAIN_IMAGE=quyk67uet/tracebrain:slim
+
 # --- EMBEDDING SETTINGS ---
 EMBEDDING_PROVIDER=local
 EMBEDDING_MODEL=all-MiniLM-L6-v2
@@ -223,6 +227,11 @@ def up(
         True,
         "--wait/--no-wait",
         help="Wait for health check after startup"
+    ),
+    slim: bool = typer.Option(
+        False,
+        "--slim",
+        help="Use lightweight cloud-only image profile (quyk67uet/tracebrain:slim)"
     )
 ):
     """
@@ -233,6 +242,7 @@ def up(
     
     Examples:
         tracebrain up                 # Start in background
+        tracebrain up --slim          # Start lightweight cloud-first image
         tracebrain up --build         # Rebuild and start
         tracebrain up --no-detach     # Start in foreground (see logs)
         tracebrain up --no-wait       # Don't wait for health check
@@ -283,6 +293,14 @@ def up(
     
     if detach:
         cmd.append("-d")
+
+    compose_runtime_env = os.environ.copy()
+    if slim:
+        compose_runtime_env["TRACEBRAIN_IMAGE"] = "quyk67uet/tracebrain:slim"
+        typer.secho(
+            "Using slim image profile: quyk67uet/tracebrain:slim (cloud embedding recommended)",
+            fg=typer.colors.CYAN,
+        )
     
     typer.echo(f"Running: {' '.join(cmd)}")
     typer.echo("")
@@ -292,7 +310,8 @@ def up(
         result = subprocess.run(
             cmd,
             check=True,
-            text=True
+            text=True,
+            env=compose_runtime_env,
         )
         
         if result.returncode == 0:

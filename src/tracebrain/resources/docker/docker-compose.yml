@@ -25,7 +25,7 @@ services:
 
   # TraceBrain API
   tracebrain-api:
-    image: quyk67uet/tracebrain:latest
+    image: ${TRACEBRAIN_IMAGE:-quyk67uet/tracebrain:latest}
     container_name: tracebrain-api
     restart: unless-stopped
     environment:
@@ -56,7 +56,7 @@ services:
 
   # Seed sample data
   tracebrain-seed:
-    image: quyk67uet/tracebrain:latest
+    image: ${TRACEBRAIN_IMAGE:-quyk67uet/tracebrain:latest}
     container_name: tracebrain-seed
     restart: "no"
     environment:

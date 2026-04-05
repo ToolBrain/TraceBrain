@@ -124,14 +124,20 @@ PostgreSQL + pgvector environment. Option 1 uses pre-built images from Docker Hu
 3. **Start the platform**
     ```bash
     tracebrain up
+    # or lightweight profile:
+    tracebrain up --slim
     ```
 
 **Access:** http://localhost:8000 (UI + API)
 
 Note: Option 1 uses pre-built images from Docker Hub, so you don't need Node.js or local build tools.
 
-If you use Docker, you only need `pip install tracebrain` to get the CLI. All LLM and embedding
-dependencies are already bundled in the Docker image, so you do not install them on your host machine.
+Docker image profiles:
+- `quyk67uet/tracebrain:latest` (Full, ~2.8GB): includes local embedding stack and supports `EMBEDDING_PROVIDER=local`.
+- `quyk67uet/tracebrain:slim` (Lite, ~400-500MB): faster to pull, optimized for cloud embeddings (`EMBEDDING_PROVIDER=openai` or `gemini`).
+
+If you use Docker, you only need `pip install tracebrain` to get the CLI. You do not install model
+dependencies on your host machine; they come from the selected image profile (`latest` or `slim`).
 
 ### Option 2: Local with SQLite (Portable Mode)
 
@@ -217,7 +223,8 @@ pip install tracebrain[all-llms]           # OpenAI + Anthropic + Hugging Face
 | --- | --- |
 | `tracebrain init` | Create a template `.env` file in the current directory. |
 | `tracebrain init-db` | Initialize a local SQLite database. |
-| `tracebrain up` | Launch Docker-based infrastructure. |
+| `tracebrain up` | Launch Docker-based infrastructure using full image profile. |
+| `tracebrain up --slim` | Launch Docker-based infrastructure using slim image profile. |
 | `tracebrain start` | Run the standalone FastAPI server. |
 
 ### API Endpoints
@@ -387,6 +394,10 @@ DEFAULT_CURATOR_MODEL=gemini-2.5-flash
 LIBRARIAN_MODE=api
 LLM_DEBUG=false
 
+# Optional for Docker mode
+# TRACEBRAIN_IMAGE=quyk67uet/tracebrain:latest
+# TRACEBRAIN_IMAGE=quyk67uet/tracebrain:slim
+
 EMBEDDING_PROVIDER=local
 EMBEDDING_MODEL=all-MiniLM-L6-v2
 
@@ -394,6 +405,12 @@ EMBEDDING_MODEL=all-MiniLM-L6-v2
 # EMBEDDING_API_KEY=your_embedding_api_key_here
 # EMBEDDING_BASE_URL=https://your-embedding-endpoint/v1
 ```
+
+Important:
+- LLM routing (Librarian/Judge/Curator provider + model) can be changed at runtime from Settings without breaking existing traces.
+- Embedding engine (`EMBEDDING_PROVIDER` + `EMBEDDING_MODEL`) is infrastructure-level for a database lifecycle.
+- Do not switch embedding provider/model on an existing database unless you run a full re-embedding migration. Mixing vector dimensions (for example 384 vs 1536) will break semantic search and experience retrieval.
+- For safety, embedding is configured through `.env` and shown as read-only status in the Settings UI.
 
 #### Settings API payload
 
@@ -498,6 +515,8 @@ EMBEDDING_BASE_URL=https://your-endpoint/v1
 ```
 
 **When embeddings run:** embeddings are created at trace ingest time, not during server startup.
+
+**Critical rule:** Pick one embedding provider/model per database and keep it stable. Changing embedding dimensions mid-lifecycle can cause pgvector similarity queries to fail.
 
 **Do I need local embeddings?** No. You can skip `embeddings-local` entirely and still run the platform. If no embedding provider is configured, traces still ingest and all non-semantic features work normally; only vector search (and features that rely on it) are unavailable.
 

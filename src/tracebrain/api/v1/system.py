@@ -94,6 +94,8 @@ def get_system_info() -> SystemInfoOut:
             database_type=database_type,
             trace_count=store.count_traces(),
             model_name=store.get_librarian_model_name(),
+            embedding_provider=(settings.EMBEDDING_PROVIDER or "none"),
+            embedding_model=(settings.EMBEDDING_MODEL or "n/a"),
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve system info: {str(exc)}")

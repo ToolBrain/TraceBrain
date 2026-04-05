@@ -268,6 +268,8 @@ class SystemInfoOut(BaseModel):
     database_type: str = Field(..., description="Active database type label (PostgreSQL or SQLite)")
     trace_count: int = Field(..., ge=0, description="Total number of traces indexed")
     model_name: str = Field(..., description="Current Librarian model name")
+    embedding_provider: str = Field(..., description="Active embedding provider from environment")
+    embedding_model: str = Field(..., description="Active embedding model from environment")
 
 
 class AIEvaluationOut(BaseModel):
