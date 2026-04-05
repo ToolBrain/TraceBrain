@@ -25,7 +25,7 @@ const DashboardHeader: React.FC = () => {
   const location = useLocation();
   const nav = useNavigate();
   const isDark = settings.appearance.theme === "dark";
-  const logoSrc = settings.appearance.theme === "dark" ? darkOwl : lightOwl;
+  const logoSrc = isDark ? darkOwl : lightOwl;
 
   const toggleTheme = () => {
     updateSettings((draft) => {
@@ -63,14 +63,9 @@ const DashboardHeader: React.FC = () => {
                   borderRadius: "50%",
                   display: "grid",
                   placeItems: "center",
-                  background: isDark
-                    ? "linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0.08))"
-                    : "linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75))",
+                  background: "linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75))",
                   border: "1px solid",
-                  borderColor: isDark ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.65)",
-                  boxShadow: isDark
-                    ? "0 6px 14px rgba(0,0,0,0.35)"
-                    : "0 5px 12px rgba(0,0,0,0.2)",
+                  borderColor: "divider",
                 }}
               >
                 <Box

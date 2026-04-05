@@ -1,37 +1,34 @@
 import React from "react";
 import { Avatar, Box } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
 import { Person } from "@mui/icons-material";
 import chatLight from "../../assets/chat-light-bg.png";
 import chatDark from "../../assets/chat-dark-bg.png";
+import { useSettings } from "../../contexts/SettingsContext";
 
 interface AvatarProps {
   size?: number;
 }
 
 export const LibrarianLogoAvatar: React.FC<AvatarProps> = ({ size = 36 }) => {
-  const theme = useTheme();
-  const logoSrc = theme.palette.mode === "dark" ? chatDark : chatLight;
-  const isDark = theme.palette.mode === "dark";
+  const { settings } = useSettings();
+  const isDark = settings.appearance.theme === "dark";
+  const logoSrc = isDark ? chatDark : chatLight;
 
   return (
     <Avatar
       sx={{
         width: size,
         height: size,
-        bgcolor: isDark ? "rgba(255,255,255,0.18)" : "background.paper",
+        background: "linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75))",
         border: "1px solid",
-        borderColor: isDark ? "rgba(255,255,255,0.55)" : "divider",
-        boxShadow: isDark
-          ? "0 8px 16px rgba(0,0,0,0.45), 0 0 0 2px rgba(255,255,255,0.08)"
-          : "0 4px 10px rgba(15, 23, 42, 0.12)",
+        borderColor: "divider",
       }}
     >
       <Box
         component="img"
         src={logoSrc}
         alt="TraceBrain Librarian"
-        sx={{ width: "78%", height: "78%", display: "block" }}
+        sx={{ width: "80%", height: "80%", display: "block" }}
       />
     </Avatar>
   );
