@@ -65,7 +65,7 @@ Take a look at the TraceBrain Command Center in action:
 <p align="center">
   <b>🌐 Welcome to the Command Center</b><br>
   <i>The central hub for agentic trace management, featuring a clean, intuitive, and modern interface.</i><br>
-  <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/homepage.jpg" alt="TraceBrain Homepage" width="100%">
+  <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/homepage.jpg?v=2" alt="TraceBrain Homepage" width="100%">
 </p>
 
 <table>
@@ -73,24 +73,24 @@ Take a look at the TraceBrain Command Center in action:
     <td width="50%">
       <b>📊 Command Center Dashboard</b><br>
       <i>Real-time error distribution, confidence metrics, and active filters.</i><br>
-      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/dashboard_analytics.jpg" alt="Dashboard" style="width:100%; height:auto; border-radius:12px;">
+      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/dashboard_analytics.jpg?v=2" alt="Dashboard" style="width:100%; height:auto; border-radius:12px;">
     </td>
     <td width="50%">
       <b>🔍 Trace Explorer & AI Judge</b><br>
       <i>Side-by-side view of the execution tree, span properties, and Human-AI collaborative labeling.</i><br>
-      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/trace_explorer.jpg" alt="Trace Explorer" style="width:100%; height:auto; border-radius:12px;">
+      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/trace_explorer.jpg?v=2" alt="Trace Explorer" style="width:100%; height:auto; border-radius:12px;">
     </td>
   </tr>
   <tr>
     <td width="50%">
       <b>🤖 AI Librarian</b><br>
       <i>Query your trace database using natural language and intent-based UI filters.</i><br>
-      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/ai_librarian.jpg" alt="AI Librarian" style="width:100%; height:auto; border-radius:12px;">
+      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/ai_librarian.jpg?v=2" alt="AI Librarian" style="width:100%; height:auto; border-radius:12px;">
     </td>
     <td width="50%">
       <b>🗺️ Automated Curriculum</b><br>
       <i>Transform diagnosed failures into targeted training tasks ready for export.</i><br>
-      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/training_roadmap.jpg" alt="Training Roadmap" style="width:100%; height:auto; border-radius:12px;">
+      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/training_roadmap.jpg?v=2" alt="Training Roadmap" style="width:100%; height:auto; border-radius:12px;">
     </td>
   </tr>
 </table>
