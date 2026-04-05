@@ -120,6 +120,18 @@ Important:
 - You may switch LLM provider/model (Librarian/Judge/Curator) at runtime.
 - Keep `EMBEDDING_PROVIDER` + `EMBEDDING_MODEL` stable for one database lifecycle.
 - If you change embedding engine, re-embed/migrate existing vectors first; otherwise semantic search may fail due to mixed vector dimensions.
+- If TraceBrain runs in Docker and your model server runs on the host machine, use `host.docker.internal` instead of `localhost` in provider base URLs.
+
+Ollama (OpenAI-compatible) from Docker:
+
+```env
+# Use host.docker.internal when TraceBrain is containerized
+OPENAI_BASE_URL=http://host.docker.internal:11434/v1
+OPENAI_API_KEY=ollama
+```
+
+Then choose `OpenAI` in Settings and set Model ID to your Ollama model name (for example `qwen2.5:32b`).
+TraceBrain will try `/v1/responses` first and automatically fall back to `/v1/chat/completions` when needed.
 
 ## 📊 Services
 

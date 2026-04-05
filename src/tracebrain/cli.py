@@ -178,8 +178,11 @@ GEMINI_API_KEY=your_gemini_api_key_here
 # HUGGINGFACE_API_KEY=your_huggingface_api_key_here
 
 # Optional provider endpoints/proxies
+# OpenAI-compatible endpoint (self-healing: tries Responses API first, then auto-falls back to Chat Completions)
+# If TraceBrain runs in Docker and provider runs on host, prefer host.docker.internal over localhost.
 # OPENAI_BASE_URL=https://your-openai-compatible-endpoint/v1
 # ANTHROPIC_BASE_URL=https://your-anthropic-endpoint
+# If using a host-side HF endpoint from Docker, use host.docker.internal instead of localhost.
 # HUGGINGFACE_BASE_URL=http://localhost:8000
 
 # --- BOOTSTRAP DEFAULTS (Default configuration before UI setup) ---

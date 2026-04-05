@@ -3,15 +3,54 @@
 from __future__ import annotations
 
 from typing import Dict, List, Optional, Any
+from functools import lru_cache
 import logging
 import json
 import os
+from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 
 from tracebrain.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def is_running_in_docker() -> bool:
+    """Best-effort detection for containerized runtime."""
+    if Path("/.dockerenv").exists():
+        return True
+
+    cgroup_paths = ("/proc/1/cgroup", "/proc/self/cgroup")
+    markers = ("docker", "containerd", "kubepods")
+    for cgroup_path in cgroup_paths:
+        try:
+            payload = Path(cgroup_path).read_text(encoding="utf-8", errors="ignore").lower()
+        except Exception:
+            continue
+        if any(marker in payload for marker in markers):
+            return True
+
+    return False
+
+
+def _is_localhost_url(url: Optional[str]) -> bool:
+    endpoint = str(url or "").strip().lower()
+    if not endpoint:
+        return False
+
+    try:
+        hostname = urlparse(endpoint).hostname
+    except Exception:
+        hostname = None
+
+    if hostname in {"localhost", "127.0.0.1", "::1"}:
+        return True
+
+    # Fallback for malformed URLs or raw host:port style values.
+    return "localhost" in endpoint or "127.0.0.1" in endpoint
 
 
 def extract_usage_from_response(provider: str, response: Any) -> Optional[Dict[str, Any]]:
@@ -194,7 +233,36 @@ class BaseProvider:
 
         return False
 
-    def _friendly_error_message(self, exc: Exception) -> str:
+    def _is_connection_error(self, exc: Exception) -> bool:
+        if isinstance(exc, requests.exceptions.ConnectionError):
+            return True
+
+        # Walk wrapped exception chain (SDK wrappers often store the root cause in __cause__).
+        seen: set[int] = set()
+        cursor: Optional[BaseException] = exc
+        while cursor is not None and id(cursor) not in seen:
+            seen.add(id(cursor))
+
+            if isinstance(cursor, requests.exceptions.ConnectionError):
+                return True
+
+            class_name = cursor.__class__.__name__.lower()
+            if class_name in {"apiconnectionerror", "connecterror", "connectionerror"}:
+                return True
+
+            try:
+                import httpx
+
+                if isinstance(cursor, (httpx.ConnectError, httpx.NetworkError)):
+                    return True
+            except Exception:
+                pass
+
+            cursor = getattr(cursor, "__cause__", None) or getattr(cursor, "__context__", None)
+
+        return False
+
+    def _friendly_error_message(self, exc: Exception, endpoint_url: Optional[str] = None) -> str:
         try:
             from google.api_core.exceptions import ResourceExhausted
 
@@ -208,6 +276,18 @@ class BaseProvider:
 
         if self._is_timeout(exc):
             return "The AI is taking too long to think. Please try again or use a smaller model."
+
+        if self._is_connection_error(exc):
+            message = (
+                "Could not connect to the AI provider endpoint. "
+                "Please verify the base URL and ensure the service is running."
+            )
+            if is_running_in_docker() and _is_localhost_url(endpoint_url):
+                message += (
+                    " Connection failed. Since you are running in Docker, you may need to use "
+                    "'host.docker.internal' instead of 'localhost' to reach services on your host machine."
+                )
+            return message
 
         status_code = self._extract_status_code(exc)
         if status_code == 429:
@@ -225,10 +305,15 @@ class BaseProvider:
 
         return "The AI provider encountered an unexpected error. Please try again or switch models."
 
-    def _raise_provider_error(self, exc: Exception, provider_label: Optional[str] = None) -> None:
+    def _raise_provider_error(
+        self,
+        exc: Exception,
+        provider_label: Optional[str] = None,
+        endpoint_url: Optional[str] = None,
+    ) -> None:
         label = provider_label or self.name
         logger.warning("%s provider error: %s", label, exc)
-        raise ProviderError(self._friendly_error_message(exc)) from exc
+        raise ProviderError(self._friendly_error_message(exc, endpoint_url=endpoint_url)) from exc
 
 
 class OpenAIProvider(BaseProvider):
@@ -238,20 +323,113 @@ class OpenAIProvider(BaseProvider):
     def __init__(self, api_key: Optional[str], model: str, base_url: Optional[str] = None):
         super().__init__()
         try:
-            from openai import OpenAI
+            from openai import OpenAI, APIStatusError, BadRequestError, NotFoundError
         except ImportError as exc:
             raise ProviderError("openai SDK not available") from exc
+        self.base_url = str(base_url).strip().rstrip("/") if base_url else None
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         self.model = model
+        self._NotFoundError = NotFoundError
+        self._BadRequestError = BadRequestError
+        self._APIStatusError = APIStatusError
+        self._responses_supported: Optional[bool] = None
 
     def start_chat(self, system_instruction: str, tools: List[Dict[str, Any]]):
-        return {"system": system_instruction, "messages": [], "tools": tools}
+        return {
+            "system": system_instruction,
+            "messages": [],
+            "tools": tools,
+            "tool_call_names": {},
+        }
 
     @staticmethod
     def _read_output_field(item: Any, key: str) -> Any:
         if isinstance(item, dict):
             return item.get(key)
         return getattr(item, key, None)
+
+    @staticmethod
+    def _read_chat_field(item: Any, key: str) -> Any:
+        if isinstance(item, dict):
+            return item.get(key)
+        return getattr(item, key, None)
+
+    def _content_blocks_to_text(self, content: Any) -> str:
+        if isinstance(content, str):
+            return content
+        if not isinstance(content, list):
+            return ""
+
+        texts: List[str] = []
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            text_value = block.get("text")
+            if isinstance(text_value, str):
+                texts.append(text_value)
+        return "".join(texts).strip()
+
+    def _build_responses_tool_specs(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        tool_specs: List[Dict[str, Any]] = []
+        for tool in tools or []:
+            if not isinstance(tool, dict):
+                continue
+            name = tool.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+
+            spec: Dict[str, Any] = {
+                "type": "function",
+                "name": name,
+                "parameters": tool.get("parameters") or {"type": "object", "properties": {}},
+            }
+            description = tool.get("description")
+            if isinstance(description, str) and description.strip():
+                spec["description"] = description
+            tool_specs.append(spec)
+        return tool_specs
+
+    def _build_chat_tool_specs(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        chat_tools: List[Dict[str, Any]] = []
+        for tool in tools or []:
+            if not isinstance(tool, dict):
+                continue
+            name = tool.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+
+            function_payload: Dict[str, Any] = {
+                "name": name,
+                "parameters": tool.get("parameters") or {"type": "object", "properties": {}},
+            }
+            description = tool.get("description")
+            if isinstance(description, str) and description.strip():
+                function_payload["description"] = description
+
+            chat_tools.append({"type": "function", "function": function_payload})
+        return chat_tools
+
+    def _should_fallback_to_chat(self, exc: Exception) -> bool:
+        status_code = self._extract_status_code(exc)
+        if isinstance(exc, self._NotFoundError):
+            return True
+        if isinstance(exc, self._APIStatusError) and status_code in {404, 405}:
+            return True
+
+        if isinstance(exc, self._BadRequestError) and status_code == 400:
+            message = str(exc).lower()
+            fallback_markers = (
+                "responses",
+                "not found",
+                "method not allowed",
+                "unsupported",
+                "does not exist",
+                "unknown",
+            )
+            if any(marker in message for marker in fallback_markers):
+                return True
+
+        return status_code in {404, 405}
 
     def _append_function_calls_to_session(self, session: Dict[str, Any], response: Any) -> bool:
         """Persist assistant outputs and function calls so follow-up tool outputs keep valid context."""
@@ -314,6 +492,160 @@ class OpenAIProvider(BaseProvider):
                     "arguments": arguments,
                 }
             )
+            session.setdefault("tool_call_names", {})[str(call_id)] = str(name)
+
+        return appended_assistant_message
+
+    def _to_chat_messages(self, session: Dict[str, Any]) -> List[Dict[str, Any]]:
+        chat_messages: List[Dict[str, Any]] = []
+        system_instruction = session.get("system")
+        if isinstance(system_instruction, str) and system_instruction.strip():
+            chat_messages.append({"role": "system", "content": system_instruction})
+
+        tool_name_map = session.setdefault("tool_call_names", {})
+        for message in session.get("messages", []) or []:
+            if not isinstance(message, dict):
+                continue
+
+            message_type = message.get("type")
+            if message_type == "function_call":
+                call_id = str(message.get("call_id") or "").strip()
+                name = str(message.get("name") or "").strip()
+                arguments = message.get("arguments") or "{}"
+
+                if not call_id or not name:
+                    continue
+                if not isinstance(arguments, str):
+                    try:
+                        arguments = json.dumps(arguments)
+                    except Exception:
+                        arguments = "{}"
+
+                tool_name_map[call_id] = name
+                chat_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": "",
+                        "tool_calls": [
+                            {
+                                "id": call_id,
+                                "type": "function",
+                                "function": {"name": name, "arguments": arguments},
+                            }
+                        ],
+                    }
+                )
+                continue
+
+            if message_type == "function_call_output":
+                call_id = str(message.get("call_id") or "").strip()
+                if not call_id:
+                    continue
+                output = message.get("output")
+                if not isinstance(output, str):
+                    try:
+                        output = json.dumps(output)
+                    except Exception:
+                        output = str(output or "")
+
+                tool_name = tool_name_map.get(call_id) or "tool"
+                chat_messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": call_id,
+                        "name": tool_name,
+                        "content": output,
+                    }
+                )
+                continue
+
+            role = str(message.get("role") or "").strip()
+            if role not in {"user", "assistant", "tool"}:
+                continue
+
+            content = message.get("content")
+            if isinstance(content, str):
+                normalized_content = content
+            elif isinstance(content, list):
+                normalized_content = self._content_blocks_to_text(content)
+            else:
+                normalized_content = ""
+
+            if role == "tool":
+                tool_message: Dict[str, Any] = {
+                    "role": "tool",
+                    "content": normalized_content,
+                }
+                tool_call_id = message.get("tool_call_id")
+                if isinstance(tool_call_id, str) and tool_call_id.strip():
+                    tool_message["tool_call_id"] = tool_call_id
+                tool_name = message.get("name")
+                if isinstance(tool_name, str) and tool_name.strip():
+                    tool_message["name"] = tool_name
+                chat_messages.append(tool_message)
+                continue
+
+            chat_messages.append({"role": role, "content": normalized_content})
+
+        return chat_messages
+
+    def _extract_chat_message(self, response: Any) -> Optional[Any]:
+        if isinstance(response, dict):
+            choices = response.get("choices") or []
+            if not choices:
+                return None
+            return choices[0].get("message")
+
+        choices = getattr(response, "choices", None) or []
+        if not choices:
+            return None
+        return getattr(choices[0], "message", None)
+
+    def _append_chat_completion_to_session(self, session: Dict[str, Any], response: Any) -> bool:
+        message = self._extract_chat_message(response)
+        if not message:
+            return False
+
+        appended_assistant_message = False
+
+        content = self._read_chat_field(message, "content")
+        if isinstance(content, str) and content.strip():
+            session["messages"].append({"role": "assistant", "content": content})
+            appended_assistant_message = True
+        elif isinstance(content, list):
+            text = self._content_blocks_to_text(content)
+            if text:
+                session["messages"].append({"role": "assistant", "content": text})
+                appended_assistant_message = True
+
+        tool_calls = self._read_chat_field(message, "tool_calls") or []
+        for call in tool_calls:
+            fn_payload = self._read_chat_field(call, "function")
+            call_id = self._read_chat_field(call, "id")
+            name = self._read_chat_field(call, "name") or self._read_chat_field(fn_payload, "name")
+            arguments = (
+                self._read_chat_field(call, "arguments")
+                or self._read_chat_field(fn_payload, "arguments")
+                or "{}"
+            )
+            if not call_id or not name:
+                continue
+
+            if not isinstance(arguments, str):
+                try:
+                    arguments = json.dumps(arguments)
+                except Exception:
+                    arguments = "{}"
+
+            session["messages"].append(
+                {
+                    "type": "function_call",
+                    "call_id": str(call_id),
+                    "name": str(name),
+                    "arguments": arguments,
+                }
+            )
+            session.setdefault("tool_call_names", {})[str(call_id)] = str(name)
 
         return appended_assistant_message
 
@@ -337,23 +669,7 @@ class OpenAIProvider(BaseProvider):
         return normalized
 
     def _send_response(self, session):
-        tool_specs: List[Dict[str, Any]] = []
-        for tool in session.get("tools", []) or []:
-            if not isinstance(tool, dict):
-                continue
-            name = tool.get("name")
-            if not isinstance(name, str) or not name.strip():
-                continue
-
-            spec: Dict[str, Any] = {
-                "type": "function",
-                "name": name,
-                "parameters": tool.get("parameters") or {"type": "object", "properties": {}},
-            }
-            description = tool.get("description")
-            if isinstance(description, str) and description.strip():
-                spec["description"] = description
-            tool_specs.append(spec)
+        tool_specs = self._build_responses_tool_specs(session.get("tools", []))
 
         request_kwargs: Dict[str, Any] = {
             "model": self.model,
@@ -366,15 +682,45 @@ class OpenAIProvider(BaseProvider):
         if self.max_tokens is not None:
             request_kwargs["max_output_tokens"] = self.max_tokens
 
+        use_chat_fallback = self._responses_supported is False
+        if not use_chat_fallback:
+            try:
+                response = self.client.responses.create(**request_kwargs)
+                self._responses_supported = True
+                appended_assistant_message = self._append_function_calls_to_session(session, response)
+                output_text = getattr(response, "output_text", None)
+                if isinstance(output_text, str) and output_text and not appended_assistant_message:
+                    session["messages"].append({"role": "assistant", "content": output_text})
+                return response
+            except Exception as exc:
+                if self._should_fallback_to_chat(exc):
+                    self._responses_supported = False
+                    logger.debug(
+                        "Responses API not supported by provider. Falling back to Chat Completions API."
+                    )
+                else:
+                    self._raise_provider_error(exc, "OpenAI", endpoint_url=self.base_url)
+                    raise
+
+        chat_request_kwargs: Dict[str, Any] = {
+            "model": self.model,
+            "messages": self._to_chat_messages(session),
+            "temperature": self.temperature,
+        }
+        chat_tools = self._build_chat_tool_specs(session.get("tools", []))
+        if chat_tools:
+            chat_request_kwargs["tools"] = chat_tools
+            chat_request_kwargs["tool_choice"] = "auto"
+        if self.max_tokens is not None:
+            chat_request_kwargs["max_tokens"] = self.max_tokens
+
         try:
-            response = self.client.responses.create(**request_kwargs)
+            response = self.client.chat.completions.create(**chat_request_kwargs)
         except Exception as exc:
-            self._raise_provider_error(exc, "OpenAI")
+            self._raise_provider_error(exc, "OpenAI", endpoint_url=self.base_url)
             raise
-        appended_assistant_message = self._append_function_calls_to_session(session, response)
-        output_text = getattr(response, "output_text", None)
-        if isinstance(output_text, str) and output_text and not appended_assistant_message:
-            session["messages"].append({"role": "assistant", "content": output_text})
+
+        self._append_chat_completion_to_session(session, response)
         return response
 
     def send_user_message(self, session, content: str):
@@ -404,6 +750,16 @@ class OpenAIProvider(BaseProvider):
         output_text = getattr(response, "output_text", None)
         if isinstance(output_text, str):
             return output_text
+
+        message = self._extract_chat_message(response)
+        if not message:
+            return ""
+
+        content = self._read_chat_field(message, "content")
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            return self._content_blocks_to_text(content)
         return ""
 
     def extract_tool_calls(self, response) -> List[Dict[str, Any]]:
@@ -451,7 +807,39 @@ class OpenAIProvider(BaseProvider):
                     "id": call_id,
                 }
             )
-        return result
+        if result:
+            return result
+
+        message = self._extract_chat_message(response)
+        if not message:
+            return []
+
+        chat_tool_calls = self._read_chat_field(message, "tool_calls") or []
+        normalized_tool_calls: List[Dict[str, Any]] = []
+        for call in chat_tool_calls:
+            fn_payload = self._read_chat_field(call, "function")
+            name = self._read_chat_field(call, "name") or self._read_chat_field(fn_payload, "name")
+            args_raw = (
+                self._read_chat_field(call, "arguments")
+                or self._read_chat_field(fn_payload, "arguments")
+                or "{}"
+            )
+            call_id = self._read_chat_field(call, "id")
+            if not name:
+                continue
+            try:
+                args = json.loads(args_raw) if isinstance(args_raw, str) else dict(args_raw)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                args = {}
+
+            normalized_tool_calls.append(
+                {
+                    "name": name,
+                    "args": args,
+                    "id": call_id,
+                }
+            )
+        return normalized_tool_calls
 
     def extract_usage(self, response) -> Optional[Dict[str, Any]]:
         usage = getattr(response, "usage", None)
@@ -502,6 +890,7 @@ class AzureOpenAIProvider(OpenAIProvider):
     name = "azure_openai"
 
     def __init__(self, api_key: Optional[str], model: str, base_url: str, api_version: str):
+        super().__init__(api_key=api_key, model=model, base_url=base_url)
         try:
             from openai import AzureOpenAI
         except ImportError as exc:
@@ -511,6 +900,7 @@ class AzureOpenAIProvider(OpenAIProvider):
             azure_endpoint=base_url,
             api_version=api_version,
         )
+        self.base_url = str(base_url or "").strip().rstrip("/") or None
         self.model = model
 
 
@@ -524,6 +914,7 @@ class AnthropicProvider(BaseProvider):
             from anthropic import Anthropic
         except ImportError as exc:
             raise ProviderError("anthropic SDK not available") from exc
+        self.base_url = str(base_url).strip().rstrip("/") if base_url else None
         self.client = Anthropic(api_key=api_key, base_url=base_url)
         self.model = model
 
@@ -592,7 +983,7 @@ class AnthropicProvider(BaseProvider):
                 max_tokens=self.max_tokens or 512,
             )
         except Exception as exc:
-            self._raise_provider_error(exc, "Anthropic")
+            self._raise_provider_error(exc, "Anthropic", endpoint_url=self.base_url)
             raise
         self._append_assistant_response(session, response)
         return response
@@ -629,7 +1020,7 @@ class AnthropicProvider(BaseProvider):
                 max_tokens=self.max_tokens or 512,
             )
         except Exception as exc:
-            self._raise_provider_error(exc, "Anthropic")
+            self._raise_provider_error(exc, "Anthropic", endpoint_url=self.base_url)
             raise
         self._append_assistant_response(session, response)
         return response
@@ -681,52 +1072,6 @@ class AnthropicProvider(BaseProvider):
                     }
                 )
         return result
-
-
-class OllamaProvider(BaseProvider):
-    name = "ollama"
-    supports_tools = False
-
-    def __init__(self, base_url: Optional[str], model: str):
-        super().__init__()
-        self.base_url = (base_url or "http://localhost:11434").rstrip("/")
-        self.model = model
-
-    def start_chat(self, system_instruction: str, tools: List[Dict[str, Any]]):
-        messages = [{"role": "system", "content": system_instruction}]
-        return {"messages": messages}
-
-    def send_user_message(self, session, content: str):
-        session["messages"].append({"role": "user", "content": content})
-        payload: Dict[str, Any] = {
-            "model": self.model,
-            "messages": session["messages"],
-            "stream": False,
-            "options": {"temperature": self.temperature},
-        }
-        try:
-            response = requests.post(
-                f"{self.base_url}/api/chat", json=payload, timeout=self.timeout
-            )
-            if response.status_code >= 400:
-                error = requests.HTTPError(response.text)
-                error.response = response
-                self._raise_provider_error(error, "Ollama")
-            data = response.json()
-        except Exception as exc:
-            self._raise_provider_error(exc, "Ollama")
-            raise
-
-        message = data.get("message") or {}
-        session["messages"].append(message)
-        return data
-
-    def send_tool_result(self, session, tool_name: str, tool_result: str, tool_call_id: Optional[str]):
-        raise ProviderError("Ollama provider does not support tool calling")
-
-    def extract_text(self, response) -> str:
-        message = response.get("message") or {}
-        return message.get("content", "") or ""
 
 
 class GeminiProvider(BaseProvider):
@@ -1000,10 +1345,14 @@ class HuggingFaceProvider(BaseProvider):
                 try:
                     return self.client.chat.completions.create(**fallback_kwargs)
                 except Exception as fallback_exc:
-                    self._raise_provider_error(fallback_exc, "HuggingFace")
+                    self._raise_provider_error(
+                        fallback_exc,
+                        "HuggingFace",
+                        endpoint_url=self.base_url,
+                    )
                     raise
 
-            self._raise_provider_error(exc, "HuggingFace")
+            self._raise_provider_error(exc, "HuggingFace", endpoint_url=self.base_url)
             raise
 
     def send_user_message(self, session, content: str):
@@ -1086,11 +1435,12 @@ def select_provider(
     model = model_override or settings.LLM_MODEL
 
     if mode == "open_source":
-        if provider in {"openai_compatible", "vllm", "tgi", "lmstudio"}:
-            base_url = settings.LLM_BASE_URL or "http://localhost:8000"
-            return OpenAIProvider(api_key=os.getenv("OPENAI_API_KEY"), model=model, base_url=base_url)
-        if provider == "ollama":
-            return OllamaProvider(base_url=settings.LLM_BASE_URL, model=model)
+        if provider in {"openai_compatible", "vllm", "tgi", "lmstudio", "ollama"}:
+            return get_llm_provider(
+                provider_name=provider,
+                model_id=model,
+                api_key=os.getenv("OPENAI_API_KEY"),
+            )
 
     return get_llm_provider(provider_name=provider, model_id=model)
 
@@ -1107,6 +1457,17 @@ def _require_api_key(provider_label: str, configured_api_key: Optional[str] = No
     raise ProviderError(f"Missing API key for provider '{provider_label}'. Set {env_key} in .env")
 
 
+def _looks_local_openai_endpoint(base_url: Optional[str]) -> bool:
+    endpoint = str(base_url or "").strip().lower()
+    if not endpoint:
+        return False
+    return (
+        "localhost" in endpoint
+        or "127.0.0.1" in endpoint
+        or "host.docker.internal" in endpoint
+    )
+
+
 def get_llm_provider(provider_name: str, model_id: str, api_key: Optional[str] = None) -> BaseProvider:
     """Create a provider instance from explicit provider/model settings."""
     provider = (provider_name or "").strip().lower()
@@ -1114,10 +1475,19 @@ def get_llm_provider(provider_name: str, model_id: str, api_key: Optional[str] =
     if not model:
         raise ValueError("model_id is required")
 
-    if provider == "openai":
-        resolved_api_key = _require_api_key("openai", api_key)
-        base_url = os.getenv("OPENAI_BASE_URL") or settings.LLM_BASE_URL
-        return OpenAIProvider(api_key=resolved_api_key, model=model, base_url=base_url)
+    if provider in {"openai", "openai_compatible", "vllm", "tgi", "lmstudio", "ollama"}:
+        base_url = settings.OPENAI_BASE_URL or settings.LLM_BASE_URL
+        if provider == "ollama" and not base_url:
+            base_url = "http://localhost:11434/v1"
+
+        resolved_api_key = str(api_key or "").strip() or (os.getenv("OPENAI_API_KEY") or "").strip()
+        if not resolved_api_key and _looks_local_openai_endpoint(base_url):
+            resolved_api_key = "ollama"
+
+        if provider == "openai" and not resolved_api_key:
+            resolved_api_key = _require_api_key("openai", api_key)
+
+        return OpenAIProvider(api_key=resolved_api_key or None, model=model, base_url=base_url)
 
     if provider == "gemini":
         resolved_api_key = _require_api_key("gemini", api_key)
@@ -1134,7 +1504,9 @@ def get_llm_provider(provider_name: str, model_id: str, api_key: Optional[str] =
         return HuggingFaceProvider(api_key=resolved_api_key, model=model, base_url=base_url)
 
     raise ValueError(
-        f"Unknown provider '{provider_name}'. Supported providers: openai, gemini, anthropic, huggingface"
+        "Unknown provider "
+        f"'{provider_name}'. Supported providers: openai, gemini, anthropic, huggingface "
+        "(aliases: openai_compatible, vllm, tgi, lmstudio, ollama)"
     )
 
 

@@ -122,6 +122,10 @@ class Settings(BaseSettings):
         default=None,
         description="Optional fallback base URL for open-source/openai-compatible providers"
     )
+    OPENAI_BASE_URL: Optional[str] = Field(
+        default=None,
+        description="Base URL for OpenAI-compatible APIs (OpenAI, Ollama proxy, vLLM, TGI, LM Studio)"
+    )
     HUGGINGFACE_BASE_URL: Optional[str] = Field(
         default=None,
         description="Base URL for Hugging Face-compatible inference endpoint (e.g., vLLM/TGI proxy)"

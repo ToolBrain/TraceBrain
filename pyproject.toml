@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tracebrain"
-version = "0.1.4"
+version = "0.1.5"
 description = "A standalone trace management platform for observability and continuous improvement of LLM-based agents."
 readme = "README.md"
 requires-python = ">=3.8"
