@@ -30,6 +30,7 @@ import sys
 import subprocess
 import time
 import os
+from importlib import metadata
 from pathlib import Path
 from typing import Optional
 import typer
@@ -699,6 +700,15 @@ def info():
     typer.echo("TraceBrain - System Information")
     typer.echo("=" * 70)
     typer.echo("")
+
+    try:
+        ver = metadata.version("tracebrain")
+    except metadata.PackageNotFoundError:
+        ver = "unknown"
+
+    typer.echo("[Version]")
+    typer.echo(f"  TraceBrain:      v{ver}")
+    typer.echo("")
     
     typer.echo("[Configuration]")
     typer.echo(f"  Database URL:     {settings.DATABASE_URL}")
@@ -752,7 +762,12 @@ def version():
     Example:
         tracebrain version
     """
-    typer.echo("TraceBrain v1.0.0")
+    try:
+        ver = metadata.version("tracebrain")
+    except metadata.PackageNotFoundError:
+        ver = "unknown"
+
+    typer.echo(f"TraceBrain v{ver}")
 
 
 def main():
