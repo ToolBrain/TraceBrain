@@ -597,11 +597,14 @@ class LibrarianAgent:
             session = provider.start_chat(system_prompt, self.tools)
             response = provider.send_user_message(session, user_content)
             extracted_filters = {}
+            tools_were_called = False
 
             for _ in range(5):
                 tool_calls = provider.extract_tool_calls(response)
                 if not tool_calls:
                     break
+
+                tools_were_called = True
 
                 for call in tool_calls:
                     tool_name = call.get("name")
@@ -651,6 +654,12 @@ class LibrarianAgent:
                         result = self._abstain_response_from_llm(user_query, history_text, provider)
                         self.store.save_chat_message(session_id, "assistant", result)
                         return result
+
+            if tools_were_called:
+                response = provider.send_user_message(
+                    session,
+                    "All tools have been called. Now summarize your findings and return the final JSON response only. You MUST include 'answer', 'suggestions', 'sources', and 'filters' keys.",
+                )
 
             answer_text = provider.extract_text(response)
             try:

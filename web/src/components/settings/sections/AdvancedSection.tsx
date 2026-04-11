@@ -1,8 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Autocomplete,
+  Box,
+  Button,
+  CircularProgress,
   Stack,
   Slider,
+  Snackbar,
   TextField,
   Typography,
   MenuItem,
@@ -54,8 +59,27 @@ const MODEL_PRESETS = {
   ],
 } as const;
 
+type SystemInfo = {
+  database_type: string;
+  embedding_provider: string;
+  embedding_model: string;
+};
+
+const formatEmbeddingProvider = (provider: string | undefined): string => {
+  const normalized = (provider || "").trim().toLowerCase();
+  if (!normalized) return "Unknown";
+  if (normalized === "openai") return "OpenAI";
+  if (normalized === "gemini") return "Gemini";
+  if (normalized === "anthropic") return "Anthropic";
+  if (normalized === "huggingface") return "Hugging Face";
+  if (normalized === "local") return "Local";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
 const AdvancedSection: React.FC = () => {
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, saveSettings, isSaving, hasUnsavedChanges, saveError } = useSettings();
+  const [saveSuccessOpen, setSaveSuccessOpen] = useState(false);
+  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
 
   const [showKeys, setShowKeys] = useState<Record<ProviderValue, boolean>>({
     openai: false,
@@ -80,8 +104,61 @@ const AdvancedSection: React.FC = () => {
     </InputAdornment>
   );
 
+  const handleSave = async () => {
+    const success = await saveSettings();
+    if (success) {
+      setSaveSuccessOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSystemInfo = async () => {
+      try {
+        const response = await fetch("/api/v1/system/info");
+        if (!response.ok) {
+          throw new Error(`Failed to load system info: ${response.statusText}`);
+        }
+        const payload = (await response.json()) as SystemInfo;
+        if (isMounted) {
+          setSystemInfo(payload);
+        }
+      } catch {
+        if (isMounted) {
+          setSystemInfo(null);
+        }
+      }
+    };
+
+    void loadSystemInfo();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <Stack spacing={3}>
+      <Alert
+        severity="info"
+        variant="outlined"
+        sx={{ borderRadius: 2, alignItems: "flex-start", bgcolor: "action.hover" }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+          System Info
+        </Typography>
+        <Typography variant="body2">
+          Database: {systemInfo?.database_type || "Unknown"}
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 0.5 }}>
+          Embedding Engine: {formatEmbeddingProvider(systemInfo?.embedding_provider)} ({systemInfo?.embedding_model || "Unknown"}) - Active
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Embedding is infrastructure-level. Keep one embedding engine for the full database lifecycle. Changing the provider or model requires a full re-embedding migration.
+        </Typography>
+      </Alert>
+
       {/* AI Evaluation Model */}
       <Stack spacing={3}>
         <Stack spacing={0.5}>
@@ -98,7 +175,9 @@ const AdvancedSection: React.FC = () => {
             value={settings.llm.provider}
             onChange={(e) =>
               updateSettings((draft) => {
-                draft.llm.provider = e.target.value as typeof draft.llm.provider;
+                const newProvider = e.target.value as typeof draft.llm.provider;
+                draft.llm.provider = newProvider;
+                draft.llm.model = MODEL_PRESETS[newProvider][0];
               })
             }
             helperText="Select which provider powers AI Judge evaluations."
@@ -144,7 +223,7 @@ const AdvancedSection: React.FC = () => {
             }
             autoComplete="off"
             helperText="Stored securely in local database. Leave unchanged to keep current key."
-            InputProps={{ endAdornment: keyAdornment(settings.llm.provider) }}
+            slotProps={{ input: { endAdornment: keyAdornment(settings.llm.provider) } }}
           />
 
           <Toggle
@@ -201,7 +280,9 @@ const AdvancedSection: React.FC = () => {
           value={settings.chatLLM.provider}
           onChange={(e) =>
             updateSettings((draft) => {
-              draft.chatLLM.provider = e.target.value as typeof draft.chatLLM.provider;
+              const newProvider = e.target.value as typeof draft.chatLLM.provider;
+              draft.chatLLM.provider = newProvider;
+              draft.chatLLM.model = MODEL_PRESETS[newProvider][0];
             })
           }
           helperText="Select which provider powers Librarian chat."
@@ -247,7 +328,7 @@ const AdvancedSection: React.FC = () => {
           }
           autoComplete="off"
           helperText="Stored securely in local database. Leave unchanged to keep current key."
-          InputProps={{ endAdornment: keyAdornment(settings.chatLLM.provider) }}
+          slotProps={{ input: { endAdornment: keyAdornment(settings.chatLLM.provider) } }}
         />
       </Stack>
 
@@ -266,7 +347,9 @@ const AdvancedSection: React.FC = () => {
           value={settings.curatorLLM.provider}
           onChange={(e) =>
             updateSettings((draft) => {
-              draft.curatorLLM.provider = e.target.value as typeof draft.curatorLLM.provider;
+              const newProvider = e.target.value as typeof draft.curatorLLM.provider;
+              draft.curatorLLM.provider = newProvider;
+              draft.curatorLLM.model = MODEL_PRESETS[newProvider][0];
             })
           }
           helperText="Select which provider powers Curator curriculum generation."
@@ -312,9 +395,51 @@ const AdvancedSection: React.FC = () => {
           }
           autoComplete="off"
           helperText="Stored securely in local database. Leave unchanged to keep current key."
-          InputProps={{ endAdornment: keyAdornment(settings.curatorLLM.provider) }}
+          slotProps={{ input: { endAdornment: keyAdornment(settings.curatorLLM.provider) } }}
         />
       </Stack>
+
+      <Box
+        sx={{
+          borderTop: 1,
+          borderColor: "divider",
+          pt: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 2,
+        }}
+      >
+        <Typography variant="body2" color={saveError ? "error.main" : "text.secondary"}>
+          {saveError || "Display preferences are saved locally. Click Save Configuration to sync LLM and API key settings."}
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          size="large"
+          onClick={handleSave}
+          disabled={isSaving || !hasUnsavedChanges}
+          startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}
+        >
+          {isSaving ? "Saving..." : "Save Configuration"}
+        </Button>
+      </Box>
+
+      <Snackbar
+        open={saveSuccessOpen}
+        autoHideDuration={2500}
+        onClose={() => setSaveSuccessOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setSaveSuccessOpen(false)}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          Configuration saved successfully.
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 };
