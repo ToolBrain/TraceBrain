@@ -1,21 +1,41 @@
 # TraceBrain: An Open-Source Framework for Agentic Trace Management 🧠🚀
 
 <p align="center">
-    <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="images/banner-dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="images/banner-light.png">
-        <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/banner-light.png" alt="TraceBrain Banner" width="100%">
-    </picture>
+<picture>
+    <source media="(prefers-color-scheme: dark)" srcset="images/banner-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="images/banner-light.png">
+    <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/banner-light.png" alt="TraceBrain Banner" width="100%">
+</picture>
 </p>
 
 <p align="center">
-    <a href="https://pypi.org/project/tracebrain/">
-        <img src="https://img.shields.io/pypi/v/tracebrain" alt="PyPI Version">
-    </a>
-    <a href="https://pypistats.org/packages/tracebrain">
-        <img src="https://img.shields.io/badge/dynamic/json?url=https://pypistats.org/api/packages/tracebrain/recent&query=data.last_month&label=downloads/month" alt="Monthly Downloads">
-    </a>
-    <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+<table>
+    <tr>
+        <td>
+            <a href="https://pypi.org/project/tracebrain/">
+                <img src="https://img.shields.io/pypi/v/tracebrain" alt="PyPI Version">
+            </a>
+        </td>
+        <td>
+            <a href="https://pypistats.org/packages/tracebrain">
+                <img src="https://img.shields.io/badge/dynamic/json?url=https://pypistats.org/api/packages/tracebrain/recent&query=data.last_month&label=downloads/month" alt="Monthly Downloads">
+            </a>
+        </td>
+        <td>
+            <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+        </td>
+        <td>
+            <a href="#">
+                <img src="https://img.shields.io/badge/IJCAI--ECAI-2026-red" alt="IJCAI-ECAI 2026">
+            </a>
+        </td>
+        <td>
+            <a href="https://youtu.be/iVPRAFdh1Io">
+                <img src="https://img.shields.io/badge/Video-Demo-red?logo=youtube&logoColor=white" alt="Video Demo">
+            </a>
+        </td>
+    </tr>
+</table>
 </p>
 
 **TraceBrain** is an open-source platform for collecting, managing, and analyzing execution traces from LLM agents.
