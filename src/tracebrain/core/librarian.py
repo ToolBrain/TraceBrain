@@ -27,7 +27,11 @@ def _build_tool_specs() -> List[Dict[str, Any]]:
     return [
         {
             "name": "run_sql_query",
-            "description": "Execute a read-only SQL SELECT query against the TraceStore database.",
+            "description": (
+                "Execute a read-only SQL SELECT query. CRITICAL: DO NOT use this tool to search for "
+                "specific text, keywords, or error messages inside JSON/attributes. Use this ONLY for "
+                "aggregations (COUNT, AVG), time filters, or strict status filtering."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -42,18 +46,26 @@ def _build_tool_specs() -> List[Dict[str, Any]]:
         ,
         {
             "name": "search_similar_traces",
-            "description": "Find semantically similar traces using vector search.",
+            "description": (
+                "MANDATORY TOOL for finding traces that contain specific tool names, error messages, "
+                "or concepts. Uses Hybrid RRF Search. Use this whenever the user asks to 'find traces "
+                "where X happened' or 'search for Y'."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {
+                    "semantic_intent": {
                         "type": "string",
-                        "description": "Semantic search query describing the target behavior or failure",
+                        "description": "High-level conceptual search intent for semantic matching",
+                    },
+                    "exact_keywords": {
+                        "type": "string",
+                        "description": "Exact keywords, IDs, tool names or error codes for lexical matching",
                     },
                     "min_rating": {
                         "type": "integer",
-                        "description": "Minimum human feedback rating to include (use higher to focus on best traces)",
-                        "default": 4,
+                        "description": "Minimum human feedback rating to include. CRITICAL: If the user is searching for errors, failures, or bugs, you MUST set this to 1 to ensure bad traces are not filtered out. Set higher (e.g., 4 or 5) ONLY if the user specifically asks for 'successful' or 'good' traces.",
+                        "default": 1,
                     },
                     "limit": {
                         "type": "integer",
@@ -61,7 +73,7 @@ def _build_tool_specs() -> List[Dict[str, Any]]:
                         "default": 3,
                     },
                 },
-                "required": ["query"],
+                "required": [],
             },
         },
         {
@@ -283,6 +295,8 @@ class LibrarianAgent:
                 "- For type casting use CAST(x AS REAL).\n"
                 "- For time filters use datetime('now', '-6 months').\n"
                 "- For JSON fields use json_extract(column, '$.key').\n"
+                "- ABSOLUTELY PROHIBITED: Do not use LIKE or ILIKE on JSON/JSONB columns (e.g., attributes::text ILIKE '%...%'). "
+                "If you need to search for text, use the 'search_similar_traces' tool instead of SQL.\n"
                 "- To see agent thoughts or tool outputs, you MUST JOIN 'traces' and 'spans' on 'spans.trace_id = traces.id'.\n"
                 "- Only perform SELECT queries. If the database returns EMPTY_RESULT, do not guess; explain that no data matches the criteria.\n\n"
             )
@@ -292,6 +306,8 @@ class LibrarianAgent:
                 "- All timestamps are in UTC. Use 'now() - interval X hours' for relative time queries.\n"
                 "- To see agent thoughts or tool outputs, you MUST JOIN 'traces' and 'spans' on 'spans.trace_id = traces.id'.\n"
                 "- For JSONB fields, use '->>' to get values as text (e.g., attributes->>'tracebrain.tool.name').\n"
+                "- ABSOLUTELY PROHIBITED: Do not use LIKE or ILIKE on JSON/JSONB columns (e.g., attributes::text ILIKE '%...%'). "
+                "If you need to search for text, use the 'search_similar_traces' tool instead of SQL.\n"
                 "- Only perform SELECT queries. If the database returns EMPTY_RESULT, do not guess; explain that no data matches the criteria.\n\n"
             )
 
@@ -302,10 +318,15 @@ class LibrarianAgent:
             "If the user gives no time range, assume all time and proceed immediately without asking for clarification until you truly struggle to get any results.\n"
             "Your final response MUST ALWAYS be a valid JSON object with 'answer', 'suggestions', 'sources' and 'filters' keys. "
             "The 'answer' should be a natural language summary of what you found in the database.\n\n"
+
+            "### CRITICAL RULES FOR SEARCHING TRACES:\n"
+            "- If a tool (like search_similar_traces or run_sql_query) returns data, YOU MUST ACKNOWLEDGE IT. "
+            "NEVER say 'no traces were found' if the tool returned IDs. "
+            "Always list discovered trace IDs in the 'sources' array of your final JSON.\n\n"
             
             "### CORE TOOLS:\n"
             "1. run_sql_query: Use this for counts, status filters, time-based queries, and metadata analysis.\n"
-            "2. search_similar_traces: Use this ONLY when the user asks for 'similar' cases or semantic patterns in reasoning/thoughts.\n\n"
+            "2. search_similar_traces: You MUST use this tool to find traces based on specific events, tool names (e.g., 'get_stock_price'), or error messages (e.g., 'timeout').\n\n"
             "3. set_api_filters: Always call this after fetching data if the query conditions map to its available fields, to register the active filter state.\n\n"
             
             f"{sql_rules}"
@@ -498,9 +519,68 @@ class LibrarianAgent:
         fallback = re.search(r"SELECT\s+.*", candidate, flags=re.IGNORECASE | re.DOTALL)
         return fallback.group(0).strip() if fallback else None
 
-    def search_similar_traces(self, query: str, min_rating: int = 4, limit: int = 3) -> str:
-        results = self.store.search_similar_experiences(query, min_rating=min_rating, limit=limit)
-        return json.dumps(results, default=str)
+    def search_similar_traces(
+        self,
+        semantic_intent: Optional[str] = None,
+        exact_keywords: Optional[str] = None,
+        min_rating: int = 1,
+        limit: int = 3,
+    ) -> str:
+        results = self.store.hybrid_search_traces(
+            semantic_query=semantic_intent,
+            exact_keywords=exact_keywords,
+            limit=limit,
+            min_rating=min_rating,
+        )
+        if not results:
+            return json.dumps([], default=str)
+
+        trace_ids = [
+            str(item.get("trace_id") or item.get("id"))
+            for item in results
+            if item.get("trace_id") or item.get("id")
+        ]
+        traces = self.store.get_traces_by_ids(trace_ids, include_spans=False)
+        trace_map = {trace.id: trace for trace in traces}
+
+        def _truncate(text: Optional[str], limit_chars: int = 100) -> Optional[str]:
+            if not isinstance(text, str):
+                return None
+            value = text.strip()
+            if len(value) <= limit_chars:
+                return value
+            return f"{value[:97]}..."
+
+        summaries = []
+        for item in results:
+            trace_id = str(item.get("trace_id") or item.get("id") or "").strip()
+            if not trace_id:
+                continue
+            trace = trace_map.get(trace_id)
+            if not trace:
+                continue
+
+            attributes = trace.attributes if isinstance(trace.attributes, dict) else {}
+            ai_eval = attributes.get("tracebrain.ai_evaluation")
+            error_type = ai_eval.get("error_type") if isinstance(ai_eval, dict) else None
+            if not error_type and isinstance(trace.ai_evaluation, dict):
+                error_type = trace.ai_evaluation.get("error_type")
+
+            system_prompt = trace.system_prompt or attributes.get("system_prompt")
+            summary = {
+                "id": trace_id,
+                "status": trace.status.value if hasattr(trace.status, "value") else str(trace.status),
+                "error_type": error_type,
+                "system_prompt": _truncate(system_prompt, 100),
+            }
+
+            matched = item.get("matched_keywords")
+            if matched:
+                summary["matched_keywords"] = matched
+
+            summaries.append(summary)
+
+        return json.dumps(summaries, default=str)
 
     def query(self, user_query: str, session_id: str) -> Dict[str, Any]:
         """Process a natural language query using the configured provider.
@@ -618,14 +698,23 @@ class LibrarianAgent:
                             f"SQL: {sql_query}\nRESULT: {tool_result}",
                         )
                     elif tool_name == "search_similar_traces":
-                        query = args.get("query", "")
+                        semantic_intent = args.get("semantic_intent") or args.get("query")
+                        exact_keywords = args.get("exact_keywords")
                         min_rating = int(args.get("min_rating", 4))
                         limit = int(args.get("limit", 3))
-                        tool_result = self.search_similar_traces(query, min_rating=min_rating, limit=limit)
+                        tool_result = self.search_similar_traces(
+                            semantic_intent=semantic_intent,
+                            exact_keywords=exact_keywords,
+                            min_rating=min_rating,
+                            limit=limit,
+                        )
+                        search_label = semantic_intent or ""
+                        if exact_keywords:
+                            search_label = f"{search_label} | keywords: {exact_keywords}".strip()
                         self.store.save_chat_message(
                             session_id,
                             "tool",
-                            f"SEARCH: {query}\nRESULT: {tool_result}",
+                            f"SEARCH: {search_label}\nRESULT: {tool_result}",
                         )
                     elif tool_name == "set_api_filters":
                         extracted_filters = args

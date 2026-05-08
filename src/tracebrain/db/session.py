@@ -28,7 +28,7 @@ Usage:
 """
 
 from typing import Generator
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 
 from ..config import settings
@@ -119,6 +119,10 @@ def create_tables():
     It's idempotent and safe to call multiple times.
     """
     engine = get_engine()
+    # Enable pgvector extension for PostgreSQL before creating tables.
+    if "postgresql" in settings.DATABASE_URL.lower():
+        with engine.begin() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     Base.metadata.create_all(bind=engine)
 
 

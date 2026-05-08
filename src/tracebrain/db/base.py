@@ -113,6 +113,8 @@ class Trace(Base):
         nullable=True,
         comment="Trace embedding vector",
     )
+    # Combined free-text field used for full-text search and keyword matches
+    search_text = Column(Text, nullable=True, comment="Combined searchable text for FTS and keyword matching")
     attributes = Column(
         JSONBCompat,
         nullable=True,
@@ -146,6 +148,7 @@ class Trace(Base):
         Index("idx_trace_attributes_gin", "attributes", postgresql_using="gin"),
         Index("idx_trace_feedback_gin", "feedback", postgresql_using="gin"),
         Index("idx_trace_ai_eval_gin", "ai_evaluation", postgresql_using="gin"),
+        Index("idx_trace_search_text", "search_text"),
     )
     
     def __repr__(self):

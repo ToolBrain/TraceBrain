@@ -122,13 +122,19 @@ def delete_trace(trace_id: str):
 
 @router.get("/traces/search", response_model=ExperienceSearchResponse, tags=["Traces"])
 def search_traces(
-    text: str = Query(..., description="Natural language search text"),
+    semantic_query: Optional[str] = Query(None, description="Semantic search intent (natural language)"),
+    exact_keywords: Optional[str] = Query(None, description="Exact keywords, IDs, or error/tool tokens for lexical matching"),
     min_rating: int = Query(4, ge=1, le=5, description="Minimum rating threshold"),
-    limit: int = Query(3, ge=1, le=20, description="Maximum number of results"),
+    limit: int = Query(3, ge=1, le=50, description="Maximum number of results"),
 ):
-    """Search for similar high-quality traces using vector similarity."""
+    """Hybrid search combining semantic vector search and exact keyword matching."""
     try:
-        results = store.search_similar_experiences(text, min_rating=min_rating, limit=limit)
+        results = store.hybrid_search_traces(
+            semantic_query=semantic_query,
+            exact_keywords=exact_keywords,
+            limit=limit,
+            min_rating=min_rating,
+        )
         return ExperienceSearchResponse(total=len(results), results=results)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to search traces: {str(exc)}")

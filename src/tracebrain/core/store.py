@@ -224,6 +224,13 @@ class BaseStorageBackend:
                 )
             }
 
+        search_text_value = self._build_search_text(
+            trace_data=trace_data,
+            system_prompt=system_prompt,
+            ai_evaluation=ai_evaluation,
+            spans_data=spans_data,
+        )
+
         trace = Trace(
             id=trace_id,
             system_prompt=system_prompt,
@@ -234,6 +241,7 @@ class BaseStorageBackend:
             embedding=None,
             attributes=attributes,
             ai_evaluation=ai_evaluation,
+            search_text=search_text_value,
         )
 
         for span_data in spans_data:
@@ -257,6 +265,17 @@ class BaseStorageBackend:
             if existing:
                 if system_prompt and not existing.system_prompt:
                     existing.system_prompt = system_prompt
+                # Backfill search_text if missing
+                if not getattr(existing, "search_text", None):
+                    try:
+                        existing.search_text = self._build_search_text(
+                            trace_data=trace_data,
+                            system_prompt=system_prompt,
+                            ai_evaluation=ai_evaluation,
+                            spans_data=spans_data,
+                        )
+                    except Exception:
+                        pass
                 if episode_id and not existing.episode_id:
                     existing.episode_id = episode_id
                 if attributes:
@@ -526,6 +545,256 @@ class BaseStorageBackend:
                         "rating": trace.feedback.get("rating") if trace.feedback else None,
                         "feedback": trace.feedback,
                         "created_at": trace.created_at,
+                    }
+                )
+            return results
+        finally:
+            session.close()
+
+    @staticmethod
+    def _cosine_similarity(a: List[float], b: List[float]) -> Optional[float]:
+        try:
+            if not a or not b:
+                return None
+            # Simple dot / (norms)
+            dot = sum(x * y for x, y in zip(a, b))
+            norm_a = sum(x * x for x in a) ** 0.5
+            norm_b = sum(y * y for y in b) ** 0.5
+            if norm_a == 0 or norm_b == 0:
+                return None
+            return dot / (norm_a * norm_b)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _build_search_text(
+        trace_data: Dict[str, Any],
+        system_prompt: Optional[str],
+        ai_evaluation: Any,
+        spans_data: List[Dict[str, Any]],
+    ) -> Optional[str]:
+        parts: List[str] = []
+
+        if system_prompt:
+            parts.append(system_prompt)
+
+        human_feedback = trace_data.get("feedback")
+        if isinstance(human_feedback, dict):
+            for key in ("feedback", "comment"):
+                value = human_feedback.get(key)
+                if isinstance(value, str) and value.strip():
+                    parts.append(value.strip())
+        elif isinstance(human_feedback, str) and human_feedback.strip():
+            parts.append(human_feedback.strip())
+
+        if isinstance(ai_evaluation, dict):
+            et = ai_evaluation.get("error_type")
+            if isinstance(et, str):
+                parts.append(et)
+            eval_feedback = ai_evaluation.get("feedback")
+            if isinstance(eval_feedback, str) and eval_feedback.strip():
+                parts.append(eval_feedback.strip())
+
+        for sp in spans_data:
+            name = (sp or {}).get("name")
+            if isinstance(name, str) and name.strip():
+                parts.append(name.strip())
+
+            attrs = (sp or {}).get("attributes") or {}
+
+            tool_code = attrs.get("tracebrain.llm.tool_code")
+            if isinstance(tool_code, str) and tool_code.strip():
+                parts.append(tool_code.strip())
+
+            tool_name = attrs.get("tracebrain.tool.name")
+            if isinstance(tool_name, str) and tool_name.strip():
+                parts.append(tool_name.strip())
+
+            if attrs.get("tracebrain.span.type") == "tool_execution":
+                tool_output = attrs.get("tracebrain.tool.output")
+                if isinstance(tool_output, (dict, list)):
+                    tool_output = json.dumps(tool_output)
+                if isinstance(tool_output, str) and tool_output.strip():
+                    parts.append(tool_output.strip())
+
+        combined = " \n ".join([value for value in parts if value])
+        return combined or None
+
+    def hybrid_search_traces(
+        self,
+        semantic_query: Optional[str],
+        exact_keywords: Optional[str],
+        limit: int = 5,
+        min_rating: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Hybrid search combining vector similarity and full-text keyword search.
+
+        Returns a list of trace dicts ordered by RRF score (Postgres) or by
+        semantic similarity (SQLite fallback).
+        """
+        if not semantic_query and not exact_keywords:
+            return []
+
+        session = self.get_session()
+        try:
+            # PostgreSQL path: use RRF CTE combining pgvector and tsvector ranks
+            if not self.is_sqlite:
+                embedding = None
+                if semantic_query:
+                    embedding = self.embedding_provider.get_embedding(semantic_query)
+
+                if not embedding:
+                    embedding = None
+
+                cleaned_keywords = (
+                    exact_keywords.replace(",", " ") if exact_keywords else ""
+                )
+                rating_floor = int(min_rating) if min_rating is not None else 0
+
+                params = {
+                    "limit": limit,
+                    "min_rating": rating_floor,
+                    "keywords": cleaned_keywords,
+                }
+                if embedding is not None:
+                    params["embedding"] = str(embedding)
+
+                # Build SQL with safe parameter placeholders
+                sql = """
+                WITH vector_search AS (
+                    SELECT id, RANK() OVER (ORDER BY embedding <=> CAST(:embedding AS vector)) AS rank_v
+                    FROM traces
+                    WHERE embedding IS NOT NULL
+                    AND COALESCE((attributes->'tracebrain.ai_evaluation'->>'rating')::int, 0) >= :min_rating
+                    LIMIT 50
+                ),
+                keyword_search AS (
+                    SELECT id, RANK() OVER (ORDER BY ts_rank(to_tsvector('english', COALESCE(search_text, '')), websearch_to_tsquery('english', :keywords)) DESC) AS rank_k
+                    FROM traces
+                    WHERE :keywords <> ''
+                    AND COALESCE(search_text, '') <> ''
+                    AND to_tsvector('english', COALESCE(search_text, '')) @@ websearch_to_tsquery('english', :keywords)
+                    AND COALESCE((attributes->'tracebrain.ai_evaluation'->>'rating')::int, 0) >= :min_rating
+                    LIMIT 50
+                )
+                SELECT 
+                    COALESCE(v.id, k.id) as id,
+                    COALESCE(1.0 / (60 + v.rank_v), 0.0) + COALESCE(1.0 / (60 + k.rank_k), 0.0) as rrf_score
+                FROM vector_search v
+                FULL OUTER JOIN keyword_search k ON v.id = k.id
+                ORDER BY rrf_score DESC
+                LIMIT :limit;
+                """
+
+                # Adjust behavior when only one side is requested
+                if embedding is None and not cleaned_keywords:
+                    return []
+
+                # If only embedding provided, run a vector-only query
+                if embedding is not None and not cleaned_keywords:
+                    vec_sql = (
+                        "SELECT id, (1.0 / (1 + (embedding <=> CAST(:embedding AS vector)))) as score "
+                        "FROM traces WHERE embedding IS NOT NULL "
+                        "AND COALESCE((attributes->'tracebrain.ai_evaluation'->>'rating')::int, 0) >= :min_rating "
+                        "ORDER BY embedding <=> CAST(:embedding AS vector) LIMIT :limit"
+                    )
+                    rows = session.execute(text(vec_sql), params).fetchall()
+                    ids = [r[0] for r in rows]
+                else:
+                    # If keywords provided but embedding missing, use keyword-only via ts_rank
+                    if cleaned_keywords and embedding is None:
+                        kw_sql = (
+                            "SELECT id, ts_rank(to_tsvector('english', COALESCE(search_text, '')), websearch_to_tsquery('english', :keywords)) AS score "
+                            "FROM traces WHERE :keywords <> '' "
+                            "AND COALESCE(search_text, '') <> '' "
+                            "AND to_tsvector('english', COALESCE(search_text, '')) @@ websearch_to_tsquery('english', :keywords) "
+                            "AND COALESCE((attributes->'tracebrain.ai_evaluation'->>'rating')::int, 0) >= :min_rating "
+                            "ORDER BY score DESC LIMIT :limit"
+                        )
+                        rows = session.execute(text(kw_sql), params).fetchall()
+                        ids = [r[0] for r in rows]
+                    else:
+                        # Both embedding and keywords present: run RRF
+                        rows = session.execute(text(sql), params).fetchall()
+                        ids = [r[0] for r in rows]
+
+                if not ids:
+                    return []
+
+                # Fetch traces preserving order
+                traces = (
+                    session.query(Trace)
+                    .options(selectinload(Trace.spans))
+                    .filter(Trace.id.in_(ids))
+                    .all()
+                )
+                trace_map = {t.id: t for t in traces}
+                results: List[Dict[str, Any]] = []
+                for tid in ids:
+                    t = trace_map.get(tid)
+                    if not t:
+                        continue
+                    results.append(
+                        {
+                            "trace_id": t.id,
+                            "score": None,
+                            "rating": (t.feedback.get("rating") if t.feedback else None),
+                            "feedback": t.feedback,
+                            "created_at": t.created_at,
+                        }
+                    )
+                return results
+
+            # SQLite fallback: simple LIKE filter + optional in-Python cosine ranking
+            # First, find candidate traces by keyword if provided
+            candidates = []
+            query_stmt = session.query(Trace)
+            if exact_keywords:
+                pattern = f"%{exact_keywords}%"
+                query_stmt = query_stmt.filter(Trace.search_text.isnot(None)).filter(Trace.search_text.ilike(pattern))
+            if not exact_keywords and not semantic_query:
+                return []
+
+            rows = query_stmt.limit(500).all()
+            if not rows:
+                return []
+
+            # If semantic query available, compute embedding and cosine similarity
+            emb = None
+            if semantic_query:
+                emb = self.embedding_provider.get_embedding(semantic_query)
+
+            scored = []
+            for t in rows:
+                sim = None
+                if emb and t.embedding:
+                    # t.embedding may be stored as JSON list in SQLite
+                    vec = t.embedding
+                    if isinstance(vec, str):
+                        try:
+                            vec = json.loads(vec)
+                        except Exception:
+                            vec = None
+                    if isinstance(vec, list):
+                        sim = self._cosine_similarity(vec, emb)
+                scored.append((t, sim))
+
+            # Sort: if semantic available, by sim desc; otherwise by created_at desc
+            if emb:
+                scored.sort(key=lambda item: (item[1] is not None, item[1] or 0.0), reverse=True)
+            else:
+                scored.sort(key=lambda item: item[0].created_at, reverse=True)
+
+            results = []
+            for t, sim in scored[:limit]:
+                results.append(
+                    {
+                        "trace_id": t.id,
+                        "score": float(sim) if sim is not None else None,
+                        "rating": (t.feedback.get("rating") if t.feedback else None),
+                        "feedback": t.feedback,
+                        "created_at": t.created_at,
                     }
                 )
             return results
