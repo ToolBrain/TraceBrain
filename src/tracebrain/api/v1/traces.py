@@ -8,11 +8,7 @@ import json
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from fastapi.concurrency import run_in_threadpool
-<<<<<<< HEAD
-from fastapi.responses import Response
-=======
 from fastapi.responses import Response, StreamingResponse
->>>>>>> feature/hybrid-search
 from sqlalchemy import Integer, cast, func
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -295,11 +291,7 @@ async def ingest_trace(trace: TraceIn, background_tasks: BackgroundTasks):
             attributes.get("system_prompt"),
             spans,
         )
-<<<<<<< HEAD
-        if text_to_embed and not settings.DISABLE_BACKGROUND_EMBEDDINGS:
-=======
         if text_to_embed:
->>>>>>> feature/hybrid-search
             background_tasks.add_task(store.update_trace_embedding, trace_id, text_to_embed)
         if settings.AUTO_EVALUATE_TRACES and not attributes.get("tracebrain.ai_evaluation"):
             background_tasks.add_task(run_bg_evaluation, trace_id)
