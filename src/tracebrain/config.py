@@ -1,5 +1,5 @@
 """
-TraceBrain Tracing Configuration Module
+TraceBrain Configuration Module
 
 This module provides centralized configuration management using pydantic-settings.
 It handles environment variables, defaults, and configuration validation.
@@ -12,8 +12,12 @@ Usage:
 """
 
 from typing import Optional
+
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
+
+load_dotenv()
 
 
 class Settings(BaseSettings):
@@ -30,7 +34,8 @@ class Settings(BaseSettings):
         HOST: Server host address (default: "127.0.0.1")
         PORT: Server port number (default: 8000)
         LOG_LEVEL: Logging level (default: "info")
-        LLM_API_KEY: Optional API key for LLM providers
+        LLM provider API keys are provider-specific and loaded from env variables
+            (OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY, HUGGINGFACE_API_KEY)
         STATIC_DIR: Path to static files directory (for React frontend)
     """
     
@@ -67,12 +72,20 @@ class Settings(BaseSettings):
 
     # Database Pool Configuration
     DB_POOL_SIZE: int = Field(
+<<<<<<< HEAD
         default=50,
+=======
+        default=10,
+>>>>>>> feature/hybrid-search
         ge=1,
         description="Base number of database connections in the pool"
     )
     DB_MAX_OVERFLOW: int = Field(
+<<<<<<< HEAD
         default=100,
+=======
+        default=20,
+>>>>>>> feature/hybrid-search
         ge=0,
         description="Maximum number of overflow connections beyond pool size"
     )
@@ -100,38 +113,30 @@ class Settings(BaseSettings):
         description="Base URL for embedding provider (OpenAI-compatible)"
     )
 
-    # LLM Configuration (Librarian)
+    # LLM runtime mode + legacy fallback route defaults
     LIBRARIAN_MODE: str = Field(
         default="api",
-        description="LLM mode: api or open_source"
+        description="Runtime mode: api or open_source"
     )
     LLM_PROVIDER: str = Field(
         default="gemini",
-        description="LLM provider (gemini, openai, azure_openai, anthropic, openai_compatible, huggingface, hf, ollama, vllm, tgi, lmstudio)"
+        description="Legacy fallback provider when DB runtime settings are unavailable"
     )
     LLM_MODEL: str = Field(
         default="gemini-2.5-flash",
-        description="LLM model name"
-    )
-    LLM_API_KEY: Optional[str] = Field(
-        default=None,
-        description="API key for LLM provider (if required)"
+        description="Legacy fallback model when DB runtime settings are unavailable"
     )
     LLM_BASE_URL: Optional[str] = Field(
         default=None,
-        description="Base URL for LLM provider"
+        description="Optional fallback base URL for open-source/openai-compatible providers"
     )
-    LLM_API_VERSION: Optional[str] = Field(
+    OPENAI_BASE_URL: Optional[str] = Field(
         default=None,
-        description="API version for providers that require it (e.g., Azure)"
+        description="Base URL for OpenAI-compatible APIs (OpenAI, Ollama proxy, vLLM, TGI, LM Studio)"
     )
-    LLM_AZURE_DEPLOYMENT: Optional[str] = Field(
+    HUGGINGFACE_BASE_URL: Optional[str] = Field(
         default=None,
-        description="Azure OpenAI deployment name"
-    )
-    LLM_ANTHROPIC_VERSION: str = Field(
-        default="2023-06-01",
-        description="Anthropic API version"
+        description="Base URL for Hugging Face-compatible inference endpoint (e.g., vLLM/TGI proxy)"
     )
     LLM_TEMPERATURE: float = Field(
         default=0.2,
@@ -183,6 +188,16 @@ class Settings(BaseSettings):
             cleaned = [v.strip() for v in value.split(",") if v.strip()]
             return cleaned or ["*"]
         return value
+
+    @model_validator(mode="after")
+    def _validate_required_keys(self):
+        embedding_provider = (self.EMBEDDING_PROVIDER or "").lower()
+        if embedding_provider in {"openai", "gemini"} and not self.EMBEDDING_API_KEY:
+            raise ValueError(
+                "EMBEDDING_API_KEY is required when EMBEDDING_PROVIDER is openai or gemini."
+            )
+
+        return self
     
     @property
     def is_sqlite(self) -> bool:

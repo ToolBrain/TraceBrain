@@ -11,13 +11,20 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { Flag, KeyboardArrowDown, KeyboardArrowRight, Layers, Star, Token } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
+import {
+  Flag,
+  KeyboardArrowDown,
+  KeyboardArrowRight,
+  Layers,
+  Star,
+  Token,
+} from "@mui/icons-material";
 import type { Trace } from "../../types/trace";
 import SpanRows from "./SpanRows";
 import {
   traceGetDuration,
   traceGetErrorType,
+  traceGetEvalRating,
   traceGetEvaluation,
   traceGetPriority,
   traceGetRating,
@@ -25,7 +32,7 @@ import {
   traceGetStatus,
   traceGetTotalTokens,
 } from "../utils/traceUtils";
-import { formatDateTime, getPriorityColor } from "../utils/utils";
+import { formatDateTime, formatDuration, getPriorityColor } from "../utils/utils";
 import StatusChip from "./StatusChip";
 import TypeChip from "./TypeChip";
 import ErrorTypeChip from "./ErrorTypeChip";
@@ -33,7 +40,6 @@ import ConfidenceIndicator from "./ConfidenceIndicator";
 
 const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
   const [open, setOpen] = useState(false);
-  const nav = useNavigate();
   const duration = traceGetDuration(trace);
   const startTime = traceGetStartTime(trace);
   const status = traceGetStatus(trace);
@@ -42,15 +48,15 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
   const errorType = traceGetErrorType(trace);
   const evaluation = traceGetEvaluation(trace);
   const rating = traceGetRating(trace);
+  const aiRating = traceGetEvalRating(trace);
   const confidence = evaluation?.confidence;
   const suggestion_status = evaluation?.status;
-  const isAnalyzing = !evaluation;
 
   return (
     <React.Fragment>
       <TableRow
         hover
-        onClick={() => nav(`/trace/${trace.trace_id}`)}
+        onClick={() => setOpen((v) => !v)}
         sx={{ cursor: "pointer", "& > td": { p: 1.75 } }}
       >
         <TableCell>
@@ -69,6 +75,7 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
             variant="body2"
             sx={{
               fontFamily: "monospace",
+              fontSize: "0.75rem",
             }}
           >
             {formatDateTime(startTime)}
@@ -119,7 +126,7 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
               </Box>
 
               {/* Rating */}
-              {rating > 0 ? (
+              {rating > 0 || aiRating > 0 ? (
                 <Box
                   sx={{
                     display: "flex",
@@ -127,15 +134,18 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
                     gap: 0.25,
                   }}
                 >
-                  <Star fontSize="inherit" sx={{ color: "warning.light" }} />
-                  {rating}
+                  <Star
+                    fontSize="inherit"
+                    sx={{ color: rating > 0 ? "warning.light" : "info.light" }}
+                  />
+                  {rating > 0 ? rating : aiRating}
                 </Box>
               ) : (
                 <Typography variant="caption" color="text.disabled">
                   -
                 </Typography>
               )}
-              
+
               {/* Token Usage */}
               <Box
                 sx={{
@@ -154,22 +164,17 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
           <StatusChip status={status} />
         </TableCell>
         <TableCell>
-          {errorType && errorType !== "none" ? (
-            <ErrorTypeChip errorType={errorType} />
-          ) : (
-            <Typography variant="body2" sx={{ color: "text.disabled" }}>
-              —
-            </Typography>
-          )}
+          {errorType && errorType !== "none" && <ErrorTypeChip errorType={errorType} />}
         </TableCell>
         <TableCell>
           <Typography
             variant="body2"
             sx={{
               fontFamily: "monospace",
+              fontSize: "0.75rem",
             }}
           >
-            {duration}s
+            {formatDuration(duration)}
           </Typography>
         </TableCell>
         <TableCell>
@@ -177,6 +182,8 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
             variant="body2"
             sx={{
               fontFamily: "monospace",
+              fontSize: "0.75rem",
+              color: "text.secondary",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -186,11 +193,7 @@ const TraceRow: React.FC<{ trace: Trace }> = ({ trace }) => {
           </Typography>
         </TableCell>
         <TableCell>
-          <ConfidenceIndicator
-            confidence={confidence}
-            status={suggestion_status}
-            isAnalyzing={isAnalyzing}
-          />
+          <ConfidenceIndicator confidence={confidence} status={suggestion_status} />
         </TableCell>
       </TableRow>
       <TableRow>

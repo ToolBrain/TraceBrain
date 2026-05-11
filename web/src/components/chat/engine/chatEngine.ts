@@ -3,6 +3,7 @@ export interface MessageContent {
   suggestions?: Suggestion[];
   sources?: string[];
   filters?: Record<string, any>;
+  is_error?: boolean;
 }
 
 export interface Message {
@@ -18,7 +19,6 @@ export interface Suggestion {
 interface SendMessageRequest {
   content: string;
   sessionId: string | null;
-  model: string;
 }
 
 interface SendMessageResponse {
@@ -27,6 +27,7 @@ interface SendMessageResponse {
   suggestions: Suggestion[];
   sources?: string[];
   filters?: Record<string, any>;
+  is_error?: boolean;
 }
 
 export class ChatEngine {
@@ -68,7 +69,7 @@ export class ChatEngine {
   }
 
   async sendMessage(params: SendMessageRequest): Promise<SendMessageResponse> {
-    const { content, sessionId, model } = params;
+    const { content, sessionId } = params;
 
     const response = await fetch(`${this.baseUrl}/natural_language_query`, {
       method: "POST",
@@ -78,7 +79,6 @@ export class ChatEngine {
       body: JSON.stringify({
         query: content,
         session_id: sessionId,
-        model_id: model,
       }),
     });
 
@@ -94,6 +94,7 @@ export class ChatEngine {
       suggestions: data.suggestions || [],
       sources: data.sources,
       filters: data.filters,
+      is_error: data.is_error,
     };
   }
 
@@ -124,6 +125,7 @@ export class ChatEngine {
         suggestions: response.suggestions,
         sources: response.sources,
         filters: response.filters,
+        is_error: response.is_error,
       },
     };
   }

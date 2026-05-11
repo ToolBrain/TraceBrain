@@ -33,9 +33,11 @@ export function traceGetLatestFeedback(trace: Trace) {
 }
 
 export function traceGetRating(trace: Trace): number {
-  return traceGetLatestFeedback(trace)?.rating
-    ?? traceGetEvaluation(trace)?.rating
-    ?? 0;
+  return traceGetLatestFeedback(trace)?.rating ?? 0;
+}
+
+export function traceGetEvalRating(trace: Trace): number {
+  return traceGetEvaluation(trace)?.rating ?? 0;
 }
 
 export const traceGetDuration = (trace: Trace): number => {

@@ -38,15 +38,15 @@ def build_ai_evaluation(result: Dict[str, Any]) -> Dict[str, Any]:
         "confidence": confidence,
         "error_type": result.get("error_type", "none"),
         "status": status_value,
+        "priority": result.get("priority"),
         "timestamp": datetime.utcnow().isoformat(),
     }
 
 
 def run_bg_evaluation(trace_id: str) -> None:
     try:
-        judge_model_id = settings.LLM_MODEL or "gemini-2.5-flash"
         judge = AIJudge(store)
-        result = judge.evaluate(trace_id, judge_model_id)
+        result = judge.evaluate(trace_id)
         ai_eval = build_ai_evaluation(result)
         store.update_ai_evaluation(trace_id, ai_eval)
     except Exception as exc:

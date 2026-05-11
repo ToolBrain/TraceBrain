@@ -1,5 +1,43 @@
 # TraceBrain: An Open-Source Framework for Agentic Trace Management 🧠🚀
 
+<p align="center">
+<picture>
+    <source media="(prefers-color-scheme: dark)" srcset="images/banner-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="images/banner-light.png">
+    <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/banner-light.png" alt="TraceBrain Banner" width="100%">
+</picture>
+</p>
+
+<p align="center">
+<table>
+    <tr>
+        <td>
+            <a href="https://pypi.org/project/tracebrain/">
+                <img src="https://img.shields.io/pypi/v/tracebrain" alt="PyPI Version">
+            </a>
+        </td>
+        <td>
+            <a href="https://pypistats.org/packages/tracebrain">
+                <img src="https://img.shields.io/badge/dynamic/json?url=https://pypistats.org/api/packages/tracebrain/recent&query=data.last_month&label=downloads/month" alt="Monthly Downloads">
+            </a>
+        </td>
+        <td>
+            <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+        </td>
+        <td>
+            <a href="#">
+                <img src="https://img.shields.io/badge/IJCAI--ECAI-2026-red" alt="IJCAI-ECAI 2026">
+            </a>
+        </td>
+        <td>
+            <a href="https://youtu.be/iVPRAFdh1Io">
+                <img src="https://img.shields.io/badge/Video-Demo-red?logo=youtube&logoColor=white" alt="Video Demo">
+            </a>
+        </td>
+    </tr>
+</table>
+</p>
+
 **TraceBrain** is an open-source platform for collecting, managing, and analyzing execution traces from LLM agents.
 
 The system standardizes heterogeneous agent logs into a unified trace format, enabling consistent inspection, evaluation, and downstream analysis across different frameworks.
@@ -21,11 +59,11 @@ By organizing historical traces as structured artifacts, TraceBrain supports age
 ### 🧠 Cognitive Layer (Trace-driven Learning)
 - **Experience Retrieval**: Agents can query past successful trajectories to guide reasoning via in-context learning.
 - **Automated Curriculum Generation**: Using error classifications produced by the AI Judge, a Curator agent analyzes clustered failure traces and synthesizes targeted training tasks.
-- **Semantic Trace Search**: Vector-based retrieval (via `pgvector`) for locating similar reasoning trajectories.
+- **Hybrid Trace Search (Vector + Keyword)**: Reciprocal Rank Fusion (RRF) combines `pgvector` similarity with PostgreSQL full-text search for robust retrieval. SQLite gracefully falls back to basic keyword matching.
 
 ## 🏗️ Architecture
 
-![System Architecture](images/system_architecture.jpg)
+![System Architecture](https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/system_architecture.jpg)
 
 - **Your AI Agent:** Any agent framework. Uses the TraceClient SDK to send data.
 - **TraceStore API:** The central FastAPI server. Ingests, stores, and serves trace data.
@@ -40,92 +78,174 @@ By organizing historical traces as structured artifacts, TraceBrain supports age
 - **AI Integration**: LibrarianAgent + AI Judge + Curriculum Curator with multi-provider LLM support
 - **Embeddings**: sentence-transformers (local) or OpenAI/Gemini (cloud)
 
+## 📸 Platform Showcase
+
+Take a look at the TraceBrain Command Center in action:
+
+<p align="center">
+  <b>🌐 Welcome to the Command Center</b><br>
+  <i>The central hub for agentic trace management, featuring a clean, intuitive, and modern interface.</i><br>
+  <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/homepage.jpg" alt="TraceBrain Homepage" width="100%">
+</p>
+
+<table>
+  <tr>
+    <td width="50%">
+      <b>📊 Command Center Dashboard</b><br>
+      <i>Real-time error distribution, confidence metrics, and active filters.</i><br>
+      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/dashboard_analytics.jpg" alt="Dashboard" style="width:100%; height:auto; border-radius:12px;">
+    </td>
+    <td width="50%">
+      <b>🔍 Trace Explorer & AI Judge</b><br>
+      <i>Side-by-side view of the execution tree, span properties, and Human-AI collaborative labeling.</i><br>
+      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/trace_explorer.jpg" alt="Trace Explorer" style="width:100%; height:auto; border-radius:12px;">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <b>🤖 AI Librarian</b><br>
+      <i>Query your trace database using natural language and intent-based UI filters.</i><br>
+      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/ai_librarian.jpg" alt="AI Librarian" style="width:100%; height:auto; border-radius:12px;">
+    </td>
+    <td width="50%">
+      <b>🗺️ Automated Curriculum</b><br>
+      <i>Transform diagnosed failures into targeted training tasks ready for export.</i><br>
+      <img src="https://raw.githubusercontent.com/ToolBrain/TraceBrain/main/images/training_roadmap.jpg" alt="Training Roadmap" style="width:100%; height:auto; border-radius:12px;">
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- Docker & Docker Compose
-- Python 3.8+ (for local development)
-- PostgreSQL 15+ (if running without Docker)
+Choose one of three installation paths based on your needs. Each option ends with the
+same user experience: a unified UI + API at http://localhost:8000.
 
 ### Option 1: Docker (Recommended)
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/ToolBrain/TraceBrain.git
-   cd TraceBrain
-   ```
+This is the default path for most users. It automatically provisions a production-ready
+PostgreSQL + pgvector environment. Option 1 uses pre-built images from Docker Hub.
 
-2. **Start the services**
-   ```bash
-   # Install the CLI tool
-   pip install -e .
-   
-    # Start PostgreSQL + API server (multi-stage build bundles frontend)
-   tracebrain-trace up
-   ```
-
-3. **Access the services**
-    - Frontend UI: http://localhost:8000/
-    - API: http://localhost:8000/api/v1/
-    - API Docs: http://localhost:8000/docs
-
-4. **Seed sample data** (optional)
-   ```bash
-    # Data is auto-seeded once on first start (Docker only).
-    # If you want to re-seed, remove the volume then bring it up again:
-    docker compose -f docker/docker-compose.yml down -v
-    tracebrain-trace up
-   ```
-
-### Option 2: Local Development
-
-1. **Create and activate a virtual environment**
+1. **Install the CLI**
     ```bash
-    python -m venv .venv
-    # Windows (PowerShell)
-    .\.venv\Scripts\Activate.ps1
-    # macOS/Linux
-    source .venv/bin/activate
+    pip install tracebrain
     ```
 
-2. **Install dependencies**
+2. **Initialize**
+    ```bash
+    tracebrain init
+    ```
+    This creates a template `.env` file for API keys and configuration.
+
+    Open the `.env` file and add your API keys before continuing. If you skip this step,
+    the containers will start but AI features (Librarian, Judge) will fail.
+
+3. **Start the platform**
+    ```bash
+    tracebrain up
+    # or lightweight profile:
+    tracebrain up --slim
+    ```
+
+**Access:** http://localhost:8000 (UI + API)
+
+Note: Option 1 uses pre-built images from Docker Hub, so you don't need Node.js or local build tools.
+
+Docker image profiles:
+- `quyk67uet/tracebrain:latest` (Full, ~2.8GB): includes local embedding stack and supports `EMBEDDING_PROVIDER=local`.
+- `quyk67uet/tracebrain:slim` (Lite, ~400-500MB): faster to pull, optimized for cloud embeddings (`EMBEDDING_PROVIDER=openai` or `gemini`).
+
+If you use Docker, you only need `pip install tracebrain` to get the CLI. You do not install model
+dependencies on your host machine; they come from the selected image profile (`latest` or `slim`).
+
+### Option 2: Local with SQLite (Portable Mode)
+
+Best for fast evaluation without Docker.
+
+1. **Install the CLI**
+    ```bash
+    pip install tracebrain
+    ```
+
+2. **Initialize**
+    ```bash
+    tracebrain init
+    ```
+
+3. **Create local DB**
+    ```bash
+    tracebrain init-db
+    ```
+    This creates a local SQLite file and prepares tables.
+
+4. **Launch**
+    ```bash
+    tracebrain start
+    ```
+
+**Access:** http://localhost:8000 (UI + API)
+
+**Technical note:** the Python backend serves the bundled React build from its internal
+static directory, so no separate frontend build step is required.
+
+If you run locally without Docker and want to keep the environment light, install the core package
+first (`pip install tracebrain`). When you need a specific provider, add only that extra (for example
+`pip install tracebrain[openai]`).
+
+### Option 3: Development Setup (Contributor Mode)
+
+For contributors who plan to modify TraceBrain source code.
+
+1. **Clone the repository**
+    ```bash
+    git clone https://github.com/ToolBrain/TraceBrain.git
+    cd TraceBrain
+    ```
+
+2. **Backend (editable install)**
     ```bash
     pip install -e .
-    # Optional local embeddings
-    # pip install -e .[embeddings-local]
+    tracebrain start
     ```
 
-3. **Run the API server** (SQLite mode)
-    ```bash
-    tracebrain-trace init-db
-    tracebrain-trace start
-    ```
-
-4. **Run the React frontend**
+3. **Frontend (HMR)**
     ```bash
     cd web
     npm install
     npm run dev
     ```
 
+**Access:**
+- Frontend: http://localhost:5173 (Hot Module Replacement)
+- API: http://localhost:8000
+
+## 📦 Installation
+
+TraceBrain supports optional extras to minimize dependencies. Install only what you need.
+
+```bash
+pip install tracebrain
+
+# Optional extras
+pip install tracebrain[embeddings-local]   # local embeddings
+pip install tracebrain[openai]             # OpenAI provider
+pip install tracebrain[anthropic]          # Anthropic provider
+pip install tracebrain[huggingface]        # Hugging Face provider SDK
+pip install tracebrain[all-llms]           # OpenAI + Anthropic + Hugging Face
+```
+
 ## 📖 Usage
 
 ### CLI Commands
 
-```bash
-# Start Docker services
-tracebrain-trace up
-
-# Start with rebuild (after code changes)
-tracebrain-trace up --build
-
-# Stop services
-tracebrain-trace down
-
-# Manual Docker rebuild (if changes aren't picked up)
-docker compose -f docker/docker-compose.yml build --no-cache
-```
+| Command | Description |
+| --- | --- |
+| `tracebrain init` | Create a template `.env` file in the current directory. |
+| `tracebrain init-db` | Initialize a local SQLite database. |
+| `tracebrain up` | Launch Docker-based infrastructure using full image profile. |
+| `tracebrain up --slim` | Launch Docker-based infrastructure using slim image profile. |
+| `tracebrain start` | Run the standalone FastAPI server. |
 
 ### API Endpoints
 
@@ -140,6 +260,7 @@ docker compose -f docker/docker-compose.yml build --no-cache
 - `GET /api/v1/traces` - List all traces
 - `GET /api/v1/traces/{trace_id}` - Get trace details
 - `POST /api/v1/traces/{trace_id}/feedback` - Add feedback to a trace
+- `GET /api/v1/export/traces` - Export raw OTLP traces as JSONL (supports status, min_rating, error_type, min_confidence, max_confidence, start_time, end_time)
 
 **Episodes**
 - `GET /api/v1/episodes` - List all episodes along with their full traces
@@ -153,12 +274,13 @@ docker compose -f docker/docker-compose.yml build --no-cache
 
 **Natural Language Queries**
 - `POST /api/v1/natural_language_query` - Query traces with natural language
-    - Requires LLM configuration via env vars (for example: `LLM_PROVIDER`, `LLM_API_KEY`)
+    - Uses Librarian provider/model from Settings (stored in DB)
+    - Requires the matching provider API key in environment (`{PROVIDER}_API_KEY`)
     - Supports `session_id` for chat memory and returns `suggestions`
 - `GET /api/v1/librarian_sessions/{session_id}` - Load stored chat history
 
 **AI Evaluation**
-- `POST /api/v1/ai_evaluate/{trace_id}` - Evaluate a trace with a judge model
+- `POST /api/v1/ai_evaluate/{trace_id}` - Evaluate a trace using the configured Judge provider/model
 - `POST /api/v1/ops/batch_evaluate` - Run AI judge over recent traces missing `tracebrain.ai_evaluation`
 - `POST /api/v1/traces` triggers background evaluation when no AI draft exists
 
@@ -172,7 +294,7 @@ docker compose -f docker/docker-compose.yml build --no-cache
 - `POST /api/v1/traces/{trace_id}/signal` - Update trace status/priority
 
 **Curriculum**
-- `POST /api/v1/curriculum/generate` - Generate tasks from failed/low-rated traces
+- `POST /api/v1/curriculum/generate` - Generate tasks from failed/low-rated traces using configured Curator provider/model
 - `GET /api/v1/curriculum` - List pending curriculum tasks
 - `GET /api/v1/curriculum/export` - Export curriculum tasks as JSONL
 - `DELETE /api/v1/curriculum/{task_id}` - Delete a curriculum task
@@ -180,17 +302,14 @@ docker compose -f docker/docker-compose.yml build --no-cache
 - `PATCH /api/v1/curriculum/{task_id}/complete` - Mark a curriculum task as complete
 - `PATCH /api/v1/curriculum/complete` - Mark all curriculum tasks as complete
 
-**Exports**
-- `GET /api/v1/export/traces` - Export raw OTLP traces as JSONL
-
 **History**
 - `GET /api/v1/history` - Retrieve history of viewed traces and episodes
 - `POST /api/v1/history` - Add or update last time trace or episode was viewed
 - `DELETE /api/v1/history` - Clear all traces and episodes in viewed history
 
 **Settings**
-- `GET /api/v1/settings` - Retrieve current TraceBrain settings
-- `POST /api/v1/settings` - Update TraceBrain settings
+- `GET /api/v1/settings` - Retrieve current LLM routing settings
+- `POST /api/v1/settings` - Update LLM routing + provider API keys (`librarian_*`, `judge_*`, `curator_*`, `*_api_key`)
 
 ### Trace Status and Needs Review
 
@@ -213,20 +332,151 @@ Trace status is stored in both the database column `status` and in
     `format_error`, `misinterpretation`, `context_overflow`.
 - **System Error:** Any span has `otel.status_code` = `ERROR`.
 
-### Configuration (LLM + Embeddings)
+### Configuration (Settings + Provider Keys)
 
-Core environment variables:
+TraceBrain now separates configuration into two layers:
+
+- **Runtime routing settings (DB-backed):** provider/model for Librarian, Judge, Curator.
+- **Secrets and infra flags (env):** provider API keys, embedding config, debug flags.
+
+Runtime settings are editable from the UI or `POST /api/v1/settings`, and are persisted in the database.
+On first startup (when DB settings row does not exist), values are bootstrapped from `DEFAULT_*` env variables.
+
+For a complete, up-to-date template, copy from `.env.example` (same content as `tracebrain init`).
+
+#### 0) Database + server baseline
 
 ```bash
-# LLM (Librarian, Judge, Curator)
-LLM_PROVIDER=gemini
-LLM_MODEL=gemini-2.5-flash
-LLM_API_KEY=your-key
+# SQLite (default for development)
+DATABASE_URL=sqlite:///./tracebrain_traces.db
 
-# Embeddings (semantic search)
+# PostgreSQL (for production)
+# DATABASE_URL=postgresql://tracebrain:tracebrain_2026_secure@localhost:5432/tracestore
+POSTGRES_USER=tracebrain
+POSTGRES_PASSWORD=tracebrain_2026_secure
+POSTGRES_DB=tracestore
+
+HOST=127.0.0.1
+PORT=8000
+LOG_LEVEL=info
+```
+
+#### 1) Provider API keys (environment variables)
+
+Use provider-specific key names only:
+
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+# ANTHROPIC_API_KEY=your_claude_api_key_here
+# HUGGINGFACE_API_KEY=your_huggingface_api_key_here
+```
+
+Optional provider base URLs:
+
+```bash
+# Optional: custom endpoints/proxies
+# OPENAI_BASE_URL=https://your-openai-compatible-endpoint/v1
+# ANTHROPIC_BASE_URL=https://your-anthropic-endpoint
+# HUGGINGFACE_BASE_URL=http://localhost:8000
+```
+
+If TraceBrain runs inside Docker and your provider runs on the host machine,
+use `host.docker.internal` instead of `localhost` in base URLs.
+
+**Ollama (OpenAI-compatible) quick setup:**
+
+```bash
+# Local host mode (TraceBrain not in Docker)
+OPENAI_BASE_URL=http://localhost:11434/v1
+OPENAI_API_KEY=ollama
+
+# Docker mode (TraceBrain in container, Ollama on host)
+# OPENAI_BASE_URL=http://host.docker.internal:11434/v1
+```
+
+Then in TraceBrain Settings:
+- Provider: `OpenAI`
+- Model ID: your Ollama model (for example `qwen2.5:32b`)
+
+TraceBrain uses a resilient OpenAI adapter: it tries `/v1/responses` first, and
+automatically falls back to `/v1/chat/completions` when the endpoint is not supported.
+
+**Hugging Face local inference (vLLM/TGI):**
+
+If you run a local inference server (vLLM or TGI), set `HUGGINGFACE_BASE_URL` to your server URL.
+When this is set, TraceBrain routes Hugging Face traffic to your local endpoint instead of the
+Hugging Face cloud API.
+
+```bash
+# Example: local vLLM/TGI endpoint
+HUGGINGFACE_BASE_URL=http://localhost:8000
+HUGGINGFACE_API_KEY=your_token_if_required
+```
+
+#### 2) Bootstrap defaults for first run (environment variables)
+
+These defaults are used only when settings are not yet stored in DB:
+
+```bash
+DEFAULT_LIBRARIAN_PROVIDER=openai
+DEFAULT_LIBRARIAN_MODEL=gpt-4o-mini
+
+DEFAULT_JUDGE_PROVIDER=gemini
+DEFAULT_JUDGE_MODEL=gemini-2.5-flash
+
+DEFAULT_CURATOR_PROVIDER=gemini
+DEFAULT_CURATOR_MODEL=gemini-2.5-flash
+```
+
+#### 3) System + embedding configuration
+
+```bash
+LIBRARIAN_MODE=api
+LLM_DEBUG=false
+
+# Optional for Docker mode
+# TRACEBRAIN_IMAGE=quyk67uet/tracebrain:latest
+# TRACEBRAIN_IMAGE=quyk67uet/tracebrain:slim
+
 EMBEDDING_PROVIDER=local
 EMBEDDING_MODEL=all-MiniLM-L6-v2
+
+# For cloud embeddings
+# EMBEDDING_API_KEY=your_embedding_api_key_here
+# EMBEDDING_BASE_URL=https://your-embedding-endpoint/v1
 ```
+
+Important:
+- LLM routing (Librarian/Judge/Curator provider + model) can be changed at runtime from Settings without breaking existing traces.
+- Embedding engine (`EMBEDDING_PROVIDER` + `EMBEDDING_MODEL`) is infrastructure-level for a database lifecycle.
+- Do not switch embedding provider/model on an existing database unless you run a full re-embedding migration. Mixing vector dimensions (for example 384 vs 1536) will break semantic search and experience retrieval.
+- For safety, embedding is configured through `.env` and shown as read-only status in the Settings UI.
+
+#### Settings API payload
+
+`GET /api/v1/settings` and `POST /api/v1/settings` use this shape:
+
+```json
+{
+    "librarian_provider": "openai",
+    "librarian_model": "gpt-4o-mini",
+    "judge_provider": "gemini",
+    "judge_model": "gemini-2.5-flash",
+    "curator_provider": "gemini",
+    "curator_model": "gemini-2.5-flash",
+    "openai_api_key": "sk-...abcd",
+    "gemini_api_key": "AIza...wxyz",
+    "anthropic_api_key": null,
+    "huggingface_api_key": null
+}
+```
+
+Notes:
+- `GET /api/v1/settings` returns masked API keys for safety.
+- `POST /api/v1/settings` accepts plain-text API keys when you want to add or rotate keys.
+- If a DB key is empty, TraceBrain falls back to the corresponding environment variable (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `HUGGINGFACE_API_KEY`).
+- For OpenAI-compatible local endpoints (Ollama, vLLM, TGI, LM Studio), set `OPENAI_BASE_URL` and keep provider as `OpenAI` in Settings.
 
 **Example API Usage:**
 
@@ -267,7 +517,7 @@ requests.post("http://localhost:8000/api/v1/traces/trace-001/feedback", json={
 
 The admin UI provides:
 - **Trace Browser**: View all traces with filters
-- **Trace Details**: Expandable span tree visualization
+- **Trace Details**: Expandable span tree visualization and compare related traces
 - **Feedback Form**: Rate and tag traces
 - **Analytics Dashboard**: Stats, tool usage charts
 - **AI Librarian**: Session-aware chat with suggestions and history restore
@@ -285,6 +535,11 @@ npm run dev
 
 ### Embeddings and Semantic Search
 
+Semantic search is used in these places:
+- **API:** `GET /api/v1/traces/search` for vector similarity over traces
+- **Experience Retrieval:** `search_similar_traces` and `search_past_experiences` agent tools
+- **AI Librarian:** uses semantic search to surface relevant past traces when enabled
+
 Configure embeddings for vector search and experience retrieval:
 
 ```bash
@@ -300,6 +555,12 @@ EMBEDDING_MODEL=text-embedding-3-small
 # optional for OpenAI-compatible endpoints
 EMBEDDING_BASE_URL=https://your-endpoint/v1
 ```
+
+**When embeddings run:** embeddings are created at trace ingest time, not during server startup.
+
+**Critical rule:** Pick one embedding provider/model per database and keep it stable. Changing embedding dimensions mid-lifecycle can cause pgvector similarity queries to fail.
+
+**Do I need local embeddings?** No. You can skip `embeddings-local` entirely and still run the platform. If no embedding provider is configured, traces still ingest and all non-semantic features work normally; only vector search (and features that rely on it) are unavailable.
 
 ## 🔌 Integration with Your Agent
 
@@ -446,37 +707,18 @@ def convert_my_agent_to_otlp(agent_data):
 ```
 TraceBrain/
 ├── src/
-│   ├── tracebrain/          # Main package
-│   │   ├── api/v1/                 # FastAPI REST endpoints
-│   │   │   ├── ai_features.py      # AI evaluation + librarian endpoints
-│   │   │   ├── api_router.py       # Main v1 router
-│   │   │   ├── common.py           # Shared store/helpers
-│   │   │   ├── curriculum.py       # Curriculum endpoints
-│   │   │   ├── episodes.py         # Episode endpoints
-│   │   │   ├── operations.py       # Ops + analytics endpoints
-│   │   │   ├── system.py           # Root, health, settings, history
-│   │   │   ├── traces.py           # Trace endpoints
-│   │   │   └── schemas/            # Shared Pydantic models
-│   │   │       └── api_models.py
-│   │   ├── core/                   # TraceStore, schema, agent logic
-│   │   ├── db/                     # Database session management
-│   │   ├── sdk/                    # Client SDK
-│   │   ├── static/                 # Frontend assets
-│   │   ├── cli.py                  # CLI commands
-│   │   ├── config.py               # Settings management
-│   │   └── main.py                 # FastAPI app entry
-│   └── examples/                   # Example implementations
-│       └── seed_tracestore_samples.py  # Sample data seeder
-├── data/                           # Sample OTLP traces
-│   └── TraceBrain OTLP Trace Samples/
-├── docker/                         # Docker configuration
-│   ├── docker-compose.yml
-│   ├── Dockerfile
-│   └── README.md
-├── docs/                           # Documentation
-│   └── Converter.md
-├── web/                            # React frontend
-├── pyproject.toml                  # Project metadata
+│   ├── tracebrain/                  # Core package logic
+│   │   ├── api/v1/                   # FastAPI REST endpoints
+│   │   ├── core/                     # TraceStore, schema, agent logic
+│   │   ├── db/                       # Database session management
+│   │   ├── resources/                # Bundled Docker + sample data
+│   │   ├── static/                   # Bundled React build artifacts
+│   │   ├── sdk/                      # Client SDK
+│   │   ├── cli.py                    # CLI commands
+│   │   └── main.py                   # FastAPI app entry
+├── docs/                            # Documentation
+├── web/                             # React source code (contributors)
+├── pyproject.toml                   # Project metadata
 └── README.md
 ```
 
@@ -489,16 +731,7 @@ No automated test suite is included yet.
 ### Seeding Sample Data
 
 ```bash
-cd src/examples
-
-# SQLite (development)
-python seed_tracestore_samples.py --backend sqlite
-
-# PostgreSQL (Docker)
-python seed_tracestore_samples.py \
-    --backend postgresql \
-    --db-url "postgresql://traceuser:tracepass@localhost:5432/tracedb" \
-    --samples-dir "../../data/TraceBrain OTLP Trace Samples"
+tracebrain seed
 ```
 
 ### Database Migrations
@@ -507,8 +740,8 @@ No migration tooling is included yet. For schema changes:
 
 1. Update models in `src/tracebrain/db/base.py`
 2. Recreate the database:
-    - **SQLite (local):** delete `tracebrain_traces.db`, then run `tracebrain-trace init-db`
-    - **PostgreSQL (Docker):** `docker compose -f docker/docker-compose.yml down -v` then `tracebrain-trace up`
+    - **SQLite (local):** delete `tracebrain_traces.db`, then run `tracebrain init-db`
+    - **PostgreSQL (Docker):** `docker compose -f src/tracebrain/resources/docker/docker-compose.yml down -v` then `tracebrain up`
 
 ### Working with JSONB Queries (PostgreSQL)
 
@@ -528,10 +761,11 @@ rating = func.jsonb_extract_path_text(cast(Trace.feedback, JSONB), "rating")
 ## 📚 Documentation
 
 - **[Building Your Own Trace Converter](docs/Converter.md)** - Complete guide for integrating custom agent frameworks
+- **[LLM Provider Guide](docs/LLMProviders.md)** - Use TraceBrain LLM providers and attach usage metadata
 - **[Trace Reconstruction Guide](docs/Reconstructor.md)** - Rebuild full context from delta traces for training
-- **[Sample OTLP Traces](data/TraceBrain%20OTLP%20Trace%20Samples)** - Example trace files
+- **[Sample OTLP Traces](src/tracebrain/resources/samples)** - Example trace files
 - **[API Documentation](http://localhost:8000/docs)** - Interactive OpenAPI docs (when server is running)
-- **[Docker Setup Guide](docker/README.md)** - Docker-specific instructions
+- **[Docker Setup Guide](src/tracebrain/resources/docker/README.md)** - Docker-specific instructions
 
 ## 🤝 Contributing
 
@@ -554,12 +788,12 @@ Contributions are welcome! Here's how to get started:
 
 ### Docker changes not reflected
 
-If code changes aren't picked up after `tracebrain-trace up --build`:
+If code changes aren't picked up after `tracebrain up --build`:
 
 ```bash
-tracebrain-trace down
-docker compose -f docker/docker-compose.yml build --no-cache
-tracebrain-trace up
+tracebrain down
+docker compose -f src/tracebrain/resources/docker/docker-compose.yml build --no-cache
+tracebrain up
 ```
 
 ### PostgreSQL connection errors
@@ -582,7 +816,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Built with [FastAPI](https://fastapi.tiangolo.com/)
 - Database powered by [SQLAlchemy](https://www.sqlalchemy.org/)
-- UI with [Streamlit](https://streamlit.io/)
+- UI with [React (Vite)](https://vitejs.dev/) + [MUI](https://mui.com/)
 - Inspired by [OpenTelemetry](https://opentelemetry.io/) standards
 
 ---

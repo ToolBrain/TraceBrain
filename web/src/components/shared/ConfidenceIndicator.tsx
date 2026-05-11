@@ -21,9 +21,24 @@ const ConfidenceIndicator: React.FC<ConfidenceIndicatorProps> = ({
 }) => {
   if (isAnalyzing) {
     return (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <CircularProgress size={14} thickness={5} />
-        <Typography variant="body2" color="text.disabled">
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+        <CircularProgress
+          size={12}
+          thickness={4}
+          sx={{ color: "text.disabled" }}
+        />
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.disabled",
+            fontStyle: "italic",
+            animation: "analyzingPulse 1.5s ease-in-out infinite",
+            "@keyframes analyzingPulse": {
+              "0%, 100%": { opacity: 1 },
+              "50%": { opacity: 0.5 },
+            },
+          }}
+        >
           Analyzing...
         </Typography>
       </Box>

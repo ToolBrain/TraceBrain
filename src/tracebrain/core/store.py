@@ -11,12 +11,13 @@ from typing import Dict, Any, Optional, List, Iterator, Union
 import logging
 import re
 import json
+import os
 
 import sqlparse
-from sqlalchemy import create_engine, event, func, cast, text, Integer, Float, case
+from sqlalchemy import create_engine, event, func, cast, text, Integer, Float, case, inspect
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError, ProgrammingError, TimeoutError
-from sqlalchemy.orm import sessionmaker, Session, selectinload
+from sqlalchemy.orm import joinedload, sessionmaker, Session, selectinload
 
 from tracebrain.config import settings
 from tracebrain.core.services.embedding import EmbeddingFactory
@@ -29,10 +30,18 @@ from tracebrain.db.base import (
     TraceStatus,
     CurriculumTask,
     History,
-    AppSettings,
+    Settings as DBSettings,
 )
 
 logger = logging.getLogger(__name__)
+
+_ALLOWED_SETTINGS_PROVIDERS = {"openai", "gemini", "anthropic", "huggingface"}
+_API_KEY_FIELD_TO_ENV = {
+    "openai_api_key": "OPENAI_API_KEY",
+    "gemini_api_key": "GEMINI_API_KEY",
+    "anthropic_api_key": "ANTHROPIC_API_KEY",
+    "huggingface_api_key": "HUGGINGFACE_API_KEY",
+}
 
 
 class BaseStorageBackend:
@@ -92,7 +101,51 @@ class BaseStorageBackend:
             with self.engine.begin() as connection:
                 connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         Base.metadata.create_all(bind=self.engine)
+        self._ensure_settings_schema()
         logger.info("Database tables created/verified for %s", self.__class__.__name__)
+
+    def _ensure_settings_schema(self) -> None:
+        """Backfill settings columns for existing databases created before new fields existed."""
+        inspector = inspect(self.engine)
+        if not inspector.has_table("settings"):
+            return
+
+        existing_columns = {column["name"] for column in inspector.get_columns("settings")}
+        alter_statements: List[str] = []
+
+        if "curator_provider" not in existing_columns:
+            alter_statements.append(
+                "ALTER TABLE settings ADD COLUMN curator_provider VARCHAR(50) NOT NULL DEFAULT 'gemini'"
+            )
+        if "curator_model" not in existing_columns:
+            alter_statements.append(
+                "ALTER TABLE settings ADD COLUMN curator_model VARCHAR(255) NOT NULL DEFAULT 'gemini-2.5-flash'"
+            )
+        if "openai_api_key" not in existing_columns:
+            alter_statements.append(
+                "ALTER TABLE settings ADD COLUMN openai_api_key VARCHAR(512)"
+            )
+        if "gemini_api_key" not in existing_columns:
+            alter_statements.append(
+                "ALTER TABLE settings ADD COLUMN gemini_api_key VARCHAR(512)"
+            )
+        if "anthropic_api_key" not in existing_columns:
+            alter_statements.append(
+                "ALTER TABLE settings ADD COLUMN anthropic_api_key VARCHAR(512)"
+            )
+        if "huggingface_api_key" not in existing_columns:
+            alter_statements.append(
+                "ALTER TABLE settings ADD COLUMN huggingface_api_key VARCHAR(512)"
+            )
+
+        if not alter_statements:
+            return
+
+        with self.engine.begin() as connection:
+            for statement in alter_statements:
+                connection.execute(text(statement))
+
+        logger.info("Backfilled settings table with missing columns: %s", ", ".join(alter_statements))
 
     def get_session(self) -> Session:
         """Get a new database session."""
@@ -170,6 +223,13 @@ class BaseStorageBackend:
                 )
             }
 
+        search_text_value = self._build_search_text(
+            trace_data=trace_data,
+            system_prompt=system_prompt,
+            ai_evaluation=ai_evaluation,
+            spans_data=spans_data,
+        )
+
         trace = Trace(
             id=trace_id,
             system_prompt=system_prompt,
@@ -180,6 +240,7 @@ class BaseStorageBackend:
             embedding=None,
             attributes=attributes,
             ai_evaluation=ai_evaluation,
+            search_text=search_text_value,
         )
 
         for span_data in spans_data:
@@ -203,6 +264,17 @@ class BaseStorageBackend:
             if existing:
                 if system_prompt and not existing.system_prompt:
                     existing.system_prompt = system_prompt
+                # Backfill search_text if missing
+                if not getattr(existing, "search_text", None):
+                    try:
+                        existing.search_text = self._build_search_text(
+                            trace_data=trace_data,
+                            system_prompt=system_prompt,
+                            ai_evaluation=ai_evaluation,
+                            spans_data=spans_data,
+                        )
+                    except Exception:
+                        pass
                 if episode_id and not existing.episode_id:
                     existing.episode_id = episode_id
                 if attributes:
@@ -316,6 +388,11 @@ class BaseStorageBackend:
         start_time = self._parse_timestamp(span_data.get("start_time"))
         end_time = self._parse_timestamp(span_data.get("end_time"))
 
+        attributes = span_data.get("attributes") or {}
+        if isinstance(attributes, dict) and "system_prompt" in attributes:
+            attributes = dict(attributes)
+            attributes.pop("system_prompt", None)
+
         return Span(
             span_id=span_id,
             trace_id=trace_id,
@@ -323,7 +400,7 @@ class BaseStorageBackend:
             name=span_data.get("name") or "Unknown",
             start_time=start_time,
             end_time=end_time,
-            attributes=span_data.get("attributes") or {}
+            attributes=attributes,
         )
 
     @staticmethod
@@ -474,6 +551,256 @@ class BaseStorageBackend:
             session.close()
 
     @staticmethod
+    def _cosine_similarity(a: List[float], b: List[float]) -> Optional[float]:
+        try:
+            if not a or not b:
+                return None
+            # Simple dot / (norms)
+            dot = sum(x * y for x, y in zip(a, b))
+            norm_a = sum(x * x for x in a) ** 0.5
+            norm_b = sum(y * y for y in b) ** 0.5
+            if norm_a == 0 or norm_b == 0:
+                return None
+            return dot / (norm_a * norm_b)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _build_search_text(
+        trace_data: Dict[str, Any],
+        system_prompt: Optional[str],
+        ai_evaluation: Any,
+        spans_data: List[Dict[str, Any]],
+    ) -> Optional[str]:
+        parts: List[str] = []
+
+        if system_prompt:
+            parts.append(system_prompt)
+
+        human_feedback = trace_data.get("feedback")
+        if isinstance(human_feedback, dict):
+            for key in ("feedback", "comment"):
+                value = human_feedback.get(key)
+                if isinstance(value, str) and value.strip():
+                    parts.append(value.strip())
+        elif isinstance(human_feedback, str) and human_feedback.strip():
+            parts.append(human_feedback.strip())
+
+        if isinstance(ai_evaluation, dict):
+            et = ai_evaluation.get("error_type")
+            if isinstance(et, str):
+                parts.append(et)
+            eval_feedback = ai_evaluation.get("feedback")
+            if isinstance(eval_feedback, str) and eval_feedback.strip():
+                parts.append(eval_feedback.strip())
+
+        for sp in spans_data:
+            name = (sp or {}).get("name")
+            if isinstance(name, str) and name.strip():
+                parts.append(name.strip())
+
+            attrs = (sp or {}).get("attributes") or {}
+
+            tool_code = attrs.get("tracebrain.llm.tool_code")
+            if isinstance(tool_code, str) and tool_code.strip():
+                parts.append(tool_code.strip())
+
+            tool_name = attrs.get("tracebrain.tool.name")
+            if isinstance(tool_name, str) and tool_name.strip():
+                parts.append(tool_name.strip())
+
+            if attrs.get("tracebrain.span.type") == "tool_execution":
+                tool_output = attrs.get("tracebrain.tool.output")
+                if isinstance(tool_output, (dict, list)):
+                    tool_output = json.dumps(tool_output)
+                if isinstance(tool_output, str) and tool_output.strip():
+                    parts.append(tool_output.strip())
+
+        combined = " \n ".join([value for value in parts if value])
+        return combined or None
+
+    def hybrid_search_traces(
+        self,
+        semantic_query: Optional[str],
+        exact_keywords: Optional[str],
+        limit: int = 5,
+        min_rating: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Hybrid search combining vector similarity and full-text keyword search.
+
+        Returns a list of trace dicts ordered by RRF score (Postgres) or by
+        semantic similarity (SQLite fallback).
+        """
+        if not semantic_query and not exact_keywords:
+            return []
+
+        session = self.get_session()
+        try:
+            # PostgreSQL path: use RRF CTE combining pgvector and tsvector ranks
+            if not self.is_sqlite:
+                embedding = None
+                if semantic_query:
+                    embedding = self.embedding_provider.get_embedding(semantic_query)
+
+                if not embedding:
+                    embedding = None
+
+                cleaned_keywords = (
+                    exact_keywords.replace(",", " ") if exact_keywords else ""
+                )
+                rating_floor = int(min_rating) if min_rating is not None else 0
+
+                params = {
+                    "limit": limit,
+                    "min_rating": rating_floor,
+                    "keywords": cleaned_keywords,
+                }
+                if embedding is not None:
+                    params["embedding"] = str(embedding)
+
+                # Build SQL with safe parameter placeholders
+                sql = """
+                WITH vector_search AS (
+                    SELECT id, RANK() OVER (ORDER BY embedding <=> CAST(:embedding AS vector)) AS rank_v
+                    FROM traces
+                    WHERE embedding IS NOT NULL
+                    AND COALESCE((attributes->'tracebrain.ai_evaluation'->>'rating')::int, 0) >= :min_rating
+                    LIMIT 50
+                ),
+                keyword_search AS (
+                    SELECT id, RANK() OVER (ORDER BY ts_rank(to_tsvector('english', COALESCE(search_text, '')), websearch_to_tsquery('english', :keywords)) DESC) AS rank_k
+                    FROM traces
+                    WHERE :keywords <> ''
+                    AND COALESCE(search_text, '') <> ''
+                    AND to_tsvector('english', COALESCE(search_text, '')) @@ websearch_to_tsquery('english', :keywords)
+                    AND COALESCE((attributes->'tracebrain.ai_evaluation'->>'rating')::int, 0) >= :min_rating
+                    LIMIT 50
+                )
+                SELECT 
+                    COALESCE(v.id, k.id) as id,
+                    COALESCE(1.0 / (60 + v.rank_v), 0.0) + COALESCE(1.0 / (60 + k.rank_k), 0.0) as rrf_score
+                FROM vector_search v
+                FULL OUTER JOIN keyword_search k ON v.id = k.id
+                ORDER BY rrf_score DESC
+                LIMIT :limit;
+                """
+
+                # Adjust behavior when only one side is requested
+                if embedding is None and not cleaned_keywords:
+                    return []
+
+                # If only embedding provided, run a vector-only query
+                if embedding is not None and not cleaned_keywords:
+                    vec_sql = (
+                        "SELECT id, (1.0 / (1 + (embedding <=> CAST(:embedding AS vector)))) as score "
+                        "FROM traces WHERE embedding IS NOT NULL "
+                        "AND COALESCE((attributes->'tracebrain.ai_evaluation'->>'rating')::int, 0) >= :min_rating "
+                        "ORDER BY embedding <=> CAST(:embedding AS vector) LIMIT :limit"
+                    )
+                    rows = session.execute(text(vec_sql), params).fetchall()
+                    ids = [r[0] for r in rows]
+                else:
+                    # If keywords provided but embedding missing, use keyword-only via ts_rank
+                    if cleaned_keywords and embedding is None:
+                        kw_sql = (
+                            "SELECT id, ts_rank(to_tsvector('english', COALESCE(search_text, '')), websearch_to_tsquery('english', :keywords)) AS score "
+                            "FROM traces WHERE :keywords <> '' "
+                            "AND COALESCE(search_text, '') <> '' "
+                            "AND to_tsvector('english', COALESCE(search_text, '')) @@ websearch_to_tsquery('english', :keywords) "
+                            "AND COALESCE((attributes->'tracebrain.ai_evaluation'->>'rating')::int, 0) >= :min_rating "
+                            "ORDER BY score DESC LIMIT :limit"
+                        )
+                        rows = session.execute(text(kw_sql), params).fetchall()
+                        ids = [r[0] for r in rows]
+                    else:
+                        # Both embedding and keywords present: run RRF
+                        rows = session.execute(text(sql), params).fetchall()
+                        ids = [r[0] for r in rows]
+
+                if not ids:
+                    return []
+
+                # Fetch traces preserving order
+                traces = (
+                    session.query(Trace)
+                    .options(selectinload(Trace.spans))
+                    .filter(Trace.id.in_(ids))
+                    .all()
+                )
+                trace_map = {t.id: t for t in traces}
+                results: List[Dict[str, Any]] = []
+                for tid in ids:
+                    t = trace_map.get(tid)
+                    if not t:
+                        continue
+                    results.append(
+                        {
+                            "trace_id": t.id,
+                            "score": None,
+                            "rating": (t.feedback.get("rating") if t.feedback else None),
+                            "feedback": t.feedback,
+                            "created_at": t.created_at,
+                        }
+                    )
+                return results
+
+            # SQLite fallback: simple LIKE filter + optional in-Python cosine ranking
+            # First, find candidate traces by keyword if provided
+            candidates = []
+            query_stmt = session.query(Trace)
+            if exact_keywords:
+                pattern = f"%{exact_keywords}%"
+                query_stmt = query_stmt.filter(Trace.search_text.isnot(None)).filter(Trace.search_text.ilike(pattern))
+            if not exact_keywords and not semantic_query:
+                return []
+
+            rows = query_stmt.limit(500).all()
+            if not rows:
+                return []
+
+            # If semantic query available, compute embedding and cosine similarity
+            emb = None
+            if semantic_query:
+                emb = self.embedding_provider.get_embedding(semantic_query)
+
+            scored = []
+            for t in rows:
+                sim = None
+                if emb and t.embedding:
+                    # t.embedding may be stored as JSON list in SQLite
+                    vec = t.embedding
+                    if isinstance(vec, str):
+                        try:
+                            vec = json.loads(vec)
+                        except Exception:
+                            vec = None
+                    if isinstance(vec, list):
+                        sim = self._cosine_similarity(vec, emb)
+                scored.append((t, sim))
+
+            # Sort: if semantic available, by sim desc; otherwise by created_at desc
+            if emb:
+                scored.sort(key=lambda item: (item[1] is not None, item[1] or 0.0), reverse=True)
+            else:
+                scored.sort(key=lambda item: item[0].created_at, reverse=True)
+
+            results = []
+            for t, sim in scored[:limit]:
+                results.append(
+                    {
+                        "trace_id": t.id,
+                        "score": float(sim) if sim is not None else None,
+                        "rating": (t.feedback.get("rating") if t.feedback else None),
+                        "feedback": t.feedback,
+                        "created_at": t.created_at,
+                    }
+                )
+            return results
+        finally:
+            session.close()
+
+    @staticmethod
     def _parse_timestamp(timestamp_str: Optional[str]) -> Optional[datetime]:
         """Parse an ISO 8601 timestamp string to a datetime object."""
         if not timestamp_str:
@@ -514,6 +841,22 @@ class BaseStorageBackend:
                 .options(selectinload(Trace.spans))
                 .filter(Trace.id == trace_id)
                 .first()
+            )
+        finally:
+            session.close()
+
+    def get_traces_by_start_time(self, limit: int) -> list[Trace]:
+        """Retrieve traces based on the start time of its first span."""
+        session = self.get_session()
+        try:
+            return (
+                session.query(Trace)
+                .options(joinedload(Trace.spans))
+                .join(Trace.spans)
+                .filter(Span.parent_id == None)
+                .order_by(Span.start_time.desc())
+                .limit(limit)
+                .all()
             )
         finally:
             session.close()
@@ -604,6 +947,44 @@ class BaseStorageBackend:
         finally:
             session.close()
 
+    def iter_traces_filtered(
+        self,
+        query: Optional[str] = None,
+        status: Optional[str] = None,
+        min_rating: Optional[int] = None,
+        error_type: Optional[str] = None,
+        min_confidence: Optional[float] = None,
+        max_confidence: Optional[float] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        limit: Optional[int] = None,
+        batch_size: int = 500,
+    ):
+        """Yield traces matching filters without loading all rows into memory."""
+        session = self.get_session()
+        try:
+            q = self._build_traces_query(
+                session=session,
+                query=query,
+                status=status,
+                min_rating=min_rating,
+                error_type=error_type,
+                min_confidence=min_confidence,
+                max_confidence=max_confidence,
+                start_time=start_time,
+                end_time=end_time,
+            )
+            q = q.yield_per(batch_size)
+
+            count = 0
+            for trace in q:
+                yield trace
+                count += 1
+                if limit is not None and count >= limit:
+                    break
+        finally:
+            session.close()
+
     def count_traces_filtered(
         self,
         query: Optional[str] = None,
@@ -676,7 +1057,9 @@ class BaseStorageBackend:
 
         if not self.is_sqlite:
             if min_rating is not None:
-                rating_value = cast(Trace.feedback, JSONB)["rating"].astext.cast(Integer)
+                human_rating = cast(Trace.feedback, JSONB)["rating"].astext.cast(Integer)
+                ai_rating = cast(Trace.ai_evaluation, JSONB)["rating"].astext.cast(Integer)
+                rating_value = func.coalesce(human_rating, ai_rating)
                 q = q.filter(rating_value >= min_rating)
             if error_type:
                 error_value = cast(Trace.ai_evaluation, JSONB)["error_type"].astext
@@ -700,10 +1083,6 @@ class BaseStorageBackend:
 
         filtered_ids: List[str] = []
         for trace in traces:
-            rating_value = None
-            if trace.feedback and isinstance(trace.feedback, dict):
-                rating_value = trace.feedback.get("rating")
-
             ai_eval = None
             if trace.attributes and isinstance(trace.attributes, dict):
                 ai_eval = trace.attributes.get("tracebrain.ai_evaluation")
@@ -715,6 +1094,12 @@ class BaseStorageBackend:
                 eval_confidence = ai_eval.get("confidence")
 
             if min_rating is not None:
+                human_rating = None
+                if trace.feedback and isinstance(trace.feedback, dict):
+                    human_rating = trace.feedback.get("rating")
+                ai_rating = ai_eval.get("rating") if isinstance(ai_eval, dict) else None
+                rating_value = human_rating if human_rating is not None else ai_rating
+
                 if not isinstance(rating_value, int) or rating_value < min_rating:
                     continue
             if error_type is not None:
@@ -746,7 +1131,7 @@ class BaseStorageBackend:
             query = session.query(Trace).filter(Trace.id.in_(trace_ids))
             if include_spans:
                 query = query.options(selectinload(Trace.spans))
-            return query.all()
+            return query.order_by(Trace.created_at.asc()).all()
         finally:
             session.close()
 
@@ -758,7 +1143,7 @@ class BaseStorageBackend:
                 session.query(Trace)
                 .options(selectinload(Trace.spans))
                 .filter(Trace.episode_id == episode_id)
-                .order_by(Trace.created_at.desc())
+                .order_by(Trace.created_at.asc())
                 .all()
             )
         finally:
@@ -883,7 +1268,7 @@ class BaseStorageBackend:
             q = session.query(Trace)
             if older_than_hours is not None:
                 cutoff = datetime.utcnow() - timedelta(hours=older_than_hours)
-                q = q.filter(Trace.created_at < cutoff)
+                q = q.filter(Trace.created_at <= cutoff)
             if status:
                 q = q.filter(Trace.status == status)
 
@@ -903,6 +1288,38 @@ class BaseStorageBackend:
         except Exception:
             session.rollback()
             logger.exception("Failed to cleanup traces")
+            raise
+        finally:
+            session.close()
+
+    def delete_trace(self, trace_id: str) -> None:
+        """Delete a single trace and its history entry."""
+        session = self.get_session()
+        try:
+            session.query(History).filter(History.id == trace_id).delete(synchronize_session=False)
+            session.query(Trace).filter(Trace.id == trace_id).delete(synchronize_session=False)
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to delete trace")
+            raise
+        finally:
+            session.close()
+
+    def delete_episode(self, episode_id: str) -> None:
+        """Delete all traces in an episode and their history entries."""
+        session = self.get_session()
+        try:
+            traces = session.query(Trace).filter(Trace.episode_id == episode_id).all()
+            trace_ids = [t.id for t in traces]
+            if trace_ids:
+                session.query(History).filter(History.id.in_(trace_ids)).delete(synchronize_session=False)
+            session.query(History).filter(History.id == episode_id).delete(synchronize_session=False)
+            session.query(Trace).filter(Trace.episode_id == episode_id).delete(synchronize_session=False)
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to delete episode")
             raise
         finally:
             session.close()
@@ -935,37 +1352,202 @@ class BaseStorageBackend:
         finally:
             session.close()
 
-    def get_settings(self) -> Dict[str, Any]:
-        """Return global application settings (singleton row)."""
+    def _default_llm_settings(self) -> Dict[str, Any]:
+        librarian_provider = (
+            os.getenv("DEFAULT_LIBRARIAN_PROVIDER")
+            or "gemini"
+        )
+        librarian_model = (
+            os.getenv("DEFAULT_LIBRARIAN_MODEL")
+            or "gemini-2.5-flash"
+        )
+
+        judge_provider = os.getenv("DEFAULT_JUDGE_PROVIDER") or librarian_provider
+        judge_model = os.getenv("DEFAULT_JUDGE_MODEL") or librarian_model
+
+        curator_provider = os.getenv("DEFAULT_CURATOR_PROVIDER") or librarian_provider
+        curator_model = os.getenv("DEFAULT_CURATOR_MODEL") or librarian_model
+
+        defaults: Dict[str, Any] = {
+            "librarian_provider": str(librarian_provider).strip().lower() or "gemini",
+            "librarian_model": str(librarian_model).strip() or "gemini-2.5-flash",
+            "judge_provider": str(judge_provider).strip().lower() or "gemini",
+            "judge_model": str(judge_model).strip() or "gemini-2.5-flash",
+            "curator_provider": str(curator_provider).strip().lower() or "gemini",
+            "curator_model": str(curator_model).strip() or "gemini-2.5-flash",
+        }
+        for field_name, env_var in _API_KEY_FIELD_TO_ENV.items():
+            defaults[field_name] = (os.getenv(env_var) or "").strip() or None
+        return defaults
+
+    def _mask_api_key(self, value: Optional[str]) -> Optional[str]:
+        secret = str(value or "").strip()
+        if not secret:
+            return None
+        if len(secret) <= 8:
+            return "*" * len(secret)
+        return f"{secret[:3]}...{secret[-4:]}"
+
+    def _looks_masked_key(self, value: Optional[str]) -> bool:
+        text = str(value or "").strip()
+        if not text:
+            return False
+        if "..." in text and len(text) <= 32:
+            return True
+        if len(text) >= 4 and all(ch == "*" for ch in text):
+            return True
+        return False
+
+    def _merge_api_key(
+        self,
+        incoming_value: Any,
+        current_db_value: Optional[str],
+    ) -> Optional[str]:
+        current = str(current_db_value or "").strip() or None
+        if incoming_value is None:
+            return current
+
+        candidate = str(incoming_value).strip()
+        if not candidate:
+            return current
+        if self._looks_masked_key(candidate):
+            return current
+        return candidate
+
+    def _sanitize_provider(self, value: Any) -> str:
+        provider = str(value or "").strip().lower()
+        if provider not in _ALLOWED_SETTINGS_PROVIDERS:
+            raise ValueError(
+                "Provider must be one of: openai, gemini, anthropic, huggingface"
+            )
+        return provider
+
+    def get_settings(self, mask_api_keys: bool = False) -> Dict[str, Any]:
+        """Return LLM routing settings with env fallback when DB row is missing."""
+        defaults = self._default_llm_settings()
         session = self.get_session()
         try:
-            settings_row = session.query(AppSettings).filter(AppSettings.id == 1).first()
-            if not settings_row or not isinstance(settings_row.config, dict):
-                return {}
-            return dict(settings_row.config)
+            settings_row = session.query(DBSettings).filter(DBSettings.id == 1).first()
+            if not settings_row:
+                result = dict(defaults)
+                if mask_api_keys:
+                    for field_name in _API_KEY_FIELD_TO_ENV:
+                        result[field_name] = self._mask_api_key(result.get(field_name))
+                return result
+
+            librarian_provider = (settings_row.librarian_provider or "").strip().lower()
+            librarian_model = (settings_row.librarian_model or "").strip()
+            judge_provider = (settings_row.judge_provider or "").strip().lower()
+            judge_model = (settings_row.judge_model or "").strip()
+            curator_provider = (getattr(settings_row, "curator_provider", "") or "").strip().lower()
+            curator_model = (getattr(settings_row, "curator_model", "") or "").strip()
+
+            result = {
+                "librarian_provider": librarian_provider or defaults["librarian_provider"],
+                "librarian_model": librarian_model or defaults["librarian_model"],
+                "judge_provider": judge_provider or defaults["judge_provider"],
+                "judge_model": judge_model or defaults["judge_model"],
+                "curator_provider": curator_provider or defaults["curator_provider"],
+                "curator_model": curator_model or defaults["curator_model"],
+            }
+
+            for field_name in _API_KEY_FIELD_TO_ENV:
+                db_secret = (getattr(settings_row, field_name, None) or "").strip() or None
+                result[field_name] = db_secret or defaults.get(field_name)
+
+            if mask_api_keys:
+                for field_name in _API_KEY_FIELD_TO_ENV:
+                    result[field_name] = self._mask_api_key(result.get(field_name))
+
+            return result
+        finally:
+            session.close()
+
+    def get_librarian_model_name(self) -> str:
+        """Return the current Librarian model name from persisted settings with env fallback."""
+        settings_payload = self.get_settings(mask_api_keys=False)
+        model_name = str(settings_payload.get("librarian_model") or "").strip()
+        return model_name or settings.LLM_MODEL
+
+    def save_settings(self, new_settings: Dict[str, Any], mask_api_keys: bool = False) -> Dict[str, Any]:
+        """Upsert singleton LLM settings and return the normalized payload."""
+        payload = new_settings if isinstance(new_settings, dict) else {}
+        defaults = self._default_llm_settings()
+
+        session = self.get_session()
+        try:
+            settings_row = session.query(DBSettings).filter(DBSettings.id == 1).first()
+            current = defaults if not settings_row else {
+                "librarian_provider": (settings_row.librarian_provider or defaults["librarian_provider"]),
+                "librarian_model": (settings_row.librarian_model or defaults["librarian_model"]),
+                "judge_provider": (settings_row.judge_provider or defaults["judge_provider"]),
+                "judge_model": (settings_row.judge_model or defaults["judge_model"]),
+                "curator_provider": (getattr(settings_row, "curator_provider", None) or defaults["curator_provider"]),
+                "curator_model": (getattr(settings_row, "curator_model", None) or defaults["curator_model"]),
+            }
+
+            librarian_provider = self._sanitize_provider(
+                payload.get("librarian_provider", current["librarian_provider"])
+            )
+            judge_provider = self._sanitize_provider(
+                payload.get("judge_provider", current["judge_provider"])
+            )
+            curator_provider = self._sanitize_provider(
+                payload.get("curator_provider", current["curator_provider"])
+            )
+
+            librarian_model = str(
+                payload.get("librarian_model", current["librarian_model"])
+            ).strip()
+            judge_model = str(payload.get("judge_model", current["judge_model"])).strip()
+            curator_model = str(payload.get("curator_model", current["curator_model"])).strip()
+
+            if not librarian_model:
+                raise ValueError("librarian_model is required")
+            if not judge_model:
+                raise ValueError("judge_model is required")
+            if not curator_model:
+                raise ValueError("curator_model is required")
+
+            if not settings_row:
+                settings_row = DBSettings(
+                    id=1,
+                    librarian_provider=librarian_provider,
+                    librarian_model=librarian_model,
+                    judge_provider=judge_provider,
+                    judge_model=judge_model,
+                    curator_provider=curator_provider,
+                    curator_model=curator_model,
+                )
+                session.add(settings_row)
+            else:
+                settings_row.librarian_provider = librarian_provider
+                settings_row.librarian_model = librarian_model
+                settings_row.judge_provider = judge_provider
+                settings_row.judge_model = judge_model
+                settings_row.curator_provider = curator_provider
+                settings_row.curator_model = curator_model
+
+            for field_name in _API_KEY_FIELD_TO_ENV:
+                current_db_value = getattr(settings_row, field_name, None)
+                merged_value = self._merge_api_key(
+                    payload.get(field_name),
+                    current_db_value,
+                )
+                setattr(settings_row, field_name, merged_value)
+
+            session.commit()
+            return self.get_settings(mask_api_keys=mask_api_keys)
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to save settings")
+            raise
         finally:
             session.close()
 
     def update_settings(self, new_settings: Dict[str, Any]) -> Dict[str, Any]:
-        """Upsert global application settings and return the updated config."""
-        session = self.get_session()
-        try:
-            settings_row = session.query(AppSettings).filter(AppSettings.id == 1).first()
-            payload = new_settings if isinstance(new_settings, dict) else {}
-            if not settings_row:
-                settings_row = AppSettings(id=1, config=dict(payload))
-                session.add(settings_row)
-            else:
-                existing = settings_row.config if isinstance(settings_row.config, dict) else {}
-                settings_row.config = {**existing, **payload}
-            session.commit()
-            return dict(settings_row.config or {})
-        except Exception:
-            session.rollback()
-            logger.exception("Failed to update settings")
-            raise
-        finally:
-            session.close()
+        """Backward-compatible alias for previous settings API."""
+        return self.save_settings(new_settings)
 
     def update_ai_evaluation(self, trace_id: str, ai_evaluation: Dict[str, Any]) -> None:
         """Update AI evaluation metadata for a trace."""
@@ -975,10 +1557,9 @@ class BaseStorageBackend:
             if not trace:
                 raise ValueError(f"Trace with ID '{trace_id}' not found")
             trace.ai_evaluation = dict(ai_evaluation)
-            if isinstance(trace.attributes, dict):
-                trace.attributes["tracebrain.ai_evaluation"] = dict(ai_evaluation)
-            else:
-                trace.attributes = {"tracebrain.ai_evaluation": dict(ai_evaluation)}
+            updated_attributes = dict(trace.attributes or {})
+            updated_attributes["tracebrain.ai_evaluation"] = dict(ai_evaluation)
+            trace.attributes = updated_attributes
             session.commit()
         except Exception:
             session.rollback()

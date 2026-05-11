@@ -15,9 +15,10 @@ import re
 
 import sqlparse
 
-from tracebrain.config import settings
-from tracebrain.core.llm_providers import select_provider, is_provider_available, BaseProvider
+from tracebrain.core.llm_providers import get_llm_provider, BaseProvider, ProviderError
 from tracebrain.core.schema import TraceBrainAttributes
+from tracebrain.core.curator import CurriculumCurator
+from tracebrain.db.base import TraceStatus
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,11 @@ def _build_tool_specs() -> List[Dict[str, Any]]:
     return [
         {
             "name": "run_sql_query",
-            "description": "Execute a read-only SQL SELECT query against the TraceStore database.",
+            "description": (
+                "Execute a read-only SQL SELECT query. CRITICAL: DO NOT use this tool to search for "
+                "specific text, keywords, or error messages inside JSON/attributes. Use this ONLY for "
+                "aggregations (COUNT, AVG), time filters, or strict status filtering."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -41,18 +46,26 @@ def _build_tool_specs() -> List[Dict[str, Any]]:
         ,
         {
             "name": "search_similar_traces",
-            "description": "Find semantically similar traces using vector search.",
+            "description": (
+                "MANDATORY TOOL for finding traces that contain specific tool names, error messages, "
+                "or concepts. Uses Hybrid RRF Search. Use this whenever the user asks to 'find traces "
+                "where X happened' or 'search for Y'."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {
+                    "semantic_intent": {
                         "type": "string",
-                        "description": "Semantic search query describing the target behavior or failure",
+                        "description": "High-level conceptual search intent for semantic matching",
+                    },
+                    "exact_keywords": {
+                        "type": "string",
+                        "description": "Exact keywords, IDs, tool names or error codes for lexical matching",
                     },
                     "min_rating": {
                         "type": "integer",
-                        "description": "Minimum human feedback rating to include (use higher to focus on best traces)",
-                        "default": 4,
+                        "description": "Minimum human feedback rating to include. CRITICAL: If the user is searching for errors, failures, or bugs, you MUST set this to 1 to ensure bad traces are not filtered out. Set higher (e.g., 4 or 5) ONLY if the user specifically asks for 'successful' or 'good' traces.",
+                        "default": 1,
                     },
                     "limit": {
                         "type": "integer",
@@ -60,7 +73,7 @@ def _build_tool_specs() -> List[Dict[str, Any]]:
                         "default": 3,
                     },
                 },
-                "required": ["query"],
+                "required": [],
             },
         },
         {
@@ -113,15 +126,70 @@ def _build_tool_specs() -> List[Dict[str, Any]]:
         },
     ]
 
-def _validate_filters(filters: dict) -> dict | None:
-    if not filters:
-        return None
-    if not all(key in {"status", "min_rating", "error_type", "min_confidence", "max_confidence", "start_time", "end_time"} for key in filters):
-        return None
-    return filters
+def _validate_filters(filters: dict) -> dict:
+    if not isinstance(filters, dict) or not filters:
+        return {}
 
-LIBRARIAN_AVAILABLE = is_provider_available()
+    valid_keys = {
+        "status",
+        "min_rating",
+        "error_type",
+        "min_confidence",
+        "max_confidence",
+        "start_time",
+        "end_time",
+    }
+    valid_statuses = {s.value for s in TraceStatus}
+    valid_error_types = set(CurriculumCurator.VALID_ERROR_TYPES)
 
+    cleaned: Dict[str, Any] = {}
+
+    for raw_key, raw_value in filters.items():
+        if raw_key is None or raw_value is None:
+            continue
+        key = str(raw_key).strip()
+        if key not in valid_keys:
+            continue
+
+        if key in {"status", "error_type", "start_time", "end_time"}:
+            value = str(raw_value).strip()
+            if value:
+                cleaned[key] = value
+            continue
+
+        if key == "min_rating":
+            try:
+                cleaned[key] = int(raw_value)
+            except (TypeError, ValueError):
+                continue
+            continue
+
+        if key in {"min_confidence", "max_confidence"}:
+            try:
+                cleaned[key] = float(raw_value)
+            except (TypeError, ValueError):
+                continue
+
+    if not cleaned:
+        return {}
+    if "status" in cleaned and cleaned["status"] not in valid_statuses:
+        return {}
+    if "error_type" in cleaned and cleaned["error_type"] not in valid_error_types:
+        return {}
+    if "min_rating" in cleaned and not (1 <= cleaned["min_rating"] <= 5):
+        return {}
+    if "min_confidence" in cleaned and not (0.0 <= cleaned["min_confidence"] <= 1.0):
+        return {}
+    if "max_confidence" in cleaned and not (0.0 <= cleaned["max_confidence"] <= 1.0):
+        return {}
+    if (
+        "min_confidence" in cleaned
+        and "max_confidence" in cleaned
+        and cleaned["min_confidence"] > cleaned["max_confidence"]
+    ):
+        return {}
+
+    return cleaned
 
 class LibrarianAgent:
     """Text-to-SQL agent with conversational memory and self-correction."""
@@ -139,7 +207,6 @@ class LibrarianAgent:
         ai_error_type = TraceBrainAttributes.AI_ERROR_TYPE.value
         span_type = TraceBrainAttributes.SPAN_TYPE.value
         tool_name = TraceBrainAttributes.TOOL_NAME.value
-        from tracebrain.core.curator import CurriculumCurator
         valid_error_types = ", ".join(sorted(CurriculumCurator.VALID_ERROR_TYPES))
 
         dialect = self._detect_dialect()
@@ -161,6 +228,9 @@ class LibrarianAgent:
 
                 "User: \"List tool execution spans for a specific trace\"\n"
                 f"SQL: SELECT span_id, name FROM spans WHERE trace_id = 'trace_123' AND json_extract(attributes, '$.\"{span_type}\"') = 'tool_execution';\n"
+
+                "User: \"What was the AI confidence for traces with hallucination errors?\"\n"
+                f"SQL: SELECT id, CAST(json_extract(attributes, '$.\"{ai_eval_key}\".\"{ai_conf}\"') AS REAL) AS confidence FROM traces WHERE json_extract(attributes, '$.\"{ai_eval_key}\".\"{ai_error_type}\"') = 'hallucination';\n\n"
             )
         else:
             json_examples = (
@@ -179,10 +249,14 @@ class LibrarianAgent:
 
                 "User: \"List tool execution spans for a specific trace\"\n"
                 f"SQL: SELECT span_id, name FROM spans WHERE trace_id = 'trace_123' AND spans.attributes->>'{span_type}' = 'tool_execution';\n"
+
+                "User: \"What was the AI confidence for traces with hallucination errors?\"\n"
+                f"SQL: SELECT id, (attributes->'{ai_eval_key}'->>'{ai_conf}')::float AS confidence FROM traces WHERE attributes->'{ai_eval_key}'->>'{ai_error_type}' = 'hallucination';\n\n"
             )
 
         return (
             f"{dialect.upper()} schema (read-only):\n\n"
+            "Always map natural language terms to the closest exact value before querying.\n\n"
             "Table: traces\n"
             "- id (string, primary key)\n"
             "- system_prompt (text)\n"
@@ -221,6 +295,8 @@ class LibrarianAgent:
                 "- For type casting use CAST(x AS REAL).\n"
                 "- For time filters use datetime('now', '-6 months').\n"
                 "- For JSON fields use json_extract(column, '$.key').\n"
+                "- ABSOLUTELY PROHIBITED: Do not use LIKE or ILIKE on JSON/JSONB columns (e.g., attributes::text ILIKE '%...%'). "
+                "If you need to search for text, use the 'search_similar_traces' tool instead of SQL.\n"
                 "- To see agent thoughts or tool outputs, you MUST JOIN 'traces' and 'spans' on 'spans.trace_id = traces.id'.\n"
                 "- Only perform SELECT queries. If the database returns EMPTY_RESULT, do not guess; explain that no data matches the criteria.\n\n"
             )
@@ -230,6 +306,8 @@ class LibrarianAgent:
                 "- All timestamps are in UTC. Use 'now() - interval X hours' for relative time queries.\n"
                 "- To see agent thoughts or tool outputs, you MUST JOIN 'traces' and 'spans' on 'spans.trace_id = traces.id'.\n"
                 "- For JSONB fields, use '->>' to get values as text (e.g., attributes->>'tracebrain.tool.name').\n"
+                "- ABSOLUTELY PROHIBITED: Do not use LIKE or ILIKE on JSON/JSONB columns (e.g., attributes::text ILIKE '%...%'). "
+                "If you need to search for text, use the 'search_similar_traces' tool instead of SQL.\n"
                 "- Only perform SELECT queries. If the database returns EMPTY_RESULT, do not guess; explain that no data matches the criteria.\n\n"
             )
 
@@ -240,10 +318,15 @@ class LibrarianAgent:
             "If the user gives no time range, assume all time and proceed immediately without asking for clarification until you truly struggle to get any results.\n"
             "Your final response MUST ALWAYS be a valid JSON object with 'answer', 'suggestions', 'sources' and 'filters' keys. "
             "The 'answer' should be a natural language summary of what you found in the database.\n\n"
+
+            "### CRITICAL RULES FOR SEARCHING TRACES:\n"
+            "- If a tool (like search_similar_traces or run_sql_query) returns data, YOU MUST ACKNOWLEDGE IT. "
+            "NEVER say 'no traces were found' if the tool returned IDs. "
+            "Always list discovered trace IDs in the 'sources' array of your final JSON.\n\n"
             
             "### CORE TOOLS:\n"
             "1. run_sql_query: Use this for counts, status filters, time-based queries, and metadata analysis.\n"
-            "2. search_similar_traces: Use this ONLY when the user asks for 'similar' cases or semantic patterns in reasoning/thoughts.\n\n"
+            "2. search_similar_traces: You MUST use this tool to find traces based on specific events, tool names (e.g., 'get_stock_price'), or error messages (e.g., 'timeout').\n\n"
             "3. set_api_filters: Always call this after fetching data if the query conditions map to its available fields, to register the active filter state.\n\n"
             
             f"{sql_rules}"
@@ -290,9 +373,11 @@ class LibrarianAgent:
                 raise
             return json.loads(match.group(0))
 
-    def _extract_sources(self, answer: str) -> Optional[List[str]]:
-        potential_ids = re.findall(r"[a-f0-9]{32}", answer)
-        return list(set(potential_ids)) if potential_ids else None
+    def _extract_sources(self, answer: str) -> List[str]:
+        if not isinstance(answer, str) or not answer:
+            return []
+        potential_ids = re.findall(r"[a-fA-F0-9]{32}", answer)
+        return list(dict.fromkeys(potential_ids))
 
     def run_sql_query(self, sql_query: str) -> str:
         """Executes a READ-ONLY SQL query on the TraceStore."""
@@ -324,7 +409,7 @@ class LibrarianAgent:
             "### YOUR TASK:\n"
             "1. Analyze the User Question and explain politely that no traces currently match those specific criteria.\n"
             "2. Identify potential reasons for the empty result (e.g., a time range that is too narrow, a specific error code that hasn't occurred, or a tool name typo).\n"
-            "3. Provide 2-3 ACTIONABLE suggestions to help the user find what they need. These should be formatted as direct questions or commands the user can click.\n\n"
+            "3. Provide 1-2 ACTIONABLE suggestions to help the user find what they need. These should be formatted as direct questions or commands the user can click.\n\n"
             "### SUGGESTION GUIDELINES:\n"
             "- 'Broaden Time': Suggest looking back further (e.g., last 7 days).\n"
             "- 'Relax Filters': If they asked for errors, suggest looking for all traces of that tool.\n"
@@ -375,20 +460,43 @@ class LibrarianAgent:
         return normalized
 
     def _normalize_sources(self, sources: Any, answer: str) -> List[str]:
-        if isinstance(sources, list):
-            cleaned = []
-            for item in sources:
-                value = str(item).strip()
+        normalized: List[str] = []
+
+        def _append_candidate(candidate: Any) -> None:
+            if candidate is None:
+                return
+            if isinstance(candidate, str):
+                value = candidate.strip()
                 if value:
-                    cleaned.append(value)
-            return list(dict.fromkeys(cleaned))
-        extracted = self._extract_sources(answer)
-        return extracted if extracted else []
+                    normalized.append(value)
+                return
+            if isinstance(candidate, dict):
+                value = candidate.get("trace_id") or candidate.get("id")
+                if value is not None:
+                    value_str = str(value).strip()
+                    if value_str:
+                        normalized.append(value_str)
+                return
+
+            value = str(candidate).strip()
+            if value:
+                normalized.append(value)
+
+        if isinstance(sources, (list, tuple, set)):
+            for item in sources:
+                _append_candidate(item)
+        elif sources is not None:
+            _append_candidate(sources)
+
+        if not normalized:
+            normalized = self._extract_sources(answer)
+        return list(dict.fromkeys(normalized))
     
     def _normalize_filters(self, filters: Any) -> Dict[str, Any]:
         if not isinstance(filters, dict) or not filters:
             return {}
-        return {str(k).strip(): v for k, v in filters.items() if k and v is not None}
+        compact = {str(k).strip(): v for k, v in filters.items() if k and v is not None}
+        return _validate_filters(compact)
 
     def _extract_sql(self, text: str) -> Optional[str]:
         if not text:
@@ -411,27 +519,86 @@ class LibrarianAgent:
         fallback = re.search(r"SELECT\s+.*", candidate, flags=re.IGNORECASE | re.DOTALL)
         return fallback.group(0).strip() if fallback else None
 
-    def search_similar_traces(self, query: str, min_rating: int = 4, limit: int = 3) -> str:
-        results = self.store.search_similar_experiences(query, min_rating=min_rating, limit=limit)
-        return json.dumps(results, default=str)
+    def search_similar_traces(
+        self,
+        semantic_intent: Optional[str] = None,
+        exact_keywords: Optional[str] = None,
+        min_rating: int = 1,
+        limit: int = 3,
+    ) -> str:
+        results = self.store.hybrid_search_traces(
+            semantic_query=semantic_intent,
+            exact_keywords=exact_keywords,
+            limit=limit,
+            min_rating=min_rating,
+        )
+        if not results:
+            return json.dumps([], default=str)
 
-    def query(self, user_query: str, session_id: str, model_id: Optional[str] = None) -> Dict[str, Any]:
+        trace_ids = [
+            str(item.get("trace_id") or item.get("id"))
+            for item in results
+            if item.get("trace_id") or item.get("id")
+        ]
+        traces = self.store.get_traces_by_ids(trace_ids, include_spans=False)
+        trace_map = {trace.id: trace for trace in traces}
+
+        def _truncate(text: Optional[str], limit_chars: int = 100) -> Optional[str]:
+            if not isinstance(text, str):
+                return None
+            value = text.strip()
+            if len(value) <= limit_chars:
+                return value
+            return f"{value[:97]}..."
+
+        summaries = []
+        for item in results:
+            trace_id = str(item.get("trace_id") or item.get("id") or "").strip()
+            if not trace_id:
+                continue
+            trace = trace_map.get(trace_id)
+            if not trace:
+                continue
+
+            attributes = trace.attributes if isinstance(trace.attributes, dict) else {}
+            ai_eval = attributes.get("tracebrain.ai_evaluation")
+            error_type = ai_eval.get("error_type") if isinstance(ai_eval, dict) else None
+            if not error_type and isinstance(trace.ai_evaluation, dict):
+                error_type = trace.ai_evaluation.get("error_type")
+
+            system_prompt = trace.system_prompt or attributes.get("system_prompt")
+            summary = {
+                "id": trace_id,
+                "status": trace.status.value if hasattr(trace.status, "value") else str(trace.status),
+                "error_type": error_type,
+                "system_prompt": _truncate(system_prompt, 100),
+            }
+
+            matched = item.get("matched_keywords")
+            if matched:
+                summary["matched_keywords"] = matched
+
+            summaries.append(summary)
+
+        return json.dumps(summaries, default=str)
+
+    def query(self, user_query: str, session_id: str) -> Dict[str, Any]:
         """Process a natural language query using the configured provider.
         
         Args:
             user_query: Natural language question about traces
             session_id: Conversation session ID for context
-            model_id: Optional model override (e.g., 'gpt-4o', 'gemini-2.0-flash-exp')
         """
-        if not LIBRARIAN_AVAILABLE:
-            return {
-                "answer": "Librarian is not available. Check provider configuration and API keys.",
-                "suggestions": [],
-                "sources": [],
-            }
-
-        # Select provider with optional model override
-        provider = select_provider(model_override=model_id)
+        runtime_settings = self.store.get_settings()
+        provider_name = runtime_settings.get("librarian_provider")
+        model_id = runtime_settings.get("librarian_model")
+        provider_key_field = f"{str(provider_name or '').strip().lower()}_api_key"
+        provider_api_key = runtime_settings.get(provider_key_field)
+        provider = get_llm_provider(
+            provider_name=provider_name,
+            model_id=model_id,
+            api_key=provider_api_key,
+        )
 
         history = self.store.get_chat_history(session_id)
         history_text = self._format_history(history)
@@ -449,7 +616,11 @@ class LibrarianAgent:
 
         logger.debug("Librarian system prompt:\n%s", system_prompt)
         logger.debug("Librarian user content:\n%s", user_content)
-        logger.debug("Librarian using provider: %s (model: %s)", provider.name, getattr(provider, 'model', getattr(provider, 'model_name', 'unknown')))
+        logger.debug(
+            "Librarian using provider: %s (model: %s)",
+            provider.name,
+            getattr(provider, "model", getattr(provider, "model_name", "unknown")),
+        )
 
         try:
             if not provider.supports_tools:
@@ -505,14 +676,15 @@ class LibrarianAgent:
 
             session = provider.start_chat(system_prompt, self.tools)
             response = provider.send_user_message(session, user_content)
-            last_sql_result: Optional[str] = None
-            saw_sql_result = False
             extracted_filters = {}
+            tools_were_called = False
 
             for _ in range(5):
                 tool_calls = provider.extract_tool_calls(response)
                 if not tool_calls:
                     break
+
+                tools_were_called = True
 
                 for call in tool_calls:
                     tool_name = call.get("name")
@@ -520,23 +692,29 @@ class LibrarianAgent:
                     if tool_name == "run_sql_query":
                         sql_query = args.get("query", "")
                         tool_result = self.run_sql_query(sql_query)
-                        if not tool_result.startswith("EXECUTION_FAILED") and not tool_result.startswith("EMPTY_RESULT"):
-                            last_sql_result = tool_result
-                            saw_sql_result = True
                         self.store.save_chat_message(
                             session_id,
                             "tool",
                             f"SQL: {sql_query}\nRESULT: {tool_result}",
                         )
                     elif tool_name == "search_similar_traces":
-                        query = args.get("query", "")
+                        semantic_intent = args.get("semantic_intent") or args.get("query")
+                        exact_keywords = args.get("exact_keywords")
                         min_rating = int(args.get("min_rating", 4))
                         limit = int(args.get("limit", 3))
-                        tool_result = self.search_similar_traces(query, min_rating=min_rating, limit=limit)
+                        tool_result = self.search_similar_traces(
+                            semantic_intent=semantic_intent,
+                            exact_keywords=exact_keywords,
+                            min_rating=min_rating,
+                            limit=limit,
+                        )
+                        search_label = semantic_intent or ""
+                        if exact_keywords:
+                            search_label = f"{search_label} | keywords: {exact_keywords}".strip()
                         self.store.save_chat_message(
                             session_id,
                             "tool",
-                            f"SEARCH: {query}\nRESULT: {tool_result}",
+                            f"SEARCH: {search_label}\nRESULT: {tool_result}",
                         )
                     elif tool_name == "set_api_filters":
                         extracted_filters = args
@@ -566,14 +744,10 @@ class LibrarianAgent:
                         self.store.save_chat_message(session_id, "assistant", result)
                         return result
 
-            if saw_sql_result and last_sql_result:
+            if tools_were_called:
                 response = provider.send_user_message(
                     session,
-                    (
-                        "Using the SQL results below, return ONLY a JSON object with keys "
-                        "answer, suggestions, sources, filters. The answer must be a natural language summary.\n"
-                        f"SQL_RESULTS: {last_sql_result}"
-                    ),
+                    "All tools have been called. Now summarize your findings and return the final JSON response only. You MUST include 'answer', 'suggestions', 'sources', and 'filters' keys.",
                 )
 
             answer_text = provider.extract_text(response)
@@ -596,7 +770,7 @@ class LibrarianAgent:
             answer = str(parsed.get("answer", "")).strip() or "No response."
             suggestions = self._normalize_suggestions(parsed.get("suggestions"))
             sources = self._normalize_sources(parsed.get("sources"), answer)
-            filters = self._normalize_filters(extracted_filters)
+            filters = self._normalize_filters(extracted_filters if extracted_filters else (_validate_filters(parsed.get("filters", {}))))
 
             result = {
                 "answer": answer,
@@ -610,11 +784,19 @@ class LibrarianAgent:
 
         except Exception as e:
             logger.exception("Librarian query failed for session %s", session_id)
+            if isinstance(e, ProviderError):
+                answer = str(e)
+            else:
+                answer = (
+                    "Sorry, I encountered an error processing your query. "
+                    "Please try rephrasing your question or check the server logs."
+                )
             error_result = {
-                "answer": f"Sorry, I encountered an error processing your query: {str(e)}\n\nPlease try rephrasing your question or check the server logs.",
+                "answer": answer,
                 "suggestions": [],
                 "sources": [],
                 "filters": {},
+                "is_error": True,
             }
             self.store.save_chat_message(session_id, "assistant", error_result)
             raise

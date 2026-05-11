@@ -37,6 +37,9 @@ class TraceBrainAttributes(str, Enum):
     LLM_TOOL_CODE = "tracebrain.llm.tool_code"
     LLM_FINAL_ANSWER = "tracebrain.llm.final_answer"
 
+    # --- Usage Attributes ---
+    USAGE = "tracebrain.usage"
+
     # --- Tool Execution Attributes ---
     TOOL_NAME = "tracebrain.tool.name"
     TOOL_INPUT = "tracebrain.tool.input"

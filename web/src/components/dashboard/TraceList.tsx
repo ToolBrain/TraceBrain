@@ -24,11 +24,12 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import type { Trace } from "../../types/trace";
 import React from "react";
-import { spanGetDuration, spanGetOutput, spanHasError } from "../utils/spanUtils";
+import { spanGetDuration, spanGetOutput, spanGetToolCode, spanHasError } from "../utils/spanUtils";
 import StatusChip, { ALLOWED_STATUSES, type ChipStatus } from "../shared/StatusChip";
 import {
   traceGetDuration,
   traceGetErrorType,
+  traceGetEvalRating,
   traceGetEvaluation,
   traceGetPriority,
   traceGetRating,
@@ -37,7 +38,7 @@ import {
   traceGetTotalTokens,
 } from "../utils/traceUtils";
 import ConfidenceIndicator from "../shared/ConfidenceIndicator";
-import { formatDateTime, getPriorityColor } from "../utils/utils";
+import { formatDateTime, formatDuration, getPriorityColor } from "../utils/utils";
 import TypeChip from "../shared/TypeChip";
 import ErrorTypeChip from "../shared/ErrorTypeChip";
 
@@ -45,6 +46,12 @@ interface TraceListProps {
   traces: Trace[];
   loading?: boolean;
 }
+
+const truncate = {
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+} as const;
 
 const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
   const nav = useNavigate();
@@ -77,10 +84,6 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
     nav(`/trace/${traceId}?span=${spanId}`);
   };
 
-  const handleTraceClick = (traceId: string) => {
-    nav(`/trace/${traceId}`);
-  };
-
   return (
     <TableContainer
       component={Paper}
@@ -101,10 +104,10 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
             }}
           >
             <TableCell sx={{ width: "2%", fontWeight: 600 }}></TableCell>
-            <TableCell sx={{ width: "10%", fontWeight: 600 }}>Timestamp</TableCell>
-            <TableCell sx={{ width: "13%", fontWeight: 600 }}>Details</TableCell>
+            <TableCell sx={{ width: "13%", fontWeight: 600 }}>Timestamp</TableCell>
+            <TableCell sx={{ width: "14%", fontWeight: 600 }}>Details</TableCell>
             <TableCell sx={{ width: "10%", fontWeight: 600 }}>Status</TableCell>
-            <TableCell sx={{ width: "10%", fontWeight: 600 }}>Error Type</TableCell>
+            <TableCell sx={{ width: "11%", fontWeight: 600 }}>Error Type</TableCell>
             <TableCell sx={{ width: "10%", fontWeight: 600 }}>Duration</TableCell>
             <TableCell sx={{ width: "15%", fontWeight: 600 }}>Trace ID</TableCell>
             <TableCell sx={{ width: "15%", fontWeight: 600 }}>AI Confidence</TableCell>
@@ -134,11 +137,12 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
               const totalTokens = traceGetTotalTokens(trace) ?? "N/A";
               const errorType = traceGetErrorType(trace);
               const rating = traceGetRating(trace);
+              const aiRating = traceGetEvalRating(trace);
 
               const evaluation = traceGetEvaluation(trace);
               const confidence = evaluation?.confidence;
               const suggestion_status = evaluation?.status;
-              const isAnalyzing = !evaluation;
+              const isAnalyzing = trace.isAnalyzing;
 
               return (
                 <React.Fragment key={trace.trace_id}>
@@ -150,7 +154,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                       "& > td": { p: 1.75 },
                       "& > td:first-of-type": { p: 1 },
                     }}
-                    onClick={() => handleTraceClick(trace.trace_id)}
+                    onClick={() => toggleTrace(trace.trace_id)}
                   >
                     <TableCell>
                       <IconButton
@@ -166,25 +170,18 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                     <TableCell>
                       <Typography
                         variant="body2"
-                        sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}
+                        sx={{ fontFamily: "monospace", fontSize: "0.75rem" }}
                       >
                         {formatDateTime(startTime)}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 0.5,
-                        }}
-                      >
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 0 }}>
                         <TypeChip type="trace" />
-
                         <Typography
                           variant="caption"
                           color="text.secondary"
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                          sx={{ display: "flex", alignItems: "center", gap: 1, ...truncate }}
                         >
                           {/* Span Count */}
                           <Box
@@ -216,7 +213,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                           </Box>
 
                           {/* Rating */}
-                          {rating > 0 ? (
+                          {rating > 0 || aiRating > 0 ? (
                             <Box
                               sx={{
                                 display: "flex",
@@ -224,8 +221,11 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                                 gap: 0.25,
                               }}
                             >
-                              <Star fontSize="inherit" sx={{ color: "warning.light" }} />
-                              {rating}
+                              <Star
+                                fontSize="inherit"
+                                sx={{ color: rating > 0 ? "warning.light" : "info.light" }}
+                              />
+                              {rating > 0 ? rating : aiRating}
                             </Box>
                           ) : (
                             <Typography variant="caption" color="text.disabled">
@@ -252,17 +252,11 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                       <StatusChip status={status} />
                     </TableCell>
                     <TableCell>
-                      {errorType && errorType !== "none" ? (
-                        <ErrorTypeChip errorType={errorType} />
-                      ) : (
-                        <Typography variant="body2" sx={{ color: "text.disabled" }}>
-                          —
-                        </Typography>
-                      )}
+                      {errorType && errorType !== "none" && <ErrorTypeChip errorType={errorType} />}
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-                        {duration.toFixed(2)}s
+                        {formatDuration(duration)}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -272,9 +266,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                           fontFamily: "monospace",
                           fontSize: "0.75rem",
                           color: "text.secondary",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
+                          ...truncate,
                         }}
                       >
                         {trace.trace_id}
@@ -295,10 +287,10 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                           <Table size="small" sx={{ width: "100%", tableLayout: "fixed" }}>
                             <colgroup>
                               <col style={{ width: "2%" }} />
-                              <col style={{ width: "10%" }} />
                               <col style={{ width: "13%" }} />
+                              <col style={{ width: "14%" }} />
                               <col style={{ width: "10%" }} />
-                              <col style={{ width: "10%" }} />
+                              <col style={{ width: "11%" }} />
                               <col style={{ width: "10%" }} />
                               <col style={{ width: "15%" }} />
                               <col style={{ width: "15%" }} />
@@ -319,7 +311,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                                     sx={{
                                       cursor: "pointer",
                                       "&:hover": { bgcolor: "action.hover" },
-                                      "& > td": { py: 1.5, px: 1.75 },
+                                      "& > td": { px: 1.75, py: 1.5 },
                                       "& > td:first-of-type": { p: 1 },
                                     }}
                                   >
@@ -337,21 +329,21 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                                       </Typography>
                                     </TableCell>
                                     <TableCell>
-                                      <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
-                                        {span.name}
-                                      </Typography>
-                                      <Typography
-                                        variant="caption"
-                                        color="text.secondary"
-                                        sx={{
-                                          display: "block",
-                                          overflow: "hidden",
-                                          textOverflow: "ellipsis",
-                                          whiteSpace: "nowrap",
-                                        }}
-                                      >
-                                        {spanGetOutput(span)}
-                                      </Typography>
+                                      <Box sx={{ minWidth: 0 }}>
+                                        <Typography
+                                          variant="body2"
+                                          sx={{ fontSize: "0.875rem", ...truncate }}
+                                        >
+                                          {span.name}
+                                        </Typography>
+                                        <Typography
+                                          variant="caption"
+                                          color="text.secondary"
+                                          sx={{ display: "block", ...truncate }}
+                                        >
+                                          {(spanGetOutput(span) || spanGetToolCode(span)) ?? "\u00A0"}
+                                        </Typography>
+                                      </Box>
                                     </TableCell>
                                     <TableCell>
                                       <StatusChip status={spanStatus} secondary />
@@ -365,7 +357,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                                           fontSize: "0.75rem",
                                         }}
                                       >
-                                        {spanDuration}s
+                                        {formatDuration(parseFloat(spanDuration))}
                                       </Typography>
                                     </TableCell>
                                     <TableCell>
@@ -375,9 +367,7 @@ const TraceList: React.FC<TraceListProps> = ({ traces, loading }) => {
                                           fontFamily: "monospace",
                                           fontSize: "0.75rem",
                                           color: "text.secondary",
-                                          overflow: "hidden",
-                                          textOverflow: "ellipsis",
-                                          whiteSpace: "nowrap",
+                                          ...truncate,
                                         }}
                                       >
                                         {span.span_id}

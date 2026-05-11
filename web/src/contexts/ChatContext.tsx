@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { useSettings } from "./SettingsContext";
 import { ChatEngine, type Message, type Suggestion } from "../components/chat/engine/chatEngine";
 
 interface ChatContextType {
@@ -16,7 +15,6 @@ const ChatContext = createContext<ChatContextType | null>(null);
 const chatEngine = new ChatEngine("/api/v1");
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const { settings } = useSettings();
   const [sessionId, setSessionId] = useState<string | null>(() => chatEngine.getSessionId());
   const [messages, setMessages] = useState<Message[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -44,18 +42,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function sendMessage(content: string) {
+    if (isLoading) {
+      return;
+    }
+
     setIsLoading(true);
+    setSuggestions([]);
+    setMessages((prev) => [...prev, chatEngine.buildUserMessage(content)]);
     try {
       const result = await chatEngine.sendMessage({
         content,
         sessionId,
-        model: settings.llm.model,
       });
 
       setSessionId(result.sessionId);
       setMessages((prev) => [
         ...prev,
-        chatEngine.buildUserMessage(content),
         chatEngine.buildAssistantMessage(result),
       ]);
       setSuggestions(result.suggestions ?? []);
@@ -63,7 +65,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       console.error("Chat error:", err);
       setMessages((prev) => [
         ...prev,
-        chatEngine.buildUserMessage(content),
         chatEngine.buildAssistantMessage({
           sessionId: "",
           answer: "Something went wrong. Please try again.",
@@ -76,7 +77,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }
-  
+
   function clearMessages() {
     setSessionId(null);
     setMessages([]);

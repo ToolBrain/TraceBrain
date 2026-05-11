@@ -1,5 +1,5 @@
 """
-TraceBrain Tracing - Observability Platform for Agentic AI
+TraceBrain - Observability Platform for Agentic AI
 
 This package provides a complete observability solution for AI agents,
 allowing users to collect, store, and visualize execution traces.
@@ -12,14 +12,14 @@ Philosophy: "Pip install and run"
 
 Quick Start:
     # Install
-    pip install tracebrain-tracing
+    pip install tracebrain
     
     # Start infrastructure with Docker (recommended)
-    tracebrain-trace up
+    tracebrain up
     
     # Or use Python server directly for development
-    tracebrain-trace init-db
-    tracebrain-trace start
+    tracebrain init-db
+    tracebrain start
     
     # Use the SDK client in your code
     from tracebrain import TraceClient
@@ -48,14 +48,35 @@ Usage:
 __version__ = "1.0.0"
 __author__ = "TraceBrain Team"
 
-# Expose main components for easy import
-from .main import app
-from .config import settings
-from .sdk import TraceClient
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .main import app as app
+    from .config import settings as settings
+    from .sdk import TraceClient as TraceClient
+    from .sdk.client import TraceScope as TraceScope
 
 __all__ = [
     "app",
     "settings",
     "TraceClient",
+    "TraceScope",
     "__version__",
 ]
+
+
+def __getattr__(name: str):
+    # Lazily import heavy modules to keep CLI startup lightweight.
+    if name == "app":
+        from .main import app as value
+        return value
+    if name == "settings":
+        from .config import settings as value
+        return value
+    if name == "TraceClient":
+        from .sdk import TraceClient as value
+        return value
+    if name == "TraceScope":
+        from .sdk.client import TraceScope as value
+        return value
+    raise AttributeError(f"module 'tracebrain' has no attribute '{name}'")
