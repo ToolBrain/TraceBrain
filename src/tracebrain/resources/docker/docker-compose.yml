@@ -29,6 +29,9 @@ services:
     container_name: tracebrain-api
     restart: unless-stopped
     environment:
+
+      DISABLE_BACKGROUND_EMBEDDINGS: ${DISABLE_BACKGROUND_EMBEDDINGS:-false}
+      
       # Database Configuration
       DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
 
