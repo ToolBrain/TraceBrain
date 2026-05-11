@@ -72,20 +72,12 @@ class Settings(BaseSettings):
 
     # Database Pool Configuration
     DB_POOL_SIZE: int = Field(
-<<<<<<< HEAD
         default=50,
-=======
-        default=10,
->>>>>>> feature/hybrid-search
         ge=1,
         description="Base number of database connections in the pool"
     )
     DB_MAX_OVERFLOW: int = Field(
-<<<<<<< HEAD
         default=100,
-=======
-        default=20,
->>>>>>> feature/hybrid-search
         ge=0,
         description="Maximum number of overflow connections beyond pool size"
     )
