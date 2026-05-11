@@ -85,9 +85,13 @@ def seed_traces(engine, target_count: int, batch_size: int = 5000) -> None:
                     status=TraceStatus.completed,
                     priority=3,
                     embedding=embeddings[i].tolist(),
+                    search_text=(
+                        f"system prompt execution error timeout_{i} "
+                        "get_stock_price tool_execution_error"
+                    ),
                     attributes={"system_prompt": "Synthetic trace"},
                     feedback={"rating": 5},
-                    ai_evaluation=None,
+                    ai_evaluation={"rating": 5},
                 )
             )
         with SessionLocal() as session:
@@ -115,7 +119,12 @@ async def benchmark_search(latency_points: List[RetrievalPoint]) -> None:
             for _ in range(10):
                 async with session.get(
                     f"{API_BASE_URL}/api/v1/traces/search",
-                    params={"text": "tool execution error", "min_rating": 4, "limit": 3},
+                    params={
+                        "semantic_query": "database execution error",
+                        "exact_keywords": "timeout tool_execution_error",
+                        "min_rating": 4,
+                        "limit": 10,
+                    },
                 ) as resp:
                     await resp.text()
 
@@ -125,7 +134,12 @@ async def benchmark_search(latency_points: List[RetrievalPoint]) -> None:
                 start = time.perf_counter_ns()
                 async with session.get(
                     f"{API_BASE_URL}/api/v1/traces/search",
-                    params={"text": "tool execution error", "min_rating": 4, "limit": 3},
+                    params={
+                        "semantic_query": "database execution error",
+                        "exact_keywords": "timeout tool_execution_error",
+                        "min_rating": 4,
+                        "limit": 10,
+                    },
                 ) as resp:
                     await resp.text()
                 end = time.perf_counter_ns()
