@@ -59,7 +59,7 @@ By organizing historical traces as structured artifacts, TraceBrain supports age
 ### 🧠 Cognitive Layer (Trace-driven Learning)
 - **Experience Retrieval**: Agents can query past successful trajectories to guide reasoning via in-context learning.
 - **Automated Curriculum Generation**: Using error classifications produced by the AI Judge, a Curator agent analyzes clustered failure traces and synthesizes targeted training tasks.
-- **Semantic Trace Search**: Vector-based retrieval (via `pgvector`) for locating similar reasoning trajectories.
+- **Hybrid Trace Search (Vector + Keyword)**: Reciprocal Rank Fusion (RRF) combines `pgvector` similarity with PostgreSQL full-text search for robust retrieval. SQLite gracefully falls back to basic keyword matching.
 
 ## 🏗️ Architecture
 
