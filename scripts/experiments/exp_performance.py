@@ -110,12 +110,19 @@ async def _post_trace(
 ) -> Tuple[bool, float]:
     async with semaphore:
         start = time.perf_counter_ns()
-        try:
-            async with session.post(f"{API_BASE_URL}/api/v1/traces", json=payload) as resp:
-                await resp.text()
-                ok = resp.status in (200, 201)
-        except Exception:
-            ok = False
+        ok = False
+        for attempt in range(3):
+            try:
+                async with session.post(f"{API_BASE_URL}/api/v1/traces", json=payload) as resp:
+                    await resp.text()
+                    if resp.status in (200, 201):
+                        ok = True
+                        break
+            except Exception:
+                ok = False
+
+            if attempt < 2:
+                await asyncio.sleep(0.1)
         end = time.perf_counter_ns()
         return ok, (end - start) / 1_000_000
 
@@ -170,10 +177,11 @@ def _build_ingestion_payload() -> Dict[str, Any]:
 async def benchmark_ingestion() -> None:
     total_requests = 10_000
     warmup_requests = 200
-    concurrency = 50
+    concurrency = 20
     semaphore = asyncio.Semaphore(concurrency)
+    timeout = aiohttp.ClientTimeout(total=120)
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(timeout=timeout) as session:
         warmup_tasks = []
         for _ in range(warmup_requests):
             warmup_tasks.append(

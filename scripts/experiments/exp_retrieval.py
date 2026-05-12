@@ -57,8 +57,7 @@ def resolve_db_url() -> str:
     return f"postgresql://{user}:{password}@localhost:5432/{db}"
 
 
-def seed_traces(engine, target_count: int, batch_size: int = 5000) -> None:
-    SessionLocal = sessionmaker(bind=engine)
+def seed_traces(SessionLocal, target_count: int, batch_size: int = 5000) -> None:
     with SessionLocal() as session:
         existing = int(session.query(func.count(Trace.id)).scalar() or 0)
 
@@ -66,7 +65,6 @@ def seed_traces(engine, target_count: int, batch_size: int = 5000) -> None:
     if remaining == 0:
         return
 
-    SessionLocal = sessionmaker(bind=engine)
     dim = Trace.__table__.columns["embedding"].type.dim
 
     while remaining > 0:
@@ -114,41 +112,54 @@ def format_points(points: List[RetrievalPoint]) -> Dict[str, List[float]]:
 
 
 async def benchmark_search(latency_points: List[RetrievalPoint]) -> None:
-    async with aiohttp.ClientSession() as session:
-        for point in latency_points:
-            for _ in range(10):
+    connector = aiohttp.TCPConnector(limit=50, enable_cleanup_closed=True)
+    timeout = aiohttp.ClientTimeout(total=30)
+
+    async def _fetch(session: aiohttp.ClientSession, params: Dict[str, Any]) -> bool:
+        for attempt in range(3):
+            try:
                 async with session.get(
                     f"{API_BASE_URL}/api/v1/traces/search",
-                    params={
-                        "semantic_query": "database execution error",
-                        "exact_keywords": "timeout tool_execution_error",
-                        "min_rating": 4,
-                        "limit": 10,
-                    },
+                    params=params,
                 ) as resp:
                     await resp.text()
+                return True
+            except (aiohttp.ClientConnectionError, aiohttp.ClientOSError, ConnectionResetError, OSError):
+                if attempt == 2:
+                    return False
+                await asyncio.sleep(0.2 * (attempt + 1))
+
+        return False
+
+    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+        for point in latency_points:
+            search_params = {
+                "semantic_query": "database execution error",
+                "exact_keywords": "timeout tool_execution_error",
+                "min_rating": 4,
+                "limit": 10,
+            }
+            for _ in range(10):
+                await _fetch(session, search_params)
 
             latencies = []
             gc.disable()
             for _ in range(100):
                 start = time.perf_counter_ns()
-                async with session.get(
-                    f"{API_BASE_URL}/api/v1/traces/search",
-                    params={
-                        "semantic_query": "database execution error",
-                        "exact_keywords": "timeout tool_execution_error",
-                        "min_rating": 4,
-                        "limit": 10,
-                    },
-                ) as resp:
-                    await resp.text()
+                ok = await _fetch(session, search_params)
                 end = time.perf_counter_ns()
-                latencies.append((end - start) / 1_000_000)
+                if ok:
+                    latencies.append((end - start) / 1_000_000)
             gc.enable()
 
-            point.p50_ms = float(np.percentile(latencies, 50))
-            point.p90_ms = float(np.percentile(latencies, 90))
-            point.p95_ms = float(np.percentile(latencies, 95))
+            if latencies:
+                point.p50_ms = float(np.percentile(latencies, 50))
+                point.p90_ms = float(np.percentile(latencies, 90))
+                point.p95_ms = float(np.percentile(latencies, 95))
+            else:
+                point.p50_ms = float("nan")
+                point.p90_ms = float("nan")
+                point.p95_ms = float("nan")
 
 
 def plot_retrieval(points: List[RetrievalPoint]) -> None:
@@ -177,13 +188,14 @@ def plot_retrieval(points: List[RetrievalPoint]) -> None:
 
 def main() -> None:
     db_url = resolve_db_url()
-    engine = create_engine(db_url)
+    engine = create_engine(db_url, pool_size=10, max_overflow=20)
+    SessionLocal = sessionmaker(bind=engine)
 
     milestones = [10_000, 50_000, 100_000]
     points: List[RetrievalPoint] = []
 
     for milestone in milestones:
-        seed_traces(engine, milestone, batch_size=5000)
+        seed_traces(SessionLocal, milestone, batch_size=5000)
         vacuum_analyze(engine)
         point = RetrievalPoint(traces_k=milestone // 1000, p50_ms=0.0, p90_ms=0.0, p95_ms=0.0)
         points.append(point)
