@@ -1,4 +1,4 @@
-# TraceBrain Tracing Module Requirements
+# TraceBrain Module Requirements
 # Install with: pip install -r tracebrain/requirements.txt
 
 # Core database ORM

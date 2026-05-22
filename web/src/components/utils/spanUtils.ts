@@ -12,6 +12,22 @@ export function spanHasError(span: Span) {
   return span?.attributes["otel.status_code"] === "ERROR";
 }
 
+export function spanGetErrorDescription(span: Span) {
+  return span?.attributes["otel.status_description"];
+}
+
+export function spanGetThought(span: Span) {
+  return span?.attributes["tracebrain.llm.thought"];
+}
+
+export function spanGetToolCode(span: Span) {
+  return span?.attributes["tracebrain.llm.tool_code"];
+}
+
+export function spanGetModel(span: Span) {
+  return span?.attributes["tracebrain.llm.model"];
+}
+
 export function spanGetDuration(span: Span) {
   return (
     (new Date(span.end_time).getTime() - new Date(span.start_time).getTime()) /
@@ -20,7 +36,17 @@ export function spanGetDuration(span: Span) {
 }
 
 export function spanGetUsage(span: Span) {
-  return span?.attributes["tracebrain.usage"];
+  const usage = span?.attributes["tracebrain.usage"];
+  if (!usage || typeof usage !== "object") {
+    return null;
+  }
+  const values = [
+    usage.prompt_tokens,
+    usage.completion_tokens,
+    usage.total_tokens,
+  ];
+  const hasNumber = values.some((val) => typeof val === "number" && !Number.isNaN(val));
+  return hasNumber ? usage : null;
 }
 
 export function spanGetInput(span: Span) {
@@ -46,7 +72,7 @@ export function spanGetOutput(span: Span) {
   const type = spanGetType(span);
   const value =
     type === "llm_inference"
-      ? span?.attributes["tracebrain.llm.completion"]
+      ? span?.attributes["tracebrain.llm.final_answer"]
       : span?.attributes["tracebrain.tool.output"];
   if (value === null || value === undefined) {
     return value;

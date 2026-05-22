@@ -1,1 +1,1 @@
-"""Evaluation utilities for TraceBrain Tracing."""
+"""Evaluation utilities for TraceBrain."""

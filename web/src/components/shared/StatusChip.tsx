@@ -135,8 +135,8 @@ const StatusChip: React.FC<StatusChipProps> = ({
         textAlign: "center",
         opacity: secondary ? 0.7 : 1,
         ...(shouldPulse && {
-          animation: "pulse 1.5s ease-out infinite",
-          "@keyframes pulse": {
+          animation: "statusPulse 1.5s ease-out infinite",
+          "@keyframes statusPulse": {
             "0%": {
               boxShadow: `0 0 0 0 ${styles.border}66`,
             },

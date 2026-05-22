@@ -113,6 +113,8 @@ class Trace(Base):
         nullable=True,
         comment="Trace embedding vector",
     )
+    # Combined free-text field used for full-text search and keyword matches
+    search_text = Column(Text, nullable=True, comment="Combined searchable text for FTS and keyword matching")
     attributes = Column(
         JSONBCompat,
         nullable=True,
@@ -146,6 +148,7 @@ class Trace(Base):
         Index("idx_trace_attributes_gin", "attributes", postgresql_using="gin"),
         Index("idx_trace_feedback_gin", "feedback", postgresql_using="gin"),
         Index("idx_trace_ai_eval_gin", "ai_evaluation", postgresql_using="gin"),
+        Index("idx_trace_search_text", "search_text"),
     )
     
     def __repr__(self):
@@ -302,6 +305,77 @@ class AppSettings(Base):
         nullable=False,
         default=dict,
         comment="Global settings JSON payload",
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+        comment="Last update timestamp",
+    )
+
+
+class Settings(Base):
+    """Singleton LLM routing settings used by Librarian and Judge."""
+
+    __tablename__ = "settings"
+
+    id = Column(Integer, primary_key=True, comment="Singleton row ID")
+    librarian_provider = Column(
+        String,
+        nullable=False,
+        default="gemini",
+        comment="Provider for Librarian chat (openai|gemini|anthropic|huggingface)",
+    )
+    librarian_model = Column(
+        String,
+        nullable=False,
+        default="gemini-2.5-flash",
+        comment="Model ID for Librarian chat",
+    )
+    judge_provider = Column(
+        String,
+        nullable=False,
+        default="gemini",
+        comment="Provider for AI Judge (openai|gemini|anthropic|huggingface)",
+    )
+    judge_model = Column(
+        String,
+        nullable=False,
+        default="gemini-2.5-flash",
+        comment="Model ID for AI Judge",
+    )
+    curator_provider = Column(
+        String,
+        nullable=False,
+        default="gemini",
+        comment="Provider for Curriculum Curator (openai|gemini|anthropic|huggingface)",
+    )
+    curator_model = Column(
+        String,
+        nullable=False,
+        default="gemini-2.5-flash",
+        comment="Model ID for Curriculum Curator",
+    )
+    openai_api_key = Column(
+        String,
+        nullable=True,
+        comment="Optional OpenAI API key override stored in DB",
+    )
+    gemini_api_key = Column(
+        String,
+        nullable=True,
+        comment="Optional Gemini API key override stored in DB",
+    )
+    anthropic_api_key = Column(
+        String,
+        nullable=True,
+        comment="Optional Anthropic API key override stored in DB",
+    )
+    huggingface_api_key = Column(
+        String,
+        nullable=True,
+        comment="Optional Hugging Face API key override stored in DB",
     )
     updated_at = Column(
         DateTime(timezone=True),

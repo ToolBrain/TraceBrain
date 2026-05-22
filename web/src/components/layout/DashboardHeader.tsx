@@ -9,6 +9,8 @@ import IconButton from "@mui/material/IconButton";
 import { useNavigate, useLocation } from "react-router-dom";
 import { LightMode, DarkMode } from "@mui/icons-material";
 import { useSettings } from "../../contexts/SettingsContext";
+import lightOwl from "../../assets/chat-light-bg.png";
+import darkOwl from "../../assets/chat-dark-bg.png";
 
 const pages = [
   { label: "Dashboard", path: "/dashboard" },
@@ -22,6 +24,8 @@ const DashboardHeader: React.FC = () => {
   const { settings, updateSettings } = useSettings();
   const location = useLocation();
   const nav = useNavigate();
+  const isDark = settings.appearance.theme === "dark";
+  const logoSrc = isDark ? darkOwl : lightOwl;
 
   const toggleTheme = () => {
     updateSettings((draft) => {
@@ -51,6 +55,30 @@ const DashboardHeader: React.FC = () => {
                 userSelect: "none",
               }}
             >
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  mr: 1.5,
+                  borderRadius: "50%",
+                  display: "grid",
+                  placeItems: "center",
+                  background: "linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75))",
+                  border: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <Box
+                  component="img"
+                  src={logoSrc}
+                  alt="TraceBrain"
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    display: "block",
+                  }}
+                />
+              </Box>
               <Typography
                 variant="h6"
                 noWrap
@@ -74,7 +102,7 @@ const DashboardHeader: React.FC = () => {
                   key={page.path}
                   onClick={() => navigate(page.path)}
                   sx={{
-                    my: 2,
+                    my: 1.5,
                     color: "white",
                     display: "block",
                     fontSize: "1rem",

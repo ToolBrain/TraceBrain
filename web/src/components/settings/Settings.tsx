@@ -39,7 +39,7 @@ const Settings: React.FC = () => {
   const CurrentSection = SECTIONS[selectedSection].component;
 
   return (
-    <Box sx={{ display: "flex", height: "100%" }}>
+    <Box sx={{ display: "flex", height: "100%", overflow: "hidden" }}>
       <Box sx={{ width: 240, borderRight: 1, pr: 2, borderColor: "divider" }}>
         <List>
           {SECTION_KEYS.map((key) => (
@@ -66,8 +66,10 @@ const Settings: React.FC = () => {
           ))}
         </List>
       </Box>
-      <Box sx={{ flex: 1, p: 3 }}>
-        <CurrentSection />
+      <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        <Box sx={{ flex: 1, p: 3, minHeight: 0, overflowY: "auto" }}>
+          <CurrentSection />
+        </Box>
       </Box>
     </Box>
   );
