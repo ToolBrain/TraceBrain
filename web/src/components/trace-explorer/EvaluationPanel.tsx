@@ -15,8 +15,10 @@ import {
   FormControl,
   Select,
   MenuItem,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
-import { ExpandLess, ExpandMore, ErrorOutline } from "@mui/icons-material";
+import { ExpandLess, ExpandMore, ErrorOutline, Refresh } from "@mui/icons-material";
 import type { Trace } from "../../types/trace";
 import {
   traceGetEvaluation,
@@ -27,7 +29,8 @@ import {
 import { evaluateTrace, submitTraceFeedback } from "../utils/api";
 import StatusChip from "../shared/StatusChip";
 import ErrorTypeChip from "../shared/ErrorTypeChip";
-import { useSettings } from "../../contexts/SettingsContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { useParams, useSearchParams } from "react-router-dom";
 import { getConfidenceColor } from "../utils/utils";
 
 interface EvaluationPanelProps {
@@ -36,7 +39,7 @@ interface EvaluationPanelProps {
 
 const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
   const [expertRating, setExpertRating] = useState<number | null>(null);
-  const [priority, setPriority] = useState<number>(trace ? traceGetPriority(trace) : 3);
+  const [expertPriority, setExpertPriority] = useState<number>(trace ? traceGetPriority(trace) : 3);
   const [expertComment, setExpertComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -49,7 +52,10 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
 
   const feedback = trace ? traceGetLatestFeedback(trace) : null;
 
-  const { settings } = useSettings();
+  const queryClient = useQueryClient();
+  const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const type = searchParams.get("type");
 
   const evaluation = useMemo(() => {
     if (!trace) return null;
@@ -59,21 +65,26 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
   const aiRating = typeof evaluation?.rating === "number" ? evaluation.rating : null;
   const aiFeedback = typeof evaluation?.feedback === "string" ? evaluation.feedback : "";
   const aiConfidence = typeof evaluation?.confidence === "number" ? evaluation.confidence : null;
+  const aiPriority = typeof evaluation?.priority === "number" ? evaluation.priority : null;
   const errorType = trace ? traceGetErrorType(trace) : null;
-  const [localStatus, setLocalStatus] = useState<string | null>(null);
-  const aiStatus =
-    localStatus ?? (typeof evaluation?.status === "string" ? evaluation.status : null);
+  const aiStatus = typeof evaluation?.status === "string" ? evaluation.status : null;
 
   useEffect(() => {
     setSubmitError("");
     setSuccessOpen(false);
     setExpertRating(feedback ? feedback.rating : aiRating);
-    setPriority(trace ? traceGetPriority(trace) : 3);
+    setExpertPriority(aiPriority ?? (trace ? traceGetPriority(trace) : 3));
     setExpertComment(feedback ? feedback.comment : aiFeedback);
     setEvalError("");
-    setLocalStatus(null);
     setShowEvalError(false);
   }, [trace?.trace_id]);
+
+  useEffect(() => {
+    if (feedback) return;
+    setExpertRating(aiRating);
+    setExpertComment(aiFeedback);
+    setExpertPriority(aiPriority ?? 3);
+  }, [aiRating, aiFeedback, aiPriority]);
 
   const handleEvaluate = async () => {
     if (!trace) return;
@@ -81,7 +92,8 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     setEvalError("");
     setShowEvalError(false);
     try {
-      await evaluateTrace(trace.trace_id, settings.llm.model);
+      await evaluateTrace(trace.trace_id);
+      await queryClient.invalidateQueries({ queryKey: ["traces", type, id] });
     } catch (e: any) {
       setEvalError(e?.message || "Failed to evaluate trace.");
     } finally {
@@ -94,9 +106,9 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
     setSubmitting(true);
     setSubmitError("");
     try {
-      await submitTraceFeedback(trace.trace_id, expertRating, expertComment, priority);
+      await submitTraceFeedback(trace.trace_id, expertRating, expertComment, expertPriority);
+      await queryClient.invalidateQueries({ queryKey: ["traces", type, id] });
       setSuccessOpen(true);
-      setLocalStatus("completed");
     } catch (error: any) {
       setSubmitError(error?.message || "Failed to submit validation.");
     } finally {
@@ -107,9 +119,14 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
   const confidenceColor = getConfidenceColor(aiConfidence);
 
   const matchesAISuggestion =
-    !!evaluation && expertRating === aiRating && expertComment === aiFeedback;
+    !!evaluation &&
+    expertRating === aiRating &&
+    expertComment === aiFeedback &&
+    expertPriority === aiPriority;
 
-  const hasEdited = !!evaluation && (expertRating !== aiRating || expertComment !== aiFeedback);
+  const hasEdited =
+    !!evaluation &&
+    (expertRating !== aiRating || expertComment !== aiFeedback || expertPriority !== aiPriority);
 
   const renderAIAssessment = () => {
     // If currently evaluating
@@ -195,27 +212,49 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
 
     // If evaluation exists
     return (
-      <>
-        <Box>
-          <Typography variant="caption" color="text.secondary">
-            AI Rating
-          </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Rating
-              value={aiRating}
-              readOnly
-              max={5}
-              precision={1}
-              size="small"
-              sx={{ color: "warning.light" }}
-            />
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: 1,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <Box>
             <Typography variant="caption" color="text.secondary">
-              {aiRating !== null ? `${aiRating}/5` : ""}
+              AI Rating
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Rating
+                value={aiRating}
+                readOnly
+                max={5}
+                precision={1}
+                size="small"
+                sx={{ color: "warning.light" }}
+              />
+              <Typography variant="caption" color="text.secondary">
+                {aiRating !== null ? `${aiRating}/5` : ""}
+              </Typography>
+              {errorType && errorType !== "none" && <ErrorTypeChip errorType={errorType} />}
+              {aiStatus && <StatusChip status={aiStatus} />}
+            </Box>
+          </Box>
+
+          <Box sx={{ mr: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              Priority
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              {aiPriority ?? "N/A"}
             </Typography>
           </Box>
         </Box>
 
-        <Box>
+        <Box sx={{ mr: 0.5 }}>
           <Typography variant="caption" color="text.secondary">
             Confidence
           </Typography>
@@ -234,29 +273,13 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
           </Box>
         </Box>
 
-        {errorType && errorType !== "none" && (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-            <Typography variant="caption" color="text.secondary">
-              Error Type
-            </Typography>
-            <ErrorTypeChip errorType={errorType} />
-          </Box>
-        )}
-        <Box>
+        <Box sx={{ mr: 0.5 }}>
           <Typography variant="caption" color="text.secondary">
             AI Rationale
           </Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            {aiFeedback}
-          </Typography>
+          <Typography variant="body2">{aiFeedback}</Typography>
         </Box>
-
-        {aiStatus && (
-          <Box sx={{ mt: 1 }}>
-            <StatusChip status={aiStatus} />
-          </Box>
-        )}
-      </>
+      </Box>
     );
   };
 
@@ -277,9 +300,10 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
         <Typography variant="h6">Evaluation and Governance</Typography>
         <Button
           size="small"
-          variant="outlined"
+          variant="text"
           onClick={() => setShowEvaluation((prev) => !prev)}
           startIcon={showEvaluation ? <ExpandLess /> : <ExpandMore />}
+          sx={{ color: "text.secondary" }}
         >
           {showEvaluation ? "Collapse" : "Expand"}
         </Button>
@@ -326,20 +350,44 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                 AI-Generated Assessment
               </Typography>
-              <Chip
-                label="AI Draft"
-                size="small"
-                color="primary"
-                sx={{
-                  borderColor: "divider",
-                  border: "1px solid",
-                  p: 1,
-                  borderRadius: 2,
-                }}
-              />
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                {aiConfidence !== null && (
+                  <Tooltip title="Generate Again">
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={handleEvaluate}
+                        disabled={!trace || evaluating}
+                        sx={{ color: "text.secondary" }}
+                      >
+                        <Refresh fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                )}
+                <Chip
+                  label="AI Draft"
+                  size="small"
+                  color="primary"
+                  sx={{
+                    borderColor: "divider",
+                    border: "1px solid",
+                    p: 1,
+                    borderRadius: 2,
+                  }}
+                />
+              </Box>
             </Box>
 
-            <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", pr: 0.5 }}>
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                display: "flex",
+                flexDirection: "column",
+                pr: 0.5,
+              }}
+            >
               {renderAIAssessment()}
             </Box>
           </Box>
@@ -405,7 +453,10 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
                   Priority
                 </Typography>
                 <FormControl size="small">
-                  <Select value={priority} onChange={(e) => setPriority(Number(e.target.value))}>
+                  <Select
+                    value={expertPriority}
+                    onChange={(e) => setExpertPriority(Number(e.target.value))}
+                  >
                     {[1, 2, 3, 4, 5].map((n) => (
                       <MenuItem key={n} value={n}>
                         {n}
@@ -445,7 +496,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ trace }) => {
               disabled={expertRating === null || submitting}
               sx={{ mt: "auto" }}
             >
-              {submitting ? "Submitting..." : "Verify and Submit"}
+              {submitting ? "Submitting..." : "Submit"}
             </Button>
           </Box>
         </Box>

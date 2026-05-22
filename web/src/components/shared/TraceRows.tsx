@@ -13,7 +13,7 @@ import {
   traceGetStatus,
   traceGetTotalTokens,
 } from "../utils/traceUtils";
-import { formatDateTime, getPriorityColor } from "../utils/utils";
+import { formatDateTime, formatDuration, getPriorityColor } from "../utils/utils";
 import StatusChip from "./StatusChip";
 import TypeChip from "./TypeChip";
 import ErrorTypeChip from "./ErrorTypeChip";
@@ -57,14 +57,13 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
           const aiRating = traceGetEvalRating(trace);
           const confidence = evaluation?.confidence;
           const suggestion_status = evaluation?.status;
-          const isAnalyzing = !evaluation;
 
           return (
             <TableRow
               key={trace.trace_id}
               hover
               onClick={(e) => handleTraceClick(trace.trace_id, e)}
-              sx={{ cursor: "pointer", "& > td": { py: 1.5, px: 1.75 } }}
+              sx={{ cursor: "pointer", "& > td": { px: 1.75, py: 1.5 } }}
             >
               <TableCell />
               <TableCell>
@@ -138,13 +137,7 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                 <StatusChip status={status} secondary />
               </TableCell>
               <TableCell>
-                {errorType && errorType !== "none" ? (
-                  <ErrorTypeChip errorType={errorType} />
-                ) : (
-                  <Typography variant="body2" sx={{ color: "text.disabled" }}>
-                    —
-                  </Typography>
-                )}
+                {errorType && errorType !== "none" && <ErrorTypeChip errorType={errorType} />}
               </TableCell>
               <TableCell>
                 <Typography
@@ -154,7 +147,7 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                     fontSize: "0.75rem",
                   }}
                 >
-                  {duration}s
+                  {formatDuration(duration)}
                 </Typography>
               </TableCell>
               <TableCell>
@@ -173,11 +166,7 @@ const TraceRows: React.FC<TraceRowsProps> = ({ traces, episodeId }) => {
                 </Typography>
               </TableCell>
               <TableCell>
-                <ConfidenceIndicator
-                  confidence={confidence}
-                  status={suggestion_status}
-                  isAnalyzing={isAnalyzing}
-                />
+                <ConfidenceIndicator confidence={confidence} status={suggestion_status} />
               </TableCell>
             </TableRow>
           );

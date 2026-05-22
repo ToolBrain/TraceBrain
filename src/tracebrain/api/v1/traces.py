@@ -8,7 +8,7 @@ import json
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import Integer, cast, func
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -112,16 +112,29 @@ def list_traces(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to list traces: {str(exc)}")
 
+@router.delete("/traces/{trace_id}", tags=["Traces"])
+def delete_trace(trace_id: str):
+    """Delete a specific trace."""
+    try:
+        store.delete_trace(trace_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete trace: {str(exc)}")
 
 @router.get("/traces/search", response_model=ExperienceSearchResponse, tags=["Traces"])
 def search_traces(
-    text: str = Query(..., description="Natural language search text"),
+    semantic_query: Optional[str] = Query(None, description="Semantic search intent (natural language)"),
+    exact_keywords: Optional[str] = Query(None, description="Exact keywords, IDs, or error/tool tokens for lexical matching"),
     min_rating: int = Query(4, ge=1, le=5, description="Minimum rating threshold"),
-    limit: int = Query(3, ge=1, le=20, description="Maximum number of results"),
+    limit: int = Query(3, ge=1, le=50, description="Maximum number of results"),
 ):
-    """Search for similar high-quality traces using vector similarity."""
+    """Hybrid search combining semantic vector search and exact keyword matching."""
     try:
-        results = store.search_similar_experiences(text, min_rating=min_rating, limit=limit)
+        results = store.hybrid_search_traces(
+            semantic_query=semantic_query,
+            exact_keywords=exact_keywords,
+            limit=limit,
+            min_rating=min_rating,
+        )
         return ExperienceSearchResponse(total=len(results), results=results)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to search traces: {str(exc)}")
@@ -129,53 +142,108 @@ def search_traces(
 
 @router.get("/export/traces", tags=["Export"])
 def export_traces(
-    min_rating: int = Query(4, ge=1, le=5, description="Minimum rating threshold"),
-    limit: int = Query(100, ge=1, le=500, description="Maximum number of traces"),
+    status: Optional[str] = Query(
+        None,
+        description="Filter by trace status (e.g., 'completed', 'failed', 'needs_review')",
+    ),
+    min_rating: Optional[int] = Query(
+        None,
+        ge=1,
+        le=5,
+        description="Filter by minimum feedback rating",
+    ),
+    error_type: Optional[str] = Query(
+        None,
+        description="Filter by a specific error classification (e.g., 'logic_loop')",
+    ),
+    min_confidence: Optional[float] = Query(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Filter by minimum AI evaluation confidence",
+    ),
+    max_confidence: Optional[float] = Query(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Filter by maximum AI evaluation confidence",
+    ),
+    start_time: Optional[datetime] = Query(
+        None,
+        description="Filter traces created after this timestamp (ISO 8601)",
+    ),
+    end_time: Optional[datetime] = Query(
+        None,
+        description="Filter traces created before this timestamp (ISO 8601)",
+    ),
+    limit: Optional[int] = Query(
+        None,
+        ge=1,
+        le=5000,
+        description="Maximum number of traces to export",
+    ),
     format: str = Query("json", description="Export format: 'json' or 'jsonl'"),
 ):
     """Export high-quality traces as OTLP payloads."""
     format_value = format.lower().strip()
     if format_value not in {"json", "jsonl"}:
         raise HTTPException(status_code=400, detail="Invalid format. Use 'json' or 'jsonl'.")
-    session = store.get_session()
-    try:
-        results: List[Dict[str, Any]] = []
-        if settings.is_postgres:
-            rating_value = cast(
-                func.jsonb_extract_path_text(cast(Trace.feedback, JSONB), "rating"),
-                Integer,
-            )
-            trace_rows = (
-                session.query(Trace)
-                .filter(Trace.feedback.isnot(None))
-                .filter(rating_value >= min_rating)
-                .order_by(Trace.created_at.desc())
-                .limit(limit)
-                .all()
-            )
-        else:
-            trace_rows = session.query(Trace).order_by(Trace.created_at.desc()).all()
-            filtered = []
-            for trace in trace_rows:
-                rating = None
-                if trace.feedback and isinstance(trace.feedback, dict):
-                    rating = trace.feedback.get("rating")
-                if isinstance(rating, int) and rating >= min_rating:
-                    filtered.append(trace)
-            trace_rows = filtered[:limit]
+    headers = {
+        "Content-Disposition": "attachment; filename=tracebrain_export.jsonl"
+        if format_value == "jsonl"
+        else "attachment; filename=tracebrain_export.json",
+    }
 
-        for trace in trace_rows:
+    def generate_jsonl():
+        for trace in store.iter_traces_filtered(
+            status=status,
+            min_rating=min_rating,
+            error_type=error_type,
+            min_confidence=min_confidence,
+            max_confidence=max_confidence,
+            start_time=start_time,
+            end_time=end_time,
+            limit=limit,
+        ):
             otlp = store.get_full_trace(trace.id)
             if otlp:
-                results.append(otlp)
+                yield json.dumps(otlp)
+                yield "\n"
 
-        if format_value == "jsonl":
-            jsonl_content = "\n".join(json.dumps(item) for item in results)
-            return Response(content=jsonl_content, media_type="application/x-jsonlines")
+    def generate_json():
+        first = True
+        yield "["
+        for trace in store.iter_traces_filtered(
+            status=status,
+            min_rating=min_rating,
+            error_type=error_type,
+            min_confidence=min_confidence,
+            max_confidence=max_confidence,
+            start_time=start_time,
+            end_time=end_time,
+            limit=limit,
+        ):
+            otlp = store.get_full_trace(trace.id)
+            if not otlp:
+                continue
+            if not first:
+                yield ","
+            yield json.dumps(otlp)
+            first = False
+        yield "]"
 
-        return results
-    finally:
-        session.close()
+    if format_value == "jsonl":
+        return StreamingResponse(
+            generate_jsonl(),
+            media_type="application/x-jsonlines",
+            headers=headers,
+        )
+
+    return StreamingResponse(
+        generate_json(),
+        media_type="application/json",
+        headers=headers,
+    )
 
 
 @router.get("/traces/{trace_id}", response_model=TraceOut, tags=["Traces"])

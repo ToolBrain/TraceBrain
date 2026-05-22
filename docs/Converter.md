@@ -62,6 +62,7 @@ How to choose `tracebrain.episode.id`:
   "end_time": "2025-10-27T10:30:02.234Z",
   "attributes": {
     "tracebrain.span.type": "llm_inference",
+    "tracebrain.llm.model": "gemini-2.5-flash",
     "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the weather in Tokyo?\"}]",
     "tracebrain.llm.completion": "{\"tool_call\": {\"name\": \"get_weather\", \"arguments\": {\"location\": \"Tokyo\"}}}",
     "tracebrain.llm.thought": null,
@@ -85,6 +86,7 @@ How to choose `tracebrain.episode.id`:
 ```json
 {
   "tracebrain.span.type": "llm_inference",
+  "tracebrain.llm.model": "gemini-2.5-flash",
   "tracebrain.llm.new_content": "[{\"role\": \"user\", \"content\": \"What is the weather in Tokyo?\"}]",
   "tracebrain.llm.completion": "{\"tool_call\": {\"name\": \"get_weather\", \"arguments\": {\"location\": \"Tokyo\"}}}",
   "tracebrain.llm.thought": null,
@@ -94,6 +96,7 @@ How to choose `tracebrain.episode.id`:
 ```
 
 **Meaning of key fields**
+- `tracebrain.llm.model`: The model used for this inference step (e.g. `gemini-2.5-flash`, `claude-sonnet-4-6`). Set per span to support multi-model workflows where different steps may use different models.
 - `tracebrain.llm.new_content`: The delta for this turn. It contains only the *new messages introduced in this step*, not the full history. This is the core of the storage-efficient design.
 - `tracebrain.llm.completion`: The raw model output for this step.
 - `tracebrain.llm.thought`: Optional parsed reasoning text.
@@ -152,14 +155,14 @@ def iso_now():
 
 # Example input format
 # steps = [
-#   {"type": "llm", "new_content": [{"role": "user", "content": "Hi"}], "completion": "...", "thought": "...", "tool_code": "tool(...)"},
+#   {"type": "llm", "model": "gemini-2.5-flash", "new_content": [{"role": "user", "content": "Hi"}], "completion": "...", "thought": "...", "tool_code": "tool(...)"},
 #   {"type": "tool", "name": "tool", "input": "{...}", "output": "result"},
-#   {"type": "llm", "new_content": [{"role": "assistant", "content": "Done"}], "completion": "Done", "final_answer": "Done"}
+#   {"type": "llm", "model": "gemini-2.5-flash", "new_content": [{"role": "assistant", "content": "Done"}], "completion": "Done", "final_answer": "Done"}
 # ]
 
 def convert_steps_to_otlp(steps, system_prompt, episode_id=None):
     trace_id = uuid.uuid4().hex
-  episode_id = episode_id or f"ep-{uuid.uuid4().hex[:8]}"
+    episode_id = episode_id or f"ep-{uuid.uuid4().hex[:8]}"
     spans = []
     parent_id = None
 
@@ -169,6 +172,7 @@ def convert_steps_to_otlp(steps, system_prompt, episode_id=None):
         if step["type"] == "llm":
             attrs = {
                 "tracebrain.span.type": "llm_inference",
+                "tracebrain.llm.model": step.get("model"),
                 "tracebrain.llm.new_content": json.dumps(step.get("new_content", [])),
                 "tracebrain.llm.completion": step.get("completion"),
                 "tracebrain.llm.thought": step.get("thought"),

@@ -52,6 +52,13 @@ def list_episodes(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to list episodes: {str(exc)}")
 
+@router.delete("/{episode_id}")
+def delete_episode(episode_id: str):
+    """Delete an episode and all its traces."""
+    try:
+        store.delete_episode(episode_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete episode: {str(exc)}")
 
 @router.get("/summary", response_model=EpisodeSummaryListOut)
 def list_episode_summaries(

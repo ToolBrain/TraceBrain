@@ -13,6 +13,9 @@ from .schemas.api_models import (
     HistoryAddRequest,
     HistoryListOut,
     HistoryResponse,
+    SettingsIn,
+    SettingsOut,
+    SystemInfoOut,
     TraceOut,
     trace_to_out,
 )
@@ -57,6 +60,7 @@ def root():
             "clear_history": "DELETE /api/v1/history",
             "get_settings": "GET /api/v1/settings",
             "save_settings": "POST /api/v1/settings",
+            "system_info": "GET /api/v1/system/info",
             "curriculum_delete_task": "DELETE /api/v1/curriculum/{task_id}",
             "curriculum_delete_all": "DELETE /api/v1/curriculum",
             "curriculum_complete_task": "PATCH /api/v1/curriculum/{task_id}/complete",
@@ -80,20 +84,45 @@ def health_check():
         raise HTTPException(status_code=503, detail=f"Database connection failed: {str(exc)}")
 
 
-@router.get("/settings", tags=["Settings"])
-async def get_settings() -> Dict[str, Any]:
+@router.get("/system/info", response_model=SystemInfoOut, tags=["System"])
+def get_system_info() -> SystemInfoOut:
+    """Return runtime metadata used by the Librarian welcome state."""
+    try:
+        backend_type = settings.get_backend_type()
+        database_type = "PostgreSQL" if backend_type == "postgres" else "SQLite"
+        return SystemInfoOut(
+            database_type=database_type,
+            trace_count=store.count_traces(),
+            model_name=store.get_librarian_model_name(),
+            embedding_provider=(settings.EMBEDDING_PROVIDER or "none"),
+            embedding_model=(settings.EMBEDDING_MODEL or "n/a"),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve system info: {str(exc)}")
+
+
+@router.get("/settings", response_model=SettingsOut, tags=["Settings"])
+async def get_settings() -> SettingsOut:
     """Load settings from the database."""
     try:
-        return store.get_settings()
+        return SettingsOut(**store.get_settings(mask_api_keys=True))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@router.post("/settings", tags=["Settings"])
-async def save_settings(settings_payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Save the settings object to the database."""
+@router.post("/settings", response_model=SettingsOut, tags=["Settings"])
+async def save_settings(settings_payload: SettingsIn) -> SettingsOut:
+    """Save provider/model settings to the database."""
     try:
-        return store.update_settings(settings_payload)
+        saved = store.save_settings(
+            settings_payload.model_dump(exclude_unset=True),
+            mask_api_keys=True,
+        )
+        return SettingsOut(**saved)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 

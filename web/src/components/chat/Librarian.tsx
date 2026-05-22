@@ -1,24 +1,33 @@
 import React, { useEffect, useState } from "react";
 import { Paper, Stack, Typography, TextField, IconButton, Fab, Divider } from "@mui/material";
-import { Send, ChatBubble, Remove, DeleteOutline } from "@mui/icons-material";
+import { Send, Remove, DeleteOutline, ChatBubble } from "@mui/icons-material";
 import { useChat } from "../../contexts/ChatContext";
 import { ChatMessages } from "./ChatMessages";
 import { ChatSuggestions } from "./ChatSuggestions";
-import { AssistantAvatar } from "./Icons";
+import { LibrarianLogoAvatar } from "./Icons";
+
+interface SystemInfo {
+  database_type: string;
+  trace_count: number;
+  model_name: string;
+}
 
 export const Librarian: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
+  const [isSystemInfoLoading, setIsSystemInfoLoading] = useState(false);
   const { messages, suggestions, isLoading, sendMessage, clearMessages, clearSuggestions } =
     useChat();
   const [selectedSuggestion, setSelectedSuggestion] = useState(false);
 
   // Sends the message if input is not empty and clears the input
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const handleSend = async (prefill?: string) => {
+    const message = (prefill ?? input).trim();
+    if (!message) return;
 
-    await sendMessage(input);
     setInput("");
+    await sendMessage(message);
   };
 
   // Sends message on when enter is press and allows newline with Shift+Enter
@@ -35,6 +44,12 @@ export const Librarian: React.FC = () => {
     setSelectedSuggestion(true);
   };
 
+  // Handle quick starter click
+  const handleQuickStarterClick = (query: string) => {
+    setSelectedSuggestion(false);
+    setInput(query);
+  };
+
   // Handle clear session
   const handleClearSession = () => {
     clearMessages();
@@ -48,6 +63,40 @@ export const Librarian: React.FC = () => {
       setSelectedSuggestion(false);
     }
   }, [suggestions]);
+
+  // Fetch lightweight system metadata for welcome state
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSystemInfo = async () => {
+      setIsSystemInfoLoading(true);
+      try {
+        const response = await fetch("/api/v1/system/info");
+        if (!response.ok) {
+          throw new Error(`Failed to load system metadata: ${response.statusText}`);
+        }
+        const payload = (await response.json()) as SystemInfo;
+        if (isMounted) {
+          setSystemInfo(payload);
+        }
+      } catch (error) {
+        console.error(error);
+        if (isMounted) {
+          setSystemInfo(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsSystemInfoLoading(false);
+        }
+      }
+    };
+
+    void loadSystemInfo();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <>
@@ -65,6 +114,8 @@ export const Librarian: React.FC = () => {
             borderRadius: 2,
             overflow: "hidden",
             zIndex: 1200,
+            border: "1px solid",
+            borderColor: "divider",
           }}
         >
           <Stack
@@ -77,7 +128,7 @@ export const Librarian: React.FC = () => {
               color: "primary.contrastText",
             }}
           >
-            <AssistantAvatar />
+            <LibrarianLogoAvatar />
             <Stack flex={1}>
               <Typography variant="h6" sx={{ fontWeight: 600, userSelect: "none" }}>
                 TraceBrain Librarian
@@ -98,7 +149,13 @@ export const Librarian: React.FC = () => {
             </IconButton>
           </Stack>
 
-          <ChatMessages messages={messages} isLoading={isLoading} />
+          <ChatMessages
+            messages={messages}
+            isLoading={isLoading}
+            systemInfo={systemInfo}
+            isSystemInfoLoading={isSystemInfoLoading}
+            onQuickStarterClick={handleQuickStarterClick}
+          />
 
           {!selectedSuggestion && suggestions.length > 0 && (
             <ChatSuggestions
@@ -120,7 +177,7 @@ export const Librarian: React.FC = () => {
           >
             <TextField
               fullWidth
-              placeholder="Type your message..."
+              placeholder={isLoading ? "Waiting for Librarian..." : "Type your message..."}
               variant="outlined"
               multiline
               maxRows={3}
@@ -134,9 +191,19 @@ export const Librarian: React.FC = () => {
                     <IconButton
                       size="small"
                       color="primary"
-                      onClick={handleSend}
+                      onClick={() => {
+                        void handleSend();
+                      }}
                       disabled={isLoading || !input.trim()}
-                      sx={{ alignSelf: "flex-end", mb: 0.5 }}
+                      sx={{
+                        alignSelf: "flex-end",
+                        mb: 0.5,
+                        bgcolor: input.trim() && !isLoading ? "primary.main" : "transparent",
+                        color: input.trim() && !isLoading ? "primary.contrastText" : "text.disabled",
+                        "&:hover": {
+                          bgcolor: input.trim() && !isLoading ? "primary.dark" : "transparent",
+                        },
+                      }}
                     >
                       <Send fontSize="small" />
                     </IconButton>
@@ -145,7 +212,7 @@ export const Librarian: React.FC = () => {
               }}
               sx={{
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
+                  borderRadius: 2.5,
                 },
               }}
             />

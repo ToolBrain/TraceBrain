@@ -21,7 +21,7 @@ const TraceViewSwitcher: React.FC<TraceViewSwitcherProps> = ({ traces }) => {
       sx={{
         position: "relative",
         width: "100%",
-        height: 360,
+        minHeight: 260,
       }}
     >
       <Box sx={{ height: "100%"}}>

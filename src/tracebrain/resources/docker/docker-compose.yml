@@ -1,0 +1,120 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: ankane/pgvector:v0.5.1
+    container_name: tracebrain-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tracebrain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tracebrain_2026_secure}
+      POSTGRES_DB: ${POSTGRES_DB:-tracestore}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    # For local development only. Do not expose DB in production.
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - tracebrain-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracebrain -d tracestore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # TraceBrain API
+  tracebrain-api:
+    image: ${TRACEBRAIN_IMAGE:-quyk67uet/tracebrain:latest}
+    container_name: tracebrain-api
+    restart: unless-stopped
+    environment:
+      # Database Configuration
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
+
+      # Server Configuration
+      HOST: 0.0.0.0
+      PORT: 8000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+      # System Settings
+      LIBRARIAN_MODE: ${LIBRARIAN_MODE:-api}
+      LLM_DEBUG: ${LLM_DEBUG:-false}
+
+      # LLM API Keys
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      HUGGINGFACE_API_KEY: ${HUGGINGFACE_API_KEY:-}
+
+      # Optional Provider Base URLs
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
+      HUGGINGFACE_BASE_URL: ${HUGGINGFACE_BASE_URL:-}
+
+      # Bootstrap Defaults
+      DEFAULT_LIBRARIAN_PROVIDER: ${DEFAULT_LIBRARIAN_PROVIDER:-openai}
+      DEFAULT_LIBRARIAN_MODEL: ${DEFAULT_LIBRARIAN_MODEL:-gpt-4o-mini}
+      DEFAULT_JUDGE_PROVIDER: ${DEFAULT_JUDGE_PROVIDER:-gemini}
+      DEFAULT_JUDGE_MODEL: ${DEFAULT_JUDGE_MODEL:-gemini-2.5-flash}
+      DEFAULT_CURATOR_PROVIDER: ${DEFAULT_CURATOR_PROVIDER:-gemini}
+      DEFAULT_CURATOR_MODEL: ${DEFAULT_CURATOR_MODEL:-gemini-2.5-flash}
+
+      # Embedding Settings
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
+
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - tracebrain-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - api_logs:/app/logs
+      - api_data:/app/data
+
+  # Seed sample data
+  tracebrain-seed:
+    image: ${TRACEBRAIN_IMAGE:-quyk67uet/tracebrain:latest}
+    container_name: tracebrain-seed
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tracebrain}:${POSTGRES_PASSWORD:-tracebrain_2026_secure}@postgres:5432/${POSTGRES_DB:-tracestore}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      HUGGINGFACE_API_KEY: ${HUGGINGFACE_API_KEY:-}
+    depends_on:
+      tracebrain-api:
+        condition: service_healthy
+    command: ["tracebrain", "seed"]
+    networks:
+      - tracebrain-network
+
+# Named volumes for data persistence
+volumes:
+  postgres_data:
+    driver: local
+    name: tracebrain_postgres_data
+  api_logs:
+    driver: local
+    name: tracebrain_api_logs
+  api_data:
+    driver: local
+    name: tracebrain_api_data
+
+# Networks
+networks:
+  tracebrain-network:
+    driver: bridge
+    name: tracebrain-network

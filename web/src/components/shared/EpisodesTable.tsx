@@ -12,7 +12,6 @@ import {
   Typography,
 } from "@mui/material";
 import { Flag, KeyboardArrowDown, KeyboardArrowRight, Layers, Token } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
 import type { Episode } from "../../types/trace";
 import TraceRows from "./TraceRows";
 import {
@@ -23,14 +22,13 @@ import {
   episodeGetStatus,
   episodeGetTotalTokens,
 } from "../utils/episodeUtils";
-import { formatDateTime, getPriorityColor } from "../utils/utils";
+import { formatDateTime, formatDuration, getPriorityColor } from "../utils/utils";
 import TypeChip from "./TypeChip";
 import StatusChip from "./StatusChip";
 import ConfidenceIndicator from "./ConfidenceIndicator";
 
 const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
   const [open, setOpen] = useState(false);
-  const nav = useNavigate();
   const startTime = episodeGetStartTime(episode);
   const totalTokens = episodeGetTotalTokens(episode) ?? "N/A";
   const priority = episodeGetPriority(episode);
@@ -42,7 +40,7 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
     <React.Fragment>
       <TableRow
         hover
-        onClick={() => nav(`/trace/${episode.episode_id}?type=episode`)}
+        onClick={() => setOpen((v) => !v)}
         sx={{ cursor: "pointer", "& > td": { p: 1.75 } }}
       >
         <TableCell>
@@ -61,6 +59,7 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
             variant="body2"
             sx={{
               fontFamily: "monospace",
+              fontSize: "0.75rem",
             }}
           >
             {formatDateTime(startTime)}
@@ -122,18 +121,16 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
           <StatusChip status={status} />
         </TableCell>
         <TableCell>
-          <Typography variant="body2" sx={{ color: "text.disabled" }}>
-            —
-          </Typography>
         </TableCell>
         <TableCell>
           <Typography
             variant="body2"
             sx={{
               fontFamily: "monospace",
+              fontSize: "0.75rem",
             }}
           >
-            {duration}s
+            {formatDuration(duration)}
           </Typography>
         </TableCell>
         <TableCell>
@@ -141,6 +138,8 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
             variant="body2"
             sx={{
               fontFamily: "monospace",
+              fontSize: "0.75rem",
+              color: "text.secondary",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -150,10 +149,7 @@ const EpisodeRow: React.FC<{ episode: Episode }> = ({ episode }) => {
           </Typography>
         </TableCell>
         <TableCell>
-          <ConfidenceIndicator
-            confidence={avgConfidence}
-            isAnalyzing={avgConfidence === undefined}
-          />
+          <ConfidenceIndicator confidence={avgConfidence} />
         </TableCell>
       </TableRow>
       <TableRow>

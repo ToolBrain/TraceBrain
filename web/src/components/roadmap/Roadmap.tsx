@@ -303,11 +303,8 @@ const Roadmap: React.FC = () => {
   return (
     <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}>
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
+        <Typography variant="h4" sx={{ fontWeight: 600, mb: 2 }}>
           Training Roadmap
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Browse existing tasks or generate new ones
         </Typography>
 
         <Box
@@ -357,9 +354,8 @@ const Roadmap: React.FC = () => {
               disabled={isLoading}
               size="small"
               sx={{
-                border: 1,
-                borderRadius: "4px",
-                height: "40px",
+                borderRadius: 1,
+                height: "2.5rem",
                 "&:hover": {
                   borderColor: "text.primary",
                   bgcolor: "action.hover",
@@ -373,7 +369,7 @@ const Roadmap: React.FC = () => {
             <Box
               sx={{
                 px: 1.5,
-                height: "40px",
+                height: "2.5rem",
                 display: "flex",
                 alignItems: "center",
                 userSelect: "none",
