@@ -30,7 +30,7 @@
             </a>
         </td>
         <td>
-            <a href="https://youtu.be/iVPRAFdh1Io">
+            <a href="https://youtu.be/paQt1vLx6jU">
                 <img src="https://img.shields.io/badge/Video-Demo-red?logo=youtube&logoColor=white" alt="Video Demo">
             </a>
         </td>
@@ -38,28 +38,38 @@
 </table>
 </p>
 
-**TraceBrain** is an open-source platform for collecting, managing, and analyzing execution traces from LLM agents.
+**TraceBrain** is an open-source infrastructure for trace-driven observability, supervision, and adaptation in autonomous LLM agent systems.
 
-The system standardizes heterogeneous agent logs into a unified trace format, enabling consistent inspection, evaluation, and downstream analysis across different frameworks.
+The platform standardizes heterogeneous agent executions into reconstructable trajectories using a unified delta-based OpenTelemetry (OTLP) schema, enabling scalable trace storage, inspection, retrieval, and downstream analysis across diverse agent frameworks.
 
-By organizing historical traces as structured artifacts, TraceBrain supports agent observability, human oversight, and iterative improvement of agent workflows.
+Beyond passive logging, TraceBrain transforms execution traces into reusable operational assets for runtime governance, uncertainty-aware supervision, retrieval-driven adaptation, and structured downstream training workflows.
+
+---
 
 ## ✨ Key Features
 
-### 📥 Ingestion Layer (Standardization)
-- **Standardized Trace Format**: Capture agent workflows using a unified OTLP-based schema.
-- **Framework-Agnostic Integration**: Lightweight SDK and converters support agents built with various frameworks (e.g., LangChain, SmolAgents) or custom implementations.
-- **Delta-based Tracing**: Stores only incremental context updates (`new_content`) to reduce redundant prompt storage.
+### 📥 Ingestion Layer (Trace Standardization)
 
-### 🛡️ Governance Layer (Human-in-the-loop)
-- **Active Help Request**: Allows agents to escalate uncertain decisions to human experts during execution.
-- **Command Center UI**: Visualize multi-step agent traces and enable expert inspection and feedback.
-- **Semi-Automated Evaluation**: An AI Judge generates draft evaluations (e.g., `rating`, `confidence`, `error_type`, and `feedback`) that experts can review and finalize.
+- **Delta-based OTLP Schema**: Stores incremental state transitions instead of cumulative prompts, significantly reducing redundant context storage.
+- **Framework-Agnostic Integration**: Lightweight SDK and converters support heterogeneous agent ecosystems, including LangChain, SmolAgents, and custom multi-agent systems.
+- **Reconstructable Execution Trajectories**: Supports hierarchical trajectory reconstruction for long-horizon reasoning inspection, anomaly analysis, and operational debugging.
 
-### 🧠 Cognitive Layer (Trace-driven Learning)
-- **Experience Retrieval**: Agents can query past successful trajectories to guide reasoning via in-context learning.
-- **Automated Curriculum Generation**: Using error classifications produced by the AI Judge, a Curator agent analyzes clustered failure traces and synthesizes targeted training tasks.
-- **Hybrid Trace Search (Vector + Keyword)**: Reciprocal Rank Fusion (RRF) combines `pgvector` similarity with PostgreSQL full-text search for robust retrieval. SQLite gracefully falls back to basic keyword matching.
+---
+
+### 🛡️ Governance Layer (Runtime Supervision)
+
+- **Runtime Escalation**: Agents can request human intervention when detecting anomalous or uncertain behaviors during execution.
+- **Uncertainty-Driven Supervision**: An internal LLM-based Trace Evaluator assigns confidence-aware evaluations and selectively escalates low-confidence trajectories for expert review.
+- **Command Center UI**: Interactive interface for trajectory inspection, human validation, trace governance, and feedback management.
+
+---
+
+### 🧠 Cognitive Layer (Trace-Driven Adaptation)
+
+- **Hybrid Retrieval Engine**: Combines semantic vector retrieval (`pgvector`) and lexical search (`tsvector`) through Reciprocal Rank Fusion (RRF) for robust operational memory retrieval.
+- **Operational Memory Retrieval**: Enables agents to reuse successful historical trajectories for retrieval-augmented reasoning and in-context adaptation.
+- **Automated Curriculum Synthesis**: A Curator Agent mines clustered failure patterns and synthesizes structured remediation tasks from operational traces.
+- **Downstream Adaptation Pipelines**: Reconstructed traces and synthesized curricula are exportable as standardized training artifacts (e.g., JSONL) for downstream SFT and RL workflows.
 
 ## 🏗️ Architecture
 
