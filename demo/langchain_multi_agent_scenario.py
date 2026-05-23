@@ -163,10 +163,10 @@ def main() -> None:
         otlp_trace = convert_langchain_to_otlp(messages, system_prompt=SYSTEM_PROMPT)
         otlp_trace["attributes"]["tracebrain.ai_evaluation"] = {
             "rating": 2,
-            "confidence": 0.60,
+            "confidence": 0.45,
             "feedback": (
-                "Cyclical negotiation loop detected between Coder and Reviewer agents. "
-                "Coder reverted to previously rejected logic."
+                "Cyclical negotiation loop detected between Coder and Reviewer agents "
+                "due to semantic misalignment. Coder reverted to previously rejected logic."
             ),
             "status": "pending_review",
             "error_type": "logic_loop",
