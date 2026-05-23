@@ -333,14 +333,26 @@ Trace status is stored in both the database column `status` and in
 - `needs_review` - Trace requires human attention.
 - `failed` - Trace is marked as failed.
 
-**When `needs_review` is set:**
+**A trace is marked as `needs_review` when one of the following conditions is triggered:**
 
-- **Agent Signal:** The agent calls `request_human_intervention` (Active Help Request).
-- **AI Judgment:** `tracebrain.ai_evaluation.confidence` < 0.75, or
-    `tracebrain.ai_evaluation.error_type` is one of:
-    `logic_loop`, `hallucination`, `invalid_tool_usage`, `tool_execution_error`,
-    `format_error`, `misinterpretation`, `context_overflow`.
-- **System Error:** Any span has `otel.status_code` = `ERROR`.
+- **Runtime Escalation:**  
+  The agent explicitly invokes `request_human_intervention` during execution.
+
+- **Low-Confidence Evaluation:**  
+  `tracebrain.ai_evaluation.confidence < 0.75`.
+
+- **Critical Behavioral Anomalies:**  
+  `tracebrain.ai_evaluation.error_type` matches one of the following categories:
+  `logic_loop`,
+  `hallucination`,
+  `invalid_tool_usage`,
+  `tool_execution_error`,
+  `format_error`,
+  `misinterpretation`,
+  `context_overflow`.
+
+- **Execution Failure:**  
+  Any span contains `otel.status_code = ERROR`.
 
 ### Configuration (Settings + Provider Keys)
 
@@ -611,13 +623,11 @@ tracebrain_turns = TraceScope.to_tracebrain_turns(trace_data)
 # Example: tracebrain_turns[0] -> {"turn_id": "...", "messages": [...], "span_ids": [...]} 
 ```
 
-### Trace Init and trace_scope (recommended for all runs)
+### Trace Initialization and `trace_scope` (Recommended)
 
-Use `trace_scope` for every agent run you plan to log. It pre-registers a trace
-via `/api/v1/traces/init`, sets the trace ID in a context-local store (safe for
-async and multi-thread usage), and uploads the trace when the scope exits. This
-is required if your agent might call `request_human_intervention` (Active Help
-Request) so the help signal is attached to the correct trace.
+Use `trace_scope` for every instrumented agent execution. The scope automatically initializes a trace via `/api/v1/traces/init`, propagates the trace ID through a context-local runtime store (safe for asynchronous and multi-threaded execution), and uploads the finalized trajectory when execution completes.
+
+This mechanism is required for runtime escalation workflows, ensuring that calls to `request_human_intervention` are correctly attached to the active execution trace and governance pipeline.
 
 **Recommended: use `trace_scope` (auto init + auto log)**
 
@@ -653,13 +663,13 @@ otlp_trace["trace_id"] = get_trace_id() or "trace_123"
 client.log_trace(otlp_trace)
 ```
 
-### Agent Tools (Experience Retrieval + Active Help Request)
+### Agent Tools (Operational Memory Retrieval + Runtime Escalation)
 
 When to use:
 
-- Use `search_past_experiences` to fetch high-quality, previously successful traces for similar tasks.
-- Use `search_similar_traces` when you need semantic similarity over trace content.
-- Use `request_human_intervention` when the agent is blocked, uncertain, or needs clarification.
+- Use `search_past_experiences` to retrieve validated successful trajectories for retrieval-augmented reasoning and operational memory reuse.
+- Use `search_similar_traces` to perform hybrid semantic-lexical retrieval over historical execution traces.
+- Use `request_human_intervention` when the agent encounters uncertain, anomalous, or unresolved execution states requiring expert review.
 
 ```python
 from tracebrain.sdk import (
@@ -668,14 +678,25 @@ from tracebrain.sdk import (
     request_human_intervention,
 )
 
-# Retrieve prior successful experiences
-experiences = search_past_experiences("resolve a tool error", min_rating=4, limit=3)
+# Retrieve successful operational trajectories
+experiences = search_past_experiences(
+    "resolve a tool execution failure",
+    min_rating=4,
+    limit=3,
+)
 
-# Semantic search over traces
-similar = search_similar_traces("multi-step planning", min_rating=4, limit=3)
+# Hybrid semantic-lexical retrieval over traces
+similar = search_similar_traces(
+    semantic_intent="multi-agent coordination failure",
+    exact_keywords="LOGIC_LOOP",
+    min_rating=4,
+    limit=3,
+)
 
-# Escalate to human when the agent is blocked
-help_request = request_human_intervention("User request is ambiguous, need clarification")
+# Escalate uncertain behavior for runtime supervision
+help_request = request_human_intervention(
+    "Execution entered a recurrent reasoning cycle and requires expert validation"
+)
 ```
 
 ### Building a Custom Converter
