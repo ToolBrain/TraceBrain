@@ -30,7 +30,7 @@
             </a>
         </td>
         <td>
-            <a href="https://youtu.be/paQt1vLx6jU">
+            <a href="https://youtu.be/rH3Nlsd4Ut8">
                 <img src="https://img.shields.io/badge/Video-Demo-red?logo=youtube&logoColor=white" alt="Video Demo">
             </a>
         </td>
